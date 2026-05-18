@@ -1,0 +1,23 @@
+{
+  "name": "i18n-lookup-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server exposing i18n-lookup skill as stdio + HTTP tools.",
+  "bin": {
+    "i18n-lookup-mcp-stdio": "src/stdio.ts"
+  },
+  "scripts": {
+    "start:stdio": "bun src/stdio.ts",
+    "start:http": "bun src/http.ts",
+    "inspect": "bunx @modelcontextprotocol/inspector bun src/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
