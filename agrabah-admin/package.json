@@ -1,0 +1,22 @@
+{
+  "name": "agrabah-admin-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server（POC）：登入 agrabah admin 後台並呼叫其 RPC method，目前開放登入與建立三方遊戲場館兩支 tool。",
+  "bin": {
+    "agrabah-admin-mcp-stdio": "src/stdio.ts"
+  },
+  "scripts": {
+    "start:stdio": "bun src/stdio.ts",
+    "inspect": "bunx @modelcontextprotocol/inspector bun src/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
