@@ -14,7 +14,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { GameEdit } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { GAME_TAG_MAP, GAME_TAG_KEYS, OPEN_MODE_MAP, OPEN_MODE_KEYS } from '../const.ts';
 
 export function registerCreateGameTool(server: McpServer): void {
@@ -61,7 +61,7 @@ export function registerCreateGameTool(server: McpServer): void {
             });
 
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.CreateOrUpdateGameVendorGame(game));
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
 
             // round-trip 讀回驗證：ListGames 沒有 gameId 篩選參數，只能撈該廠商前幾頁再用 gameId 比對。
             const listResult = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(input.gameVendorId, 1, 50));

@@ -3,13 +3,9 @@
  * 帳號/URL 等環境相關設定不放這裡，一律走 process.env（見 session.ts），不寫死 fallback。
  */
 
-// AgrabahErrorCodeEnum.loginRequired，見 rajah/services/common.rajah:7
-export const LOGIN_REQUIRED_ERROR_CODE = 103;
-
-// AgrabahErrorCodeEnum.totpNeeded，見 rajah/services/common.rajah:591。Auth.Login 在帳密正確但
-// 後端要求動態驗證碼時回這個 errorCode（r.data 為 null）；H6 的 POST /login 用它判斷要不要
-// 標記 totpRequired，讓企劃端 skill 能明確辨識「不是帳密錯，是還要再帶 totpCode 重打一次」。
-export const TOTP_NEEDED_ERROR_CODE = 1809;
+// H11（plan.md D10）：不在此硬編 error code 數字，改由 session.ts / http.ts / mcp_result.ts
+// 直接 import 生成的 AgrabahErrorCodeEnum（abu/admin/src/generated/remote.gen.ts）並用
+// forward mapping（如 AgrabahErrorCodeEnum.loginRequired）或 reverse mapping 取代裸數字。
 
 // H7：hosted 模式下 JWT 過期或尚未登入時回給 agent 的重登信號文字（plan.md D4/D11）。
 // D11 要求 harness 只陳述事實、不引導跨後台操作，措辭止於此，不建議改用其他帳號或後台。

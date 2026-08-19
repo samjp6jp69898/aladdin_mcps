@@ -9,7 +9,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { PlatformGameVendorGameEssentialSearch } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { ACTIVE_STATUS_MAP } from '../const.ts';
 
 export function registerListVendorGamesTool(server: McpServer): void {
@@ -40,7 +40,7 @@ export function registerListVendorGamesTool(server: McpServer): void {
                 status: status ? ACTIVE_STATUS_MAP[ status ] : undefined,
             });
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.ListGames(search, page ?? 1, pageSize ?? 50));
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
             return asTextResult({ success: true, rows: r.data?.rows ?? [], totalPage: r.data?.totalPage });
         },
     );

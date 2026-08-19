@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { STATUS_MAP, STATUS_KEYS } from '../const.ts';
 
 export function registerUpdatePlatformGameVendorStatusTool(server: McpServer): void {
@@ -49,7 +49,7 @@ export function registerUpdatePlatformGameVendorStatusTool(server: McpServer): v
         },
         async ({ platformId, gameVendorId, status }) => {
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.UpdatePlatformGameVendorStatus(platformId, gameVendorId, STATUS_MAP[ status ]));
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
 
             // 沒有單筆查詢 method，讀回用同一支 ListPlatformGameVendors 掃第一頁比對 gameVendorId。
             const listResult = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListPlatformGameVendors(platformId, 1));

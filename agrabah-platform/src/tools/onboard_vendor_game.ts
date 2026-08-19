@@ -17,10 +17,11 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { PlatformGameVendorGameEdit } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
+import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
 import { remote, withAutoRelogin, uploadFile, currentIdentityForFiles } from '../session.ts';
 import { resolveFileIdForIdentity } from '../files.ts';
-import { asTextResult } from '../mcp_result.ts';
-import { GAME_VENDOR_GAME_NOT_EXISTS_ERROR_CODE, IMAGE_SHAPE_MAP, UPLOAD_TYPE_GAME } from '../const.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
+import { IMAGE_SHAPE_MAP, UPLOAD_TYPE_GAME } from '../const.ts';
 
 // H9（plan.md D5 / §4.3）：filePath（stdio，本機工程師連線）與 fileId（hosted，
 // 企劃端遠端連線，先呼叫 POST /files 上傳取得）二選一並存，不用 zod union——
@@ -172,11 +173,8 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
 
             const getR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.GetGameVendorGameForEdit(gameVendorId, gameId));
             if (getR.failed) {
-                return asTextResult({
-                    success: false,
-                    errorCode: getR.errorCode,
-                    message: getR.message,
-                    hint: getR.errorCode === GAME_VENDOR_GAME_NOT_EXISTS_ERROR_CODE
+                return asErrorResult(getR, {
+                    hint: getR.errorCode === AgrabahErrorCodeEnum.gameVendorGameNotExists
                         ? '廠商遊戲母表沒有這個 gameId，這是全新遊戲，此工具無法憑空建立，請改用 agrabah-admin 的 agrabah_admin_create_game。'
                         : undefined,
                 });
@@ -203,7 +201,7 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
 
             const updateR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.UpdateGameVendorGame(gameVendorId, gameId, merged));
             if (updateR.failed) {
-                return asTextResult({ success: false, errorCode: updateR.errorCode, message: updateR.message });
+                return asErrorResult(updateR);
             }
 
             const checkR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.GetGameVendorGameForEdit(gameVendorId, gameId));

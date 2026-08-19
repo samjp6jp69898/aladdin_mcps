@@ -7,7 +7,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 
 export function registerListPlatformsTool(server: McpServer): void {
     server.registerTool(
@@ -25,7 +25,7 @@ export function registerListPlatformsTool(server: McpServer): void {
         },
         async () => {
             const r = await withAutoRelogin(() => remote.admin.platformManagement.ListPlatformDetails());
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
             return asTextResult({
                 success: true,
                 platforms: r.data?.platforms ?? [],

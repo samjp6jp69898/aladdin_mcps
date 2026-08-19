@@ -62,7 +62,7 @@ import { registerPlatformTools } from './tools/index.ts';
 import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
 import { login, runWithIdentity } from './session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
-import { TOTP_NEEDED_ERROR_CODE } from './const.ts';
+import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
 import { saveUploadedFile } from './files.ts';
 import {
     runWithAuditAccumulator,
@@ -188,7 +188,7 @@ app.post('/login', async c => {
         const result = await runWithIdentity(identity, () => login({ identifier, password, totpCode }));
 
         if (!result.success) {
-            const totpRequired = result.errorCode === TOTP_NEEDED_ERROR_CODE;
+            const totpRequired = result.errorCode === AgrabahErrorCodeEnum.totpNeeded;
             // 帳密其實正確、只是後端還要求 TOTP，不算一次「登入失敗」（帳密沒被猜錯），
             // 不計入節流，否則企劃在多輪 TOTP 互動中可能因為單純還沒輸入驗證碼就被鎖住。
             if (!totpRequired) recordFailure(identity);

@@ -53,8 +53,8 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Client } from '/Users/user/aladdin/genie/src/client/index.ts';
-import { Remote } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
-import { LOGIN_REQUIRED_ERROR_CODE, HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
+import { Remote, AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
+import { HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
 
 const BASE_URL = process.env.AGRABAH_ADMIN_API_URL;
 const DEFAULT_USER = process.env.AGRABAH_ADMIN_USER;
@@ -172,7 +172,7 @@ async function ensureLoggedIn(): Promise<void> {
  * 傳入的 call 應該是一個「已經帶好參數、只差呼叫」的 thunk，例如：
  *   withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGameVendors(search, page, pageSize))
  *
- * H7：JWT 過期（LOGIN_REQUIRED_ERROR_CODE）時同樣雙模式——stdio 用 env 帳密
+ * H7：JWT 過期（AgrabahErrorCodeEnum.loginRequired）時同樣雙模式——stdio 用 env 帳密
  * 自動重登（行為不變）；hosted 模式回重登信號，不嘗試用 env 帳密重登（D3：
  * hosted 模式沒有帳密可用）。
  */
@@ -182,7 +182,7 @@ export async function withAutoRelogin<T>(
     await ensureLoggedIn();
     let r = await call();
 
-    if (r.failed && r.errorCode === LOGIN_REQUIRED_ERROR_CODE) {
+    if (r.failed && r.errorCode === AgrabahErrorCodeEnum.loginRequired) {
         if (isHostedIdentity()) {
             throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
         }

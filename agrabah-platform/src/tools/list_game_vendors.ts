@@ -10,7 +10,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { PlatformGameVendorEssentialSearch } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { ACTIVE_STATUS_MAP } from '../const.ts';
 
 export function registerListGameVendorsTool(server: McpServer): void {
@@ -38,7 +38,7 @@ export function registerListGameVendorsTool(server: McpServer): void {
 
             if (!hasFilter && !page) {
                 const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.ListAllGameVendors());
-                if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+                if (r.failed) return asErrorResult(r);
                 return asTextResult({ success: true, rows: r.data?.rows ?? [] });
             }
 
@@ -48,7 +48,7 @@ export function registerListGameVendorsTool(server: McpServer): void {
                 maintenanceStatus: maintenanceStatus ? ACTIVE_STATUS_MAP[ maintenanceStatus ] : undefined,
             });
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.ListGameVendors(search, page ?? 1, pageSize ?? 50));
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
             return asTextResult({ success: true, rows: r.data?.rows ?? [], totalPage: r.data?.totalPage });
         },
     );

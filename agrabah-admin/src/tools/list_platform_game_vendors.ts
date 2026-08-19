@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 
 export function registerListPlatformGameVendorsTool(server: McpServer): void {
     server.registerTool(
@@ -34,7 +34,7 @@ export function registerListPlatformGameVendorsTool(server: McpServer): void {
         },
         async ({ platformId, page }) => {
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListPlatformGameVendors(platformId, page ?? 1));
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
             return asTextResult({ success: true, rows: r.data?.rows ?? [], totalPage: r.data?.totalPage });
         },
     );

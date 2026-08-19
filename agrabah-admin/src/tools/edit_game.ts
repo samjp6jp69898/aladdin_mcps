@@ -15,7 +15,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { GameEdit } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
 import { remote, withAutoRelogin, uploadFile, currentIdentityForFiles } from '../session.ts';
 import { resolveFileIdForIdentity } from '../files.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { GAME_TAG_MAP, GAME_TAG_KEYS, OPEN_MODE_MAP, OPEN_MODE_KEYS, IMAGE_SHAPE_MAP } from '../const.ts';
 
 // H9（plan.md D5 / §4.3）：filePath（stdio，本機工程師連線）與 fileId（hosted，
@@ -163,7 +163,7 @@ export function registerEditGameTool(server: McpServer): void {
 
             // GetGameVendorGameForEdit 只吃內部流水號，先用 ListGames 把 gameId 換成 id。
             const listR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(gameVendorId, 1, 200));
-            if (listR.failed) return asTextResult({ success: false, errorCode: listR.errorCode, message: listR.message });
+            if (listR.failed) return asErrorResult(listR);
 
             const matchedRow = listR.data?.rows?.find((row) => row.gameId === gameId);
             if (!matchedRow) {
@@ -174,7 +174,7 @@ export function registerEditGameTool(server: McpServer): void {
             }
 
             const getR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetGameVendorGameForEdit(matchedRow.id));
-            if (getR.failed) return asTextResult({ success: false, errorCode: getR.errorCode, message: getR.message });
+            if (getR.failed) return asErrorResult(getR);
 
             const base = getR.data?.game;
 
@@ -202,7 +202,7 @@ export function registerEditGameTool(server: McpServer): void {
             });
 
             const updateR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.CreateOrUpdateGameVendorGame(merged));
-            if (updateR.failed) return asTextResult({ success: false, errorCode: updateR.errorCode, message: updateR.message });
+            if (updateR.failed) return asErrorResult(updateR);
 
             const checkR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetGameVendorGameForEdit(matchedRow.id));
             return asTextResult({

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { login } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 
 export function registerLoginTool(server: McpServer): void {
     server.registerTool(
@@ -26,6 +26,9 @@ export function registerLoginTool(server: McpServer): void {
                 totpCode: z.string().optional().describe('當下的 TOTP / 簡訊驗證碼；僅在後端回應要求時才需要，不寫死、不預先猜測'),
             },
         },
-        async ({ identifier, password, totpCode }) => asTextResult(await login({ identifier, password, totpCode })),
+        async ({ identifier, password, totpCode }) => {
+            const r = await login({ identifier, password, totpCode });
+            return r.success ? asTextResult(r) : asErrorResult(r);
+        },
     );
 }

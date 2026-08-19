@@ -9,7 +9,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { GameVendorEdit, GameVendorEssentialSearch } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
-import { asTextResult } from '../mcp_result.ts';
+import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { KNOWN_ADAPTERS, WALLET_TYPE_MAP } from '../const.ts';
 
 export function registerCreateGameVendorTool(server: McpServer): void {
@@ -52,7 +52,7 @@ export function registerCreateGameVendorTool(server: McpServer): void {
 
             const gameVendor = GameVendorEdit.create(fields);
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.CreateOrUpdateGameVendor(gameVendor));
-            if (r.failed) return asTextResult({ success: false, errorCode: r.errorCode, message: r.message });
+            if (r.failed) return asErrorResult(r);
 
             // round-trip 讀回驗證：用剛送出的名稱查回實際存的資料（比照 test-method 的「寫入型 method SOP」）。
             const search = GameVendorEssentialSearch.create({ name: fields.name });
