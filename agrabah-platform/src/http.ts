@@ -58,7 +58,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerPlatformTools } from './tools/index.ts';
-import { createBearerAuthGuard, type AuthVariables } from './auth.ts';
+import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
+import { runWithIdentity } from './session.ts';
 
 const PORT = Number(process.env.AGRABAH_PLATFORM_HTTP_PORT ?? 8790);
 
@@ -133,20 +134,28 @@ app.all('/mcp', async c => {
         return c.text('Method Not Allowed', 405, { Allow: 'POST, DELETE' });
     }
 
-    const server = new McpServer(
-        { name: 'agrabah-platform', version: '0.1.0' },
-        { capabilities: { tools: {} } },
-    );
-    withStderrStackLogging(server);
-    registerPlatformTools(server);
+    // H5：把這個 request 通過 Bearer middleware 解出的身分（H3/H4 名冊唯一
+    // id）灌進 session.ts 的 AsyncLocalStorage，讓這次 request 觸發的所有
+    // tool handler（含它們呼叫的 remote.*）都能透過該身分讀到自己的 JWT、
+    // 不會讀到別的企劃的——見 session.ts 的 runWithIdentity() 檔頭說明。
+    // 整段 McpServer 建立、tool 註冊、handleRequest、close 都包在同一個
+    // identity context 內，確保沒有任何一步漏在外面。
+    return runWithIdentity(getIdentity(c), async () => {
+        const server = new McpServer(
+            { name: 'agrabah-platform', version: '0.1.0' },
+            { capabilities: { tools: {} } },
+        );
+        withStderrStackLogging(server);
+        registerPlatformTools(server);
 
-    const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-    await server.connect(transport);
-    try {
-        return await transport.handleRequest(c.req.raw);
-    } finally {
-        await server.close();
-    }
+        const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
+        await server.connect(transport);
+        try {
+            return await transport.handleRequest(c.req.raw);
+        } finally {
+            await server.close();
+        }
+    });
 });
 
 // 完整例外只寫 stderr、回應只給通用訊息：session.ts 用絕對路徑 import 公司

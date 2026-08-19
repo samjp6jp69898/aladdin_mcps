@@ -9,9 +9,18 @@
  * 見 obsidian/mcps/agrabah-admin/src/session.ts 同一段註解——已用 spike script
  * 實測驗證過 abu/platform/node_modules/genie 是 symlink 回
  * /Users/user/aladdin/genie，兩種 import 方式最終是同一個 Client class 實例，
- * `Client.encoded = true` 這個 static flag 才會真的對 remote.gen.ts 內部生效。
+ * `Client.encoded = true` 這個 static flag 才會真的對 remote.gen.ts 內部生效
+ * （H5 重構後用併發交錯呼叫的 spike 重新驗證過仍成立，細節見 H5 changelog）。
+ *
+ * H5：登入態從 module-level 單例改為 per-identity 容器。設計理由與 admin 端
+ * 逐字相同，完整說明見 obsidian/mcps/agrabah-admin/src/session.ts 同一段
+ * 註解（AsyncLocalStorage + 單例 Remote，不做 per-identity 多個 Remote 實例，
+ * 因為 tools/*.ts 全部直接 `remote.<group>.<service>.<Method>(...)` 呼叫
+ * module-level 單例，ALS 能在不改任何 tool 檔案的前提下讓 headerHandler
+ * 這個 closure 拿到「當前這次呼叫」對應的身分）。
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { Client } from '/Users/user/aladdin/genie/src/client/index.ts';
 import { Remote } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
 import { LOGIN_REQUIRED_ERROR_CODE } from './const.ts';
@@ -26,7 +35,33 @@ if (!BASE_URL) {
 
 Client.encoded = true; // request/response bytes 走 XOR，client 內部自動處理，見 genie/src/client/index.ts
 
-let session: { token: string } | null = null;
+/** stdio 模式的固定隱含身分（單一 Symbol，不可能與任何名冊 id 字串撞號）。 */
+const STDIO_IDENTITY = Symbol('agrabah-platform-stdio-identity');
+type Identity = string | typeof STDIO_IDENTITY;
+
+const identityStorage = new AsyncLocalStorage<Identity>();
+
+/**
+ * http.ts 在處理每個 /mcp request 時，用這支包住整個 request 的處理範圍，把
+ * 「這個 request 屬於哪位企劃」（H3/H4 名冊唯一 id）灌進 ALS，讓這個 request
+ * 觸發的所有 tool handler（含它們呼叫的 remote.*、login()、
+ * withAutoRelogin()）都能透過 currentIdentity() 讀回同一個值，多個 request
+ * 併發交錯執行也彼此互不干擾。stdio.ts 完全不呼叫這支，currentIdentity()
+ * 會 fallback 到 STDIO_IDENTITY。
+ */
+export function runWithIdentity<T>(identity: string, fn: () => T): T {
+    return identityStorage.run(identity, fn);
+}
+
+function currentIdentity(): Identity {
+    return identityStorage.getStore() ?? STDIO_IDENTITY;
+}
+
+/**
+ * per-identity 登入態容器（D2）。只存 agrabah JWT（D3：絕不存帳密）。
+ * key 是 H3/H4 名冊唯一 id 或 STDIO_IDENTITY，不是顯示名。
+ */
+const sessions = new Map<Identity, { token: string }>();
 
 export const remote = new Remote();
 remote.setBaseUrlToAllGroup(BASE_URL);
@@ -34,6 +69,7 @@ remote.setHeaderHandlerToAllGroup(() => {
     // platform 是「同一部署服務多個 platform，以來訪 host 判定平台」，所以認證 platform 靠
     // BASE_URL 本身的 Host（core.domains 查表），不是靠這裡的 header——這裡只需要帶登入 token。
     const headers: Record<string, string> = {};
+    const session = sessions.get(currentIdentity());
     if (session?.token) headers['Authorization'] = `Bearer ${ session.token }`;
     return headers;
 });
@@ -42,6 +78,12 @@ export type LoginResult =
     | { success: true; message: string; mustBindTotp: boolean }
     | { success: false; errorCode: number; message: string };
 
+/**
+ * identifier/password 只存在本函式的區域變數（含 opts 解構出來的值），全程
+ * 未寫入任何 module-level 變數、Map、或會被 headerHandler 之類長生命週期
+ * closure 捕獲的位置——函式 return 後即可被 GC 回收，符合 D3「絕不留企劃
+ * 帳密」。sessions Map 只存 `{ token }`（agrabah JWT），沒有 password 欄位。
+ */
 export async function login(opts: { identifier?: string; password?: string; totpCode?: string } = {}): Promise<LoginResult> {
     const identifier = opts.identifier ?? DEFAULT_USER;
     const password = opts.password ?? DEFAULT_PASSWORD;
@@ -49,18 +91,19 @@ export async function login(opts: { identifier?: string; password?: string; totp
         throw new Error('缺少登入帳密：請在呼叫時提供 identifier/password，或在 .mcp.json 設定 AGRABAH_PLATFORM_USER / AGRABAH_PLATFORM_PASSWORD');
     }
 
+    const identity = currentIdentity();
     const r = await remote.platform.auth.Login(identifier, password, opts.totpCode ?? '', '', '');
     if (r.failed || !r.data) {
-        session = null;
+        sessions.delete(identity);
         return { success: false, errorCode: r.errorCode, message: r.message };
     }
 
-    session = { token: r.data.loginToken };
+    sessions.set(identity, { token: r.data.loginToken });
     return { success: true, message: '登入成功', mustBindTotp: r.data.mustBindTotp };
 }
 
 async function ensureLoggedIn(): Promise<void> {
-    if (session) return;
+    if (sessions.has(currentIdentity())) return;
     const r = await login();
     if (!r.success) throw new Error(`自動登入失敗：errorCode=${ r.errorCode } ${ r.message }`);
 }
