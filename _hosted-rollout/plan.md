@@ -26,6 +26,7 @@
 | D10 | **error code 不在 MCP 內硬編**（撤掉 `const.ts` 的 `LOGIN_REQUIRED_ERROR_CODE`、303 等魔術數字/語意註解），改 import rajah 對 abu 生成的 error 定義、把後端錯誤名稱（如 `gameVendorGameNotExists`）原樣透傳給 agent | agrabah/rajah 已有現成 error code 體系（i18n 也源於此）；錯誤名稱本身即有診斷性。實作前必須 source-first 查證生成檔的實際形態，不憑記憶 |
 | D11 | **harness＝MCP server `instructions` + tool description，只做事實診斷，不引導跨後台操作**。現有 `onboard_vendor_game` description 中「303 → 改用 admin 的 create_game」一句要修掉，改為「回報使用者並停止，是否建立全新遊戲是另一個需要授權的決定」 | 企劃未必有（也不該有）admin 權限；agent 不得自行擴大任務範圍。權限硬防線＝agrabah 後端 `@Permission`（每人自己帳號）＋ admin/platform 兩台獨立發 token |
 | D12 | 網路曝露沿用 toolsmith 原計畫手法：**不新開 tunnel**，`telegram-dispatcher/server.ts`（Hono，port 8787）加 path 分流 proxy，從一條擴為三條 | ngrok 免費額度已被 tg-dispatch 佔用；此屬修改正在跑的正式服務，實作 task 有專屬風險註記 |
+| D13 | **`agrabah-admin` 角色支援多環境/多平台**（2026-08-19 追加）：Bearer token 綁定**單一環境**（dev/pre[=cqa]/evi，本輪先落實這三個；uat/prod 網址未知，先保留可擴充設計不實際部署）；**平台不綁 token**，改在同一 session 內用新增的 `list_platforms`/`select_platform` MCP tool 動態查詢與切換（機制是 `platform-code` request header，非各平台獨立網域）。**`agrabah-platform` 角色本輪不擴充**——其 Gate 依 Host 網域判斷平台，需要的環境×平台→URL 對照表本輪未收集齊。prod 額外要求：寫入類 tool 伺服器端強制要求明確 `confirm` 參數 + description 指示 Claude 先用 AskUserQuestion 問過使用者，isProd 旗標關閉時完全不影響既有行為；本輪沒有 prod 網址，機制只能用「isProd 開、URL 仍指向 dev」的方式驗證邏輯，不構成對真實 prod 的驗證 | 使用者提出新需求：企劃需要能在指定環境+平台下操作。source-first 查證（rajah/platform.rajah:83 註解、GetPlatformDomains 只回玩家前台/代理/推廣網域非 Gate 路由）確認 admin 與 platform 兩角色的環境/平台機制本質不同，故範圍收斂為只做 admin。拆解見 tasks.json 模組 `multi-env-admin`（H33-H36），並修訂了尚未開工的 H14（proxy 路由改依環境拆分）與 H16（starter kit 支援多筆環境 entry） |
 
 ## 3. 目標架構
 
@@ -103,7 +104,8 @@ starter-kit/                      # 零公司原始碼；make-starter-kit 腳本
 - claude.ai 聊天版（網頁/桌面）支援與任何 base64 降級路徑。
 - R2 / 雲端儲存中轉。
 - toolsmith 生成程式碼的自動化審查/人工核准關卡（使用者已於原計畫明確決定不做並接受風險）。
-- production 環境（一切僅 dev；帳密/URL 均為 dev 測試站）。
+- `agrabah-platform` 角色的多環境/多平台支援（D13 僅擴充 `agrabah-admin` 角色，見上）。
+- `agrabah-admin` 角色的 uat / prod 環境實際部署（D13 已建可擴充設計與 prod confirm 機制，但網址未知前不實際上線；dev/pre/evi 三環境不在此限）。
 
 ## 6. 已知風險（承接原計畫 + 新增）
 

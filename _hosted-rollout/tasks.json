@@ -1,6 +1,6 @@
 {
   "project": "agrabah-hosted-mcp-rollout",
-  "description": "把已完成的 agrabah-admin / agrabah-platform 兩個 stdio MCP server 改造成 hosted remote MCP（Streamable HTTP，常駐工程師機器），讓沒有任何公司原始碼的企劃用自己的 Claude Code 桌面版直接操作遊戲場館/遊戲管理，並透過 agrabah-toolsmith 自助擴充新 tool。唯一權威架構文件：/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md（決策編號 D1-D12、階段骨架 P1-P8）。分支規則：obsidian repo 的所有 commit 留在 feature/agrabah-hosted-mcp 分支，不 push、不動 main；telegram-dispatcher 已於 obsidian commit c386c14 拆為獨立 repo（其現行分支就是 main），凡動到該 repo 的 task（H14、H30、H31）一律在該 repo 另開分支 feature/hosted-mcp-proxy 並 commit 於其上，同樣不 push、不直接 commit 到它的 main。",
+  "description": "把已完成的 agrabah-admin / agrabah-platform 兩個 stdio MCP server 改造成 hosted remote MCP（Streamable HTTP，常駐工程師機器），讓沒有任何公司原始碼的企劃用自己的 Claude Code 桌面版直接操作遊戲場館/遊戲管理，並透過 agrabah-toolsmith 自助擴充新 tool。唯一權威架構文件：/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md（決策編號 D1-D12、階段骨架 P1-P8）。分支規則：obsidian repo 的所有 commit 留在 feature/agrabah-hosted-mcp 分支，不 push、不動 main；telegram-dispatcher 已於 obsidian commit c386c14 拆為獨立 repo（其現行分支就是 main），凡動到該 repo 的 task（H14、H30、H31）一律在該 repo 另開分支 feature/hosted-mcp-proxy 並 commit 於其上，同樣不 push、不直接 commit 到它的 main。（2026-08-19 追加 D13：agrabah-admin 角色多環境/多平台支援，見 plan.md D13 與 tasks.json multi-env-admin 模組 H33-H36。）",
   "created_at": "2026-08-19",
   "updated_at": "2026-08-19",
   "changelog": [
@@ -55,6 +55,10 @@
     {
       "date": "2026-08-19",
       "note": "H8 完成：admin/platform 兩台 hosted server 的 Hono app 各新增 POST /files（依 plan.md D5/§4.3），新增 src/files.ts（admin/platform 各一份，邏輯逐字一致，僅 env 前綴與 log tag 不同）：multipart 收檔，magic bytes（檔頭簽章）判定型別，白名單僅 png/jpeg/webp，不採信 Content-Type 或副檔名，SVG 故意排除（可內嵌 script）；fileId 用 randomBytes(32) 產生不可猜測，記憶體 registry 綁定上傳者身分，resolveFileForIdentity() 供未來消費端（H9）驗證擁有者；落地檔名一律 <fileId>.<ext>，完全不採信使用者提供的檔名，結構上不存在 ../ 路徑穿越輸入管道；單檔大小上限 3MB、單一身分配額 50MB、全域總量配額 500MB，皆可用環境變數覆蓋；清理策略選 setInterval 週期性排程（24h 保留、15min 清理一次），cleanupExpiredFiles() 開放注入 ttlMs/nowMs 供測試不需真的等待。\n\n派 3 個獨立 fresh-context review agent（正確性/邊界、安全性、風格一致性）：正確性審查實際起服務用真實 SDK/curl 驗證併發配額檢查（saveUploadedFile 全同步、無 await 插入點，10 併發上傳精準卡在配額邊界、非TOCTOU 漏洞）與 bodyLimit/files.ts 雙層大小上限邊界皆正確；風格審查確認 admin/platform 兩份 files.ts 逐字一致（除 env 前綴/log tag）、未動任何 tools/*.ts、.gitignore 格式與既有 H3/H13/H22 區塊一致；安全性審查挖到一個真實問題並實測復現——配額計費原本照 bytes.length（邏輯位元組數），但檔案系統實際以區塊（常見 4096 bytes）為單位配置磁碟，用 3000 個 8 bytes 最小合法檔案實測帳本只記 24000 bytes、實際吃掉 12MB，放大約 500 倍，risk_notes 明講磁碟塞滿會連帶打死同機 tg-dispatch 正式服務，配額形同虛設。修法：配額計費一律以區塊大小（4096 bytes）為下限（accountedSize()），落地檔案內容仍是真實 bytes，只有計費採計墊高；補一個新單元測試（20 個最小合法檔案打 40960 bytes 上限，修正前應全部成功、修正後精準卡在第 10 個），並用真實 curl 對運行中的 server 復現同一情境二次確認（40960 bytes 上限下 8 bytes 檔案連續上傳只成功 10 次），platform 端同步套用同一修法。\n\n逐條對照 10 條 acceptance_criteria，全部用真實 curl 對運行中的 server（獨立埠與獨立 TOKENS_PATH/TMP_DIR 環境變數覆蓋，不干擾同時並行的 H6/H23）或 bun test 對運行中的 files.ts 函式實測（不只憑程式碼審查）：(1) 正確 token 上傳真實 1x1 png 到 admin 8789 回 200+fileId，檔案實際落地暫存目錄；(2) 無/錯 token 上傳回 401；(3) 4.5MB 檔案被 bodyLimit 擋 413、3.5MB 被 files.ts 內部擋 400，皆不落地；(4) shell script 與 html 改副檔名為 .png 被拒、真實 SVG（含 <script>）被拒、真實 png 通過；(5) 惡意檔名（../../../../etc/passwd、絕對路徑、含 / 的路徑）落地檔名仍為 <fileId>.png，暫存目錄外與目標路徑外皆無任何檔案異動（程式碼從未讀取 file.name）；(6) 單一身分配額與全域總量配額皆有真實 curl 連續上傳實測，超過上限後第 N 次被拒且不落地，同一身分/總量在清掉（cleanupExpiredFiles）後恢復正常，兩身分配額互不干擾；(7) platform 8790 的 /files 同樣端點實測通過（含 401、型別擋、正常上傳）；(8) resolveFileForIdentity 對非擁有者回 forbidden（非 not_found，不洩漏是否存在）、對不存在 fileId 回 not_found，皆有單元測試覆蓋；(9) cleanupExpiredFiles 用注入的 ttlMs/nowMs 驗證過期檔真的被刪、未過期檔還在，不依賴真實等待；(10) tmp-uploads/ 已加入 obsidian/.gitignore，git check-ignore -v 命中，實際跑服務上傳測試檔案後 git status --porcelain 確認不出現。\n\nhttp.ts 與並行 task H6（POST /login）在同一份工作樹交錯編輯：H6 先行 commit（cdbe5e33），本 task commit 前重建「H5-era base + 本 task 改動」的隔離版本、diff 對照 HEAD 確認為純新增（不動 H6 的 /login 邏輯），並在合併後的 working tree 重新起服務驗證 /login 與 /files 同時可用後才 commit。開發過程中觀察到共用 git index 被其他並行 task（H23）的 add/commit 操作連續擾動兩次（一次把本 task 尚未 commit 的改動誤帶進對方 commit、一次讓已 commit 內容從 log 消失，推測是對方 commit 後又 reset/重做），改用 `git commit --only -- <本 task 檔案清單>` 明確限定路徑送出程式碼變更（commit 520e7f8a）。\n\n**tasks.json 這次更新本身也踩到一次真實事故並即時修正**：撰寫本則 changelog 時是從稍早的 HEAD 快照（520e7f8a）重建隔離版本，commit 前 H23 搶先送出了自己的 tasks.json 更新（ea2d3f5c，補 H23 changelog note 並把 status 改 done），但本次 commit 用的仍是舊快照，`git commit --only` 對指定路徑是整檔取代、不是逐行合併，結果第一版 H8 tasks.json commit（b2c7d1e8）意外把 H23 剛送出的 note 覆蓋掉、status 打回 pending——發現後立刻重新以 ea2d3f5c 為底重建（H23 的 note/status 原樣保留），只疊加本次 H8 的兩項變更（H8 status→done、新增本則 note），用新的正向 commit 修正，不對已推進的分支歷史做 rewrite。"
+    },
+    {
+      "date": "2026-08-19",
+      "note": "H1-H13、H22、H23 全數完成後，使用者提出範圍外新需求：agrabah-admin 角色要支援多環境/多平台切換（企劃能在指定環境+平台下操作，dev/pre/uat/evi/prod 各自不同 API URL，.env 填不同帳密快速切換；prod 額外要求執行前 confirm）。與使用者逐點討論並 source-first 查證後拍板新決策 D13（寫入 plan.md）：\n(1) 範圍收斂為 agrabah-admin 角色本輪擴充，agrabah-platform 角色不動——查證發現兩者機制本質不同：admin 角色一個環境只有一個網域（Gate 靠 platform-code request header 分流平台，const.ts:16 的 ADMIN_HEADER_PLATFORM_CODE 目前寫死 '0'），platform 角色則是 Gate 依 Host 網域判斷平台（platform.rajah:83 註解），每個平台各自獨立網域（.env 已知 pk-platform.alddev.com vs 6t-platform.alddev.com），這張環境×平台→URL 對照表本輪沒收集齊（rajah 內找不到任何 API 能動態查到，只有 GetPlatformDomains 查的是平台自己設定的玩家前台/代理/推廣網域，不是我們 MCP 該打哪個 Gate 的基礎設施路由答案），故本輪先跳過 platform 角色。\n(2) Bearer token 綁定單一**環境**（不綁平台）：因為環境＝不同 server 網域/process/port（結構性差異），平台只是 admin 角色同一網域下的一個 request header，可以在同一個 session 內動態查詢/切換——新增兩支 MCP tool list_platforms（呼叫既有 rajah PlatformManagement.ListPlatformDetails）與 select_platform，不需要為每個平台發一把 token。\n(3) 本輪只落實 dev（既有）+ pre（別名 cqa，https://abu-admin.ald777.com/）+ evi（https://admin.godev2.com/）三個環境；uat 與 prod 的 admin 網址使用者目前手上沒有，先保留設計可擴充（新增一組環境只需改 config，不必改程式碼），不實際部署。\n(4) prod 執行前確認機制：伺服器端強制要求寫入類 tool 帶明確 confirm 參數（isProd 旗標關閉時完全不影響現有 dev/pre/evi 行為），加上 tool description 指示 Claude 必須先用 AskUserQuestion 問過企劃——因為目前沒有 prod 網址，機制本身只能用『臨時把 isProd 旗標打開、但 API URL 仍指向 dev』的方式驗證邏輯正確性，不構成對真實 prod 的驗證，之後 prod 網址到位時才能算數。\n拆解為新模組 multi-env-admin 的四個 task：H33（source-first 查證 platform-code header 對 admin RPC 是否真的生效，這是整個 D13 設計成立與否的地基，優先做）→ H34（新增 list_platforms/select_platform，platform-code 比照 H5 的 ALS 模式改成 per-identity 動態，depends H33+H5）→ H35（實際部署 pre/evi 兩組實例，depends H34+H13）與 H36（prod confirm 閘門機制，depends H34，可與 H35 並行）。同時修訂兩個尚未開工的既有 task：H14（proxy 路由，原本 /mcp-admin/* 單一路由改為 /mcp-admin-dev/*、/mcp-admin-pre/*、/mcp-admin-evi/* 三條，depends_on 補 H35；/mcp-platform/*、/toolsmith/* 不變）、H16（starter kit，.mcp.json 範本要能容納多筆依環境區分的 agrabah-admin server entry，depends_on 補 H34）。H27/H28/H29 等尚未開工的文件類 task 本次未同步修訂，留給執行到那幾個 task 時一併補上多環境相關內容。"
     }
   ],
   "architecture_summary": "企劃 Claude Code 桌面版（Mac/Win，零公司原始碼，只有 starter kit：.mcp.json 填 URL + 個人 Bearer token、.env 放自己的 agrabah 帳密、兩支 skill 負責登入與上傳圖片）→ HTTPS 打 telegram-dispatcher 既有 ngrok domain → /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 依 path 分流 proxy 三條 route（/mcp-admin/* → localhost:8789、/mcp-platform/* → localhost:8790、/toolsmith/* → localhost:8788；TG webhook guard 不得攔到這三條）→ 各 hosted server（Hono + WebStandardStreamableHTTPServerTransport，stateless MCP transport）先過 Bearer 認證 middleware（timingSafeEqual，token → 企劃身分），再依 token 取得該人的登入態（D2：Map<bearerToken, 登入態>；D3：記憶體只留 agrabah JWT，絕不留帳密）→ 登入不走 MCP tool 而走 POST /login REST 端點（D4，密碼由企劃端 shell 從本地 .env 展開，不進 LLM 對話紀錄）；圖片走自家 POST /files multipart 回 fileId（D5），圖片類 tool 參數 hosted 吃 fileId、stdio 保留 filePath 向後相容 → tool 實作沿用現有扁平的 src/tools/*（D8），stdio.ts 與 http.ts 雙進入點共用同一組註冊函式 → 最終打 agrabah Gate（dev）HTTP POST /api/:group/:service/:method（protobuf + XOR，經 genie client，見既有 session.ts）。錯誤語意不硬編魔術數字，改 import rajah 對 abu 生成的 error 定義並把後端錯誤名稱原樣透傳（D10）；harness 只做事實診斷、不引導跨後台操作（D11），權限硬防線是 agrabah 後端 @Permission ＋ admin/platform 兩台獨立發 token。agrabah-toolsmith（/Users/user/.claude/plans/logical-jumping-cook.md 原設計）沿用 Phase 1-5、7-8，交付端依 D9 改為把生成的 tool 部署到 hosted server 並重載，全企劃立即可用。一切僅限 dev 環境。",
@@ -90,6 +94,10 @@
     {
       "name": "docs",
       "description": "plan.md P8：mcps/README.md 增補 hosted 章節與 stdio/hosted 差異、token 輪替與撤銷程序、風險清單落文件、toolsmith README。"
+    },
+    {
+      "name": "multi-env-admin",
+      "description": "plan.md D13：agrabah-admin 角色的多環境支援（Bearer token 綁定單一環境 dev/pre/evi，平台在 session 內經新增的 list_platforms/select_platform tool 動態查詢與切換，機制是 platform-code request header 而非各平台獨立網域）與 prod 執行前 confirm 閘門機制（伺服器端強制 + tool description 指示 Claude 先問過使用者）。agrabah-platform 角色本輪不擴充多環境——其 Gate 依 Host 網域判斷平台、需要的環境×平台→URL 對照表本輪未收集齊，留待之後有網址再擴充。uat/prod 的 admin 網址目前缺失，先保留機制可擴充、不實際部署。"
     }
   ],
   "prerequisites_done": [
@@ -410,9 +418,10 @@
         "H13",
         "H3",
         "H4",
-        "H30"
+        "H30",
+        "H35"
       ],
-      "description": "依 plan.md（/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md）D12 與 §3：不新開 ngrok tunnel（免費額度已被 tg-dispatch 佔用），改在既有 /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 加三條 path 分流 proxy route：/mcp-admin/* → http://localhost:8789、/mcp-platform/* → http://localhost:8790、/toolsmith/* → http://localhost:8788（toolsmith 服務本身由 H22-H26 實作，本 task 先把 route 佈好，指向尚未啟動的 port 時應回合理錯誤而非讓整個 server 掛掉）。proxy 實作寫法可參考 /Users/user/.claude/plans/logical-jumping-cook.md 第 5 節的 app.all + fetch + duplex:'half' 範例。\n\n【前綴剝除契約，H6/H8/H16/H17/H18/H26 的所有 URL 都依賴它】轉發前剝掉 /mcp-admin｜/mcp-platform｜/toolsmith 前綴，也就是外部 https://<domain>/mcp-admin/login 會打到 hosted server 的 POST /login（H1 拍板的端點路徑契約），/mcp-admin/mcp 對應 /mcp、/mcp-admin/files 對應 /files、/mcp-admin/health 對應 /health。\n\n【對 server.ts 現況的正確描述——本 task 唯一真正的技術陷阱】先讀 /Users/user/aladdin/telegram-dispatcher/server.ts 全檔。webhook secret guard **從來就不是全域 middleware**，它已經只掛在 webhook 那一條 route 上（server.ts:113-122，依序 createWebhookSecretGuard → createRateLimitMiddleware → bodyLimit → webhookCallback），**不需要動它，也不要去「改造」它**。真正會攔截新 route 的是 server.ts:130 的 catch-all `app.all('*', c => { c.status(401); return c.body('') })`——Hono 依註冊順序匹配，這條 catch-all 會吃掉任何註冊在它之後的 route，所以**三條新 proxy route 必須註冊在第 130 行之前**（在 webhook route 之後、catch-all 之前）。\n\n【分支】telegram-dispatcher 已於 obsidian commit c386c14 拆為獨立 repo，其現行分支就是 main。本 task 的 commit 落在 telegram-dispatcher repo，**在該 repo 另開分支 feature/hosted-mcp-proxy 並 commit 於其上**，不 push、不直接 commit 到它的 main。重啟服務用 launchctl bootout + bootstrap，指令與 plist 位置見 /Users/user/aladdin/telegram-dispatcher/README.md:32-68（不是 HOW-TO-CONTINUE.md，那份只有 31 行、講 tasks.sh 工作流程，沒有任何 launchctl 內容）。",
+      "description": "依 plan.md（/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md）D12 與 §3：不新開 ngrok tunnel（免費額度已被 tg-dispatch 佔用），改在既有 /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 加三條 path 分流 proxy route：/mcp-admin/* → http://localhost:8789、/mcp-platform/* → http://localhost:8790、/toolsmith/* → http://localhost:8788（toolsmith 服務本身由 H22-H26 實作，本 task 先把 route 佈好，指向尚未啟動的 port 時應回合理錯誤而非讓整個 server 掛掉）。proxy 實作寫法可參考 /Users/user/.claude/plans/logical-jumping-cook.md 第 5 節的 app.all + fetch + duplex:'half' 範例。\n\n【D13 追加，2026-08-19 使用者拍板多環境支援後修訂】agrabah-admin 角色不再只有 dev 一個實例：H35 會另外部署 pre（port 8791）與 evi（port 8792）兩組獨立實例（tokens.json 各自獨立、互不相交，一個人被授權 dev 不代表自動有 pre/evi 存取權）。因此原本單一的 /mcp-admin/* 路由要拆成三條依環境命名的路由：`/mcp-admin-dev/*` → `http://localhost:8789`、`/mcp-admin-pre/*` → `http://localhost:8791`、`/mcp-admin-evi/*` → `http://localhost:8792`（uat/prod 待網址到位後用同樣模式各加一條，不需要改 proxy 程式碼結構）。`/mcp-platform/*`（→ 8790）與 `/toolsmith/*`（→ 8788）維持原樣不變（agrabah-platform 角色本輪未擴充多環境）。下面【前綴剝除契約】對這三條 admin 路由分別適用（各自剝掉對應前綴後轉發）。本 task 原描述與下面 acceptance_criteria 中所有寫 `/mcp-admin/*`、`/mcp-admin/mcp` 之處，依此追加一律視為 `/mcp-admin-dev/*`、`/mcp-admin-dev/mcp`（dev 環境的驗證方式），pre/evi 依同樣邏輯類推驗證（見新增的 acceptance_criteria），不重複展開每一條既有 AC。\n\n【前綴剝除契約，H6/H8/H16/H17/H18/H26 的所有 URL 都依賴它】轉發前剝掉 /mcp-admin｜/mcp-platform｜/toolsmith 前綴，也就是外部 https://<domain>/mcp-admin/login 會打到 hosted server 的 POST /login（H1 拍板的端點路徑契約），/mcp-admin/mcp 對應 /mcp、/mcp-admin/files 對應 /files、/mcp-admin/health 對應 /health。\n\n【對 server.ts 現況的正確描述——本 task 唯一真正的技術陷阱】先讀 /Users/user/aladdin/telegram-dispatcher/server.ts 全檔。webhook secret guard **從來就不是全域 middleware**，它已經只掛在 webhook 那一條 route 上（server.ts:113-122，依序 createWebhookSecretGuard → createRateLimitMiddleware → bodyLimit → webhookCallback），**不需要動它，也不要去「改造」它**。真正會攔截新 route 的是 server.ts:130 的 catch-all `app.all('*', c => { c.status(401); return c.body('') })`——Hono 依註冊順序匹配，這條 catch-all 會吃掉任何註冊在它之後的 route，所以**三條新 proxy route 必須註冊在第 130 行之前**（在 webhook route 之後、catch-all 之前）。\n\n【分支】telegram-dispatcher 已於 obsidian commit c386c14 拆為獨立 repo，其現行分支就是 main。本 task 的 commit 落在 telegram-dispatcher repo，**在該 repo 另開分支 feature/hosted-mcp-proxy 並 commit 於其上**，不 push、不直接 commit 到它的 main。重啟服務用 launchctl bootout + bootstrap，指令與 plist 位置見 /Users/user/aladdin/telegram-dispatcher/README.md:32-68（不是 HOW-TO-CONTINUE.md，那份只有 31 行、講 tasks.sh 工作流程，沒有任何 launchctl 內容）。",
       "acceptance_criteria": [
         "實作前已與使用者確認測試方式（plan.md §8 明訂：會動正式服務的高風險 task，測試方式先討論不單方面決定）",
         "curl 帶正確 Bearer token 打 https://<tg-dispatch domain>/mcp-admin/mcp 能完成 initialize + tools/list，回應與直打 localhost:8789/mcp 一致（證明前綴剝除正確）",
@@ -428,7 +437,9 @@
         "TG bot 既有功能回歸實測：重啟後實際走一次既有流程（依 telegram-dispatcher/README.md:140 起「Telegram 端使用方式」一節：白名單 → 選單 → 認領），確認未因新 route 而壞掉",
         "telegram webhook 路徑本身仍受 secret guard 保護：帶錯誤 secret token 的假 update 仍被拒",
         "launchctl print 確認 tg-dispatch server 重啟後正常常駐",
-        "commit 落在 telegram-dispatcher repo 的 feature/hosted-mcp-proxy 分支，未 push、未 commit 到該 repo 的 main"
+        "commit 落在 telegram-dispatcher repo 的 feature/hosted-mcp-proxy 分支，未 push、未 commit 到該 repo 的 main",
+        "/mcp-admin-pre/* 與 /mcp-admin-evi/* 同樣完成一次 initialize + tools/list，回應與直打對應 localhost port（8791/8792）一致（比照 dev 的驗證方式）；三條 admin 路由 + /mcp-platform/* + /toolsmith/* 共 5 條路由同時可用、互不干擾",
+        "確認三條 admin 路由的前綴剝除各自正確對應到自己的 port，用故意打錯 port 對應關係的方式反向驗證（例如確認 pre 的請求真的落在 8791 的 hosted server log，不是意外落在 8789）"
       ],
       "risk_notes": "實作前必須與使用者確認。這是修改一個正在跑的正式服務（telegram-dispatcher 是團隊實際在用的 bug 認領入口）：新 route 註冊位置錯（落在 server.ts:130 catch-all 之後）會讓三條 route 全部靜默回 401；重啟期間服務短暫中斷。改完一定要實測 TG bot 既有功能（plan.md §6 明列此風險）。\n\nduplex:'half' 這類 streaming body 選項在不同 runtime 行為不同，MCP 的 streamable HTTP 有長連線與串流回應，proxy 若把 body 緩衝起來會破壞串流。\n\nngrok 免費方案的整合風險（plan.md §6 與 logical-jumping-cook.md 都沒列，D12 共用一條 tunnel 的代價）：這條 tunnel 之後要同時承載 TG webhook、兩台 MCP server 的 SSE 長連線、以及 toolsmith 單次可跑到 600 秒的同步請求，免費方案的並發連線數、頻寬、idle timeout 都是真實限制；同一帳號同時只允許 1 個 tunnel session（README.md:126-139）。量體控制由 H31 負責，本 task 要把觀察到的實際限制記錄下來供 H31 與 H28 使用。\n\n取捨記錄：AC 要求「三條新 route 不帶 token 回 401 且能證明請求真的到達 hosted server」，這在對外行為上與 catch-all 的均一 401 有張力——用內部 log 驗證而非可區分的對外回應，是為了不讓 /mcp-admin 這條路徑被外部 fuzz 探測出來；殘餘風險（三條路徑仍可能被探測發現）記入 H28 風險清單。",
       "suggested_agent": "general-purpose"
@@ -467,9 +478,10 @@
       "title": "starter kit 骨架內容（README / CLAUDE.md / .mcp.json / .env 範本 / settings.json allowlist）",
       "status": "pending",
       "depends_on": [
-        "H6"
+        "H6",
+        "H34"
       ],
-      "description": "依 plan.md（/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md）§4.5、D6、D7，建立給企劃的 starter kit 範本目錄（建議放 /Users/user/aladdin/obsidian/mcps/starter-kit/，實際路徑自訂但要寫進 mcps/README.md 讓後續 session 找得到）。內容依 plan.md §4.5 的樹狀圖：README.md（安裝手冊，Mac / Windows 分節；Windows 首啟依提示安裝 Git for Windows——D7 說明 Claude Code 在 Windows 的 Bash tool 一律走 Git Bash，所以單一份 bash 寫法兩平台通用，不做雙版本）、CLAUDE.md（使用手冊：能做哪些事、怎麼開口、不猜 id、權限不足或母表沒遊戲時回報工程師而不是自行換路——後者呼應 D11）、.mcp.json（type: http 的 remote MCP entry，URL 指向 https://<tg-dispatch domain>/mcp-admin/… 與 /mcp-platform/…，headers 帶個人 Bearer token，本範本用佔位符，H19 的產生器負責預填）、.env 範本（企劃自填自己的 agrabah 帳密，僅留本機；檔案必須以 LF 結尾格式提供，見下）、.claude/settings.json。硬性要求：D6 明訂支援對象只有 Claude Code 桌面版（Mac/Windows），claude.ai 聊天版不支援，README 要明講原因（聊天版無 Bash 無法跑 curl）。\n\n【settings.json 要有 allow 也要有 deny】allowlist 是讓對我們 domain 的 curl 不跳權限彈窗（範圍精確限定到我們的 domain 與必要指令，不可放行所有 Bash 或所有 curl）。同時必須有 permissions.deny，至少擋掉 Read(./.env) 與 Read(./.mcp.json)。理由是一條真實存在、且不在既有接受風險清單裡的外洩路徑：kit 目錄同時放著企劃的 agrabah 明文密碼（.env）與 Bearer token（.mcp.json），而 agrabah 後台的遊戲名稱、場館名稱、備註欄位都是可編輯的自由文字，會原樣經由 list_vendor_games 這類 tool 回傳進企劃 agent 的 context——一段塞在遊戲名稱裡的指令就足以讓 agent 讀 .env 並 curl 出去。logical-jumping-cook.md 已接受的注入風險是「企劃輸入 → toolsmith sub-agent」，方向與受害者都跟這條不同。登入與上傳兩支 skill 都是透過 Bash 存取這兩個檔案、不需要 Read tool，所以 deny 不影響正常流程。\n\n【domain 出處】對外 domain 是 ngrok 固定 reserved domain https://unrefreshing-trudy-subsequently.ngrok-free.dev，定義在 /Users/user/aladdin/telegram-dispatcher/launchd/run-tunnel.sh:27 的 TUNNEL_URL 常數（不會因 tunnel 重啟而變）。path 前綴形狀依 H14 定案（/mcp-admin、/mcp-platform、/toolsmith，且 proxy 會剝掉前綴），本 task 的 .mcp.json 用佔位符即可，但 domain 用真值。Windows 地雷（plan.md §4.5 末段）：.env 被記事本存成 CRLF 會讓 source 後的值尾黏 \\r，範本一律以 LF 提供，處理方式由 H17 的登入 skill 主動 strip。本 task 不寫兩支 skill（H17、H18），只把目錄與其他檔案備齊，skills/ 目錄先留空或放佔位說明。",
+      "description": "依 plan.md（/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md）§4.5、D6、D7，建立給企劃的 starter kit 範本目錄（建議放 /Users/user/aladdin/obsidian/mcps/starter-kit/，實際路徑自訂但要寫進 mcps/README.md 讓後續 session 找得到）。內容依 plan.md §4.5 的樹狀圖：README.md（安裝手冊，Mac / Windows 分節；Windows 首啟依提示安裝 Git for Windows——D7 說明 Claude Code 在 Windows 的 Bash tool 一律走 Git Bash，所以單一份 bash 寫法兩平台通用，不做雙版本）、CLAUDE.md（使用手冊：能做哪些事、怎麼開口、不猜 id、權限不足或母表沒遊戲時回報工程師而不是自行換路——後者呼應 D11）、.mcp.json（type: http 的 remote MCP entry，URL 指向 https://<tg-dispatch domain>/mcp-admin/… 與 /mcp-platform/…，headers 帶個人 Bearer token，本範本用佔位符，H19 的產生器負責預填）、.env 範本（企劃自填自己的 agrabah 帳密，僅留本機；檔案必須以 LF 結尾格式提供，見下）、.claude/settings.json。硬性要求：D6 明訂支援對象只有 Claude Code 桌面版（Mac/Windows），claude.ai 聊天版不支援，README 要明講原因（聊天版無 Bash 無法跑 curl）。\n\n【D13 追加，2026-08-19 使用者拍板多環境支援後修訂】Bearer token 現在綁定單一環境（H35：dev/pre/evi，未來可能再加 uat/prod），所以一位企劃如果同時被授權存取多個環境，他的 kit 的 .mcp.json 需要能同時註冊多筆 agrabah-admin 的 MCP server entry（例如 `agrabah-admin-dev`、`agrabah-admin-pre`，各自不同的 URL 前綴與 Bearer token），不是只有一筆固定的。本 task 產出的範本結構要預留這個彈性（.mcp.json 範本可以先只放一筆佔位，由 H19 的產生器依「這個人被授權哪些環境」動態產生對應筆數的 entry；MCP server 別名要能清楚辨識環境，例如 `agrabah-admin-dev` vs `agrabah-admin-pre`，具體命名由本 task 決定並記錄理由）。CLAUDE.md 使用手冊要新增一段提醒：同一份 kit 可能同時連到多個環境的 tool（H34 新增的 list_platforms/select_platform 可查目前連的是哪個環境的哪個平台），操作前務必確認自己在對哪個環境下指令，尤其正式環境（prod）會被 H36 的機制要求額外確認，不是每個環境都一樣可以隨意寫入。\n\n【settings.json 要有 allow 也要有 deny】allowlist 是讓對我們 domain 的 curl 不跳權限彈窗（範圍精確限定到我們的 domain 與必要指令，不可放行所有 Bash 或所有 curl）。同時必須有 permissions.deny，至少擋掉 Read(./.env) 與 Read(./.mcp.json)。理由是一條真實存在、且不在既有接受風險清單裡的外洩路徑：kit 目錄同時放著企劃的 agrabah 明文密碼（.env）與 Bearer token（.mcp.json），而 agrabah 後台的遊戲名稱、場館名稱、備註欄位都是可編輯的自由文字，會原樣經由 list_vendor_games 這類 tool 回傳進企劃 agent 的 context——一段塞在遊戲名稱裡的指令就足以讓 agent 讀 .env 並 curl 出去。logical-jumping-cook.md 已接受的注入風險是「企劃輸入 → toolsmith sub-agent」，方向與受害者都跟這條不同。登入與上傳兩支 skill 都是透過 Bash 存取這兩個檔案、不需要 Read tool，所以 deny 不影響正常流程。\n\n【domain 出處】對外 domain 是 ngrok 固定 reserved domain https://unrefreshing-trudy-subsequently.ngrok-free.dev，定義在 /Users/user/aladdin/telegram-dispatcher/launchd/run-tunnel.sh:27 的 TUNNEL_URL 常數（不會因 tunnel 重啟而變）。path 前綴形狀依 H14 定案（/mcp-admin、/mcp-platform、/toolsmith，且 proxy 會剝掉前綴），本 task 的 .mcp.json 用佔位符即可，但 domain 用真值。Windows 地雷（plan.md §4.5 末段）：.env 被記事本存成 CRLF 會讓 source 後的值尾黏 \\r，範本一律以 LF 提供，處理方式由 H17 的登入 skill 主動 strip。本 task 不寫兩支 skill（H17、H18），只把目錄與其他檔案備齊，skills/ 目錄先留空或放佔位說明。",
       "acceptance_criteria": [
         "starter kit 目錄存在且包含 README.md、CLAUDE.md、.mcp.json、.env 範本、.claude/settings.json、.gitignore 六個檔案",
         "README.md 有明確的 Mac 與 Windows 兩節安裝步驟，且明講不支援 claude.ai 聊天版與原因",
@@ -482,7 +494,9 @@
         "README 明確要求 kit 放在**非雲端同步**的路徑（點名 OneDrive / iCloud Drive / Dropbox / Google Drive 同步資料夾）並說明理由——Windows 使用者慣用的 Documents 在多數公司環境被 OneDrive 同步，等於把明文帳密與 token 上傳到雲端",
         "README 含 chmod 600 .env .mcp.json 步驟（Mac 節）與 Windows 對應說明，以及一句「這份 kit 等同你的 agrabah 帳號，不要轉寄、不要截圖、不要放進共用資料夾」",
         ".env 範本以 LF 換行（file 或 od 實際檢查，確認無 \\r）",
-        "整個 kit 目錄內不含任何公司原始碼、真實 token 或真實帳密"
+        "整個 kit 目錄內不含任何公司原始碼、真實 token 或真實帳密",
+        "CLAUDE.md 內容含一段明確提醒：同一份 kit 可能同時連接多個環境（dev/pre/evi 等），操作前要確認自己在對哪個環境下指令，正式環境（prod）會被要求額外確認",
+        ".mcp.json 範本結構經檢查可以擴充成多筆 agrabah-admin server entry（不是寫死只能有一筆），且每筆的 server 別名能清楚辨識所屬環境"
       ],
       "risk_notes": "settings.json 的 allowlist 若寫得太寬（例如放行所有 Bash 或所有 curl），等於在企劃機器上降低整體防護；範圍要精確限定到我們的 domain 與必要指令。",
       "suggested_agent": "general-purpose"
@@ -835,6 +849,86 @@
         "log 格式是結構化的（JSON Lines 或固定欄位），可被 grep/jq 直接查詢——H28 的文件要教「懷疑外洩時如何從 log 判斷該 token 有無被使用」，格式必須支撐得住這個查詢"
       ],
       "risk_notes": "稽核 log 天生會累積敏感資訊（誰在什麼時候操作了什麼），log 檔本身的權限與保存期限要一併考慮；同時最容易犯的錯是為了好除錯而把整個 request body 印進去——那會把 /login 的明文密碼與 /files 的內容寫進磁碟，明確禁止。",
+      "suggested_agent": "general-purpose"
+    },
+    {
+      "id": "H33",
+      "module": "multi-env-admin",
+      "title": "Source-first 查證 platform-code header 對 admin RPC 的實際作用範圍（D13 前置查證）",
+      "status": "pending",
+      "depends_on": [],
+      "description": "依 plan.md D13：本輪決定 agrabah-admin 角色的「平台」切換走 runtime 動態選擇（不是每個平台一個獨立 URL），機制依據是 rajah/services/platform.rajah:83 的註解「取得目前平台的 platform code（由 Gate 依 Host 判定後蓋進 request header，此處直接讀 context）」，以及現有 /Users/user/aladdin/obsidian/mcps/agrabah-admin/src/const.ts:16 的 `ADMIN_HEADER_PLATFORM_CODE = '0'`（目前寫死送出 platform-code header）。本 task **只做查證，不改任何程式碼**，結論是 H34 能否照原設計動手的前提。\n\n要查清楚的四個問題：\n(1) platform-code header 是否真的被 admin 角色的 RPC 用來 scope「這次操作/查詢屬於哪個平台」——讀 /Users/user/aladdin/agrabah/src/servers/admin/ 底下 GameVendorAdmin / PlatformManagement 相關 handler 的實際程式碼，確認它是否真的讀取這個 header 做過濾。**這是本 task 最關鍵的問題**：platform.rajah:83 的註解描述的可能只是走 per-platform-domain 的 Platform service（即 agrabah-platform 角色）的行為，如果 admin 角色的 RPC 根本不吃這個 header（可能改吃 request 裡明確帶的 platformId 參數、或這些操作本身就是跨平台的），D13「改 header 就能切換平台看到的資料」這個假設就不成立，需要如實回報、不要為了交差硬凹。\n(2) 用 ListPlatformDetails 查到的兩個真實平台 code（例如 PK 與另一個），分別設定 platform-code header 後呼叫同一支既有唯讀 tool（agrabah_admin_list_vendor_games），比對兩次回傳結果是否真的因平台不同而有差異，或至少確認 header 有被送出、後端有處理。\n(3) 確認 ListPlatformDetails 本身不受 platform-code header 影響（不管目前 header 是什麼值都應回傳所有平台的完整清單——若連它自己都被 header 過濾，會出現『沒選平台就看不到平台清單』的雞生蛋問題）。\n(4) 查證 ListPlatformDetails 是否需要特定 @Permission，一般已登入的 admin 測試帳號是否具備呼叫它的權限。\n\n結論寫進 /Users/user/aladdin/obsidian/mcps/_hosted-rollout/multi-env-platform-code-findings.md，供 H34 直接引用。若查證結果推翻 D13 的假設，如實記錄並在完成報告明確提示需要使用者重新決定架構，不要自行改設計硬做。",
+      "acceptance_criteria": [
+        "產出 notes 檔，針對上述四個問題各有明確結論，每個結論附至少一個真的讀過的 file:line",
+        "用真實 dev 帳密登入 admin，實測兩個不同 platform-code header 值各呼叫一次 agrabah_admin_list_vendor_games（或另一支唯讀 tool），notes 內附兩次實際回應內容佐證是否有差異",
+        "確認 ListPlatformDetails 不受 platform-code header 影響：同一登入態、header 分別設兩個不同值各呼叫一次，回傳的平台清單一致",
+        "明確結論：目前測試帳號呼叫 ListPlatformDetails 是否成功、有無權限問題",
+        "全程沒有修改任何 repo 內的程式碼（git diff 只含新增的 notes 檔與本次 tasks.json 更新）"
+      ],
+      "risk_notes": "這是本輪多環境擴充最大的技術風險——如果 platform-code header 對 admin 角色的 RPC 實際上不生效，D13 的整套「session 內動態切換平台」設計就要重新來過，必須先查清楚再讓 H34 動手做工具，不要邊做邊發現地基不成立。",
+      "suggested_agent": "general-purpose"
+    },
+    {
+      "id": "H34",
+      "module": "multi-env-admin",
+      "title": "新增 list_platforms / select_platform tool，platform-code 改為 per-identity 動態",
+      "status": "pending",
+      "depends_on": [
+        "H33",
+        "H5"
+      ],
+      "description": "依 plan.md D13，前提是 H33 查證結論確認 platform-code header 機制成立（若 H33 推翻此假設，本 task 需先跟使用者確認新設計才能動手，不得沿用原描述硬做，先回報再等待決定）。\n\n在 /Users/user/aladdin/obsidian/mcps/agrabah-admin/src/tools/ 新增兩支 tool：\n- agrabah_admin_list_platforms：呼叫 PlatformManagement.ListPlatformDetails，回傳平台清單（id/code/status 等），description 只做事實陳述。\n- agrabah_admin_select_platform：輸入一個平台 id 或 code，先驗證這個平台真的存在於 list_platforms 的結果中，再把選定的 platform code 存進目前身分的 session（比照 H5 的 per-identity 容器模式），之後這個身分的所有呼叫都帶這個 platform-code header。\n\n改造 session.ts / const.ts：ADMIN_HEADER_PLATFORM_CODE = '0' 這個寫死的值改成預設 fallback（沒有呼叫過 select_platform 的身分，包含 stdio 模式，維持送 '0'，行為不變、向後相容）。headerHandler 比照 H5 的 JWT 讀法，從目前身分的 session 容器讀取（沒設定過就用預設值 '0'）。**這是繼 H5 的 JWT 之後第二個需要 per-identity 隔離的狀態**，直接複用 H5 已驗證過的 ALS 機制與容器（把 session 的 value 從 {token} 擴充成 {token, platformCode?}），不要另開一個平行的 identity 機制。\n\nD11 提醒：兩支新 tool 的 description 只做事實陳述（列出可選平台、確認已選定哪個平台），不引導企劃亂猜 platform id。",
+      "acceptance_criteria": [
+        "真實 dev 登入後呼叫 list_platforms 拿到平台清單（至少含真實存在的平台，如 PK/6T/MAIN 等）",
+        "呼叫 select_platform 選一個平台後，該身分後續呼叫唯讀 tool 的行為與 H33 查證時觀察到的結果一致（若 H33 確認 header 對這些既有 tool 有可觀察差異；若 H33 結論是沒有可觀察差異，則至少驗證 header 確實被正確送出）",
+        "選一個不存在的平台 id/code，回明確錯誤，不寫進 session",
+        "兩個不同身分各自 select_platform 不同平台，交錯呼叫驗證互不覆蓋（比照 H5 的 spike 手法，真實 header 層級驗證非讀碼推論）",
+        "stdio 模式不受影響（沒有 select_platform 概念，platform-code 維持送 '0'，既有唯讀 tool 行為不變）",
+        "除新增的兩支 tool 外，其餘既有 tool 檔案零改動"
+      ],
+      "risk_notes": "沿用 H5 已驗證的 identity 隔離機制降低風險，但 header 的預設值行為（stdio 與『還沒選過平台』的 hosted 身分都要維持 '0'）容易在改動 const.ts 時不小心破壞既有向後相容，改完務必重跑一次 H1/H5 的 stdio 回歸驗證。",
+      "suggested_agent": "general-purpose"
+    },
+    {
+      "id": "H35",
+      "module": "multi-env-admin",
+      "title": "部署 pre(cqa)、evi 兩組 agrabah-admin 環境實例（可擴充環境設定機制）",
+      "status": "pending",
+      "depends_on": [
+        "H34",
+        "H13"
+      ],
+      "description": "依 plan.md D13，本輪只需要落實 dev（既有，不動）之外再加兩組：pre（別名 cqa，網址 https://abu-admin.ald777.com/）與 evi（網址 https://admin.godev2.com/）。prod 與 uat 的 admin 網址目前未知，本 task **不處理**這兩個環境，但設計要保證日後補上網址時只需要新增一組設定值就能上線，不需要改程式碼（沿用既有的 AGRABAH_ADMIN_API_URL / AGRABAH_ADMIN_TOKENS_PATH / port 皆已是環境變數可覆蓋的既有機制，H1/H3/H13 都已支援）。\n\n具體工作：\n(1) port：pre=8791、evi=8792（避開既有 toolsmith 8788 / admin-dev 8789 / platform-dev 8790）。\n(2) 各自需要獨立的 tokens.json（沿用 H3 的 AGRABAH_ADMIN_TOKENS_PATH 覆蓋機制，例如 tokens.pre.json、tokens.evi.json，不要跟 dev 共用同一份名冊——一個人可能只被授權 dev，不該自動獲得 pre/evi 存取權）。\n(3) 各自需要獨立的 launchd plist + run-server.sh 呼叫（比照 H13 已定型的骨架，複製並改 env 值，Label 要能區分，例如 com.aladdin.agrabah-admin-pre-server）。\n(4) 用真實帳密登入 pre 與 evi（帳密可能與 dev 不同，向使用者要一組可用的測試帳密，不得用猜的或沿用 dev 帳密硬試）以及呼叫 H34 的 list_platforms/select_platform 與至少一支唯讀 tool，證明整條鏈路在非 dev 環境下也走得通。\n(5) 更新 mcps/agrabah-admin/README.md 記錄目前支援的環境清單（dev/pre/evi，並註明 uat/prod 待補）。\n\n**不執行 launchctl bootstrap**（正式上線與對外曝露仍是後續 task 的範圍，本 task 只手動驗證能起停，比照 H13）。",
+      "acceptance_criteria": [
+        "pre、evi 兩個 http.ts 實例（同一份程式碼、不同 env）各自能手動啟動，curl /health 通",
+        "各自 tokens.json 獨立存在且互不相交（用 dev 的 token 打 pre 應回 401，反之亦然，因為根本是不同名冊檔）",
+        "真實帳密登入 pre 成功，呼叫 list_platforms + 一支唯讀 tool 拿到真實資料",
+        "真實帳密登入 evi 成功，呼叫 list_platforms + 一支唯讀 tool 拿到真實資料",
+        "三個環境（dev/pre/evi）可同時啟動、互不衝突（lsof 三個 port 同時可見）",
+        "README 更新環境清單",
+        "全程未執行 launchctl bootstrap"
+      ],
+      "risk_notes": "pre 環境就是 CQA（ald777.com），CLAUDE.md 硬規則明訂 CQA 唯讀 DB 存取要走既有帳號、嚴禁 production——這裡走的是 agrabah-admin 既有登入/RPC 機制而非直連 DB，性質不同，但 pre/evi 是共用測試環境不是專屬 sandbox，操作前跟使用者確認可以用哪個帳號、哪些資料做測試，避免影響其他人在用的資料。evi 目前只確認到 6t-platform 的網域，admin.godev2.com 是否涵蓋所有平台需另外驗證。",
+      "suggested_agent": "general-purpose"
+    },
+    {
+      "id": "H36",
+      "module": "multi-env-admin",
+      "title": "prod 執行前 confirm 閘門機制（伺服器端強制，機制先建好、不接上真實 prod）",
+      "status": "pending",
+      "depends_on": [
+        "H34"
+      ],
+      "description": "依使用者拍板：prod 的「執行前確認」要「伺服器端強制要求一個明確 confirm 參數，加上 tool description 指示 Claude 先問過使用者」。本 task 只建機制、不接上真實 prod（目前沒有 prod 網址，plan.md D13 明訂 prod 環境本輪不上線）。\n\n實作：\n(1) 新增一個環境層級旗標（例如啟動時讀取的 AGRABAH_ADMIN_IS_PROD，預設 false/未設定），比照現有 AGRABAH_ADMIN_API_URL 的讀取方式，寫進一個模組層級常數供 tool handler 判斷。\n(2) 三支既有寫入類 tool（create_game_vendor、create_game、edit_game；login/list_vendor_games 不是寫入不用管）的 inputSchema 各自新增一個必填欄位 confirm（建議用明確的 literal 字串而非單純 boolean，例如要求帶精確字串 \"CONFIRM_PROD_WRITE\"，比單純 true 更難被無意間帶到——boolean 太容易被 agent 猜成預設 true）。**只有在 AGRABAH_ADMIN_IS_PROD===true 的實例上才強制檢查這個欄位**；非 prod 實例（dev/pre/evi）忽略這個欄位、行為完全不變，向後相容。\n(3) 沒帶正確 confirm 值時，tool 回一個明確錯誤（不執行任何寫入），錯誤訊息清楚說明「這是正式環境，需要明確確認才能執行」。\n(4) 三支 tool 的 description 更新，加一段清楚指示：「當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；絕不能自行假設使用者同意」——依 D11 harness 只做事實陳述的精神，這段指示本身要清楚是「陳述規則」而非教 agent 怎麼繞過。\n\n驗證方式：**本 task 不得對真實 prod 執行任何寫入**（目前也沒有 prod 網址可用）。改用一個臨時測試實例——把 AGRABAH_ADMIN_IS_PROD 設成 true、但 AGRABAH_ADMIN_API_URL 仍指向 dev 網址，驗證 confirm 閘門的攔截/放行邏輯本身正確（因為打的後端其實是 dev，就算不慎放行也不會真的影響任何正式資料）。這個測試方式與限制要在 commit message 與完成報告中講清楚，避免被誤讀成「已經對 prod 驗證過」。",
+      "acceptance_criteria": [
+        "非 prod 實例（AGRABAH_ADMIN_IS_PROD 未設定或 false）呼叫三支寫入 tool 不需要 confirm 欄位也能正常執行（既有行為不受影響）——用 dev 實例實測",
+        "用 AGRABAH_ADMIN_IS_PROD=true（API URL 仍指向 dev，明確測試用途）的臨時實例：不帶 confirm 或帶錯字串時三支寫入 tool 皆回明確錯誤，且沒有真的呼叫下游 RPC（用可觀察副作用或事後核對 dev 無新資料佐證真的沒打出去）",
+        "同一個臨時 prod 旗標實例，帶正確 confirm 字串時，寫入 tool 能正常執行（打到的是 dev，測試用資料事後清理或在報告中列出）",
+        "三支 tool 的 description 都包含要求 Claude 先用 AskUserQuestion 詢問使用者的指示文字",
+        "程式碼審查確認 confirm 檢查邏輯只在 AGRABAH_ADMIN_IS_PROD===true 時生效，非 prod 分支完全不受影響（不會誤擋 dev/pre/evi 的正常寫入）",
+        "測試在 dev 留下的資料已清理或在報告中明確列出需人工處理的資料"
+      ],
+      "risk_notes": "這是一個軟體層面的防線，不能保證企劃端的 Claude 一定會先問過使用者才帶上 confirm 參數——tool description 的指示只是引導，真正的硬防線是「沒有 confirm 就不執行」這件事本身。commit message 與完成報告務必清楚寫明本 task 沒有、也不可能對真實 prod 做任何驗證（因為沒有 prod 網址），避免後續 session 誤以為 prod 流程已經跑通。",
       "suggested_agent": "general-purpose"
     }
   ]
