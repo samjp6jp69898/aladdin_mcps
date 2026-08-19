@@ -54,6 +54,7 @@
  */
 
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
@@ -62,6 +63,7 @@ import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.t
 import { login, runWithIdentity } from './session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
 import { TOTP_NEEDED_ERROR_CODE } from './const.ts';
+import { saveUploadedFile } from './files.ts';
 
 const PORT = Number(process.env.AGRABAH_PLATFORM_HTTP_PORT ?? 8790);
 
@@ -171,6 +173,44 @@ app.post('/login', async c => {
         return c.json({ success: false, message: '登入時發生未預期錯誤' }, 500);
     }
 });
+
+/**
+ * POST /files — H8，設計理由與 admin 端逐字相同，完整說明見
+ * obsidian/mcps/agrabah-admin/src/http.ts 同一段註解與 ./files.ts 檔頭
+ * （multipart 收檔 → 存暫存目錄 → 回 fileId；bodyLimit 只是餘裕檢查，真正
+ * 的大小裁決在 saveUploadedFile() 內用實際 bytes 長度判斷；刻意不讀取
+ * file.name，落地檔名一律由 saveUploadedFile() 產生）。
+ */
+app.post(
+    '/files',
+    bodyLimit({
+        maxSize: 4 * 1024 * 1024, // files.ts 預設單檔上限 3MB + multipart overhead 餘裕
+        onError: c => c.json({ success: false, errorMessage: '檔案大小超過上限' }, 413),
+    }),
+    async c => {
+        const identity = getIdentity(c);
+
+        let body: Record<string, string | File>;
+        try {
+            body = await c.req.parseBody();
+        } catch {
+            return c.json({ success: false, errorMessage: '無法解析 multipart body' }, 400);
+        }
+
+        const file = body['file'];
+        if (!(file instanceof File)) {
+            return c.json({ success: false, errorMessage: '缺少 file 欄位（multipart/form-data，欄位名須為 file）' }, 400);
+        }
+
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = saveUploadedFile(identity, bytes);
+        if (!result.success) {
+            return c.json({ success: false, errorMessage: result.errorMessage }, 400);
+        }
+
+        return c.json({ success: true, fileId: result.fileId });
+    },
+);
 
 // SDK 的 CallToolRequestSchema handler（mcp.js）對任何 tool 拋出的例外一律靜默接住，
 // 只把 error.message 包成 isError:true 回給呼叫端，從不 log——這對「回應不外洩堆疊」
