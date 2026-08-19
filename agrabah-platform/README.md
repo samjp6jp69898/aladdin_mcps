@@ -54,3 +54,40 @@ src/
 - `agrabah_platform_list_vendor_games` 只開放 `gameVendorId`/`name`/`status` 三個篩選欄位；`displayTag`/`frontendGroupTag`/`rebateTag`/`badgeId` 這些下拉篩選需要另外查對應清單（`ListAllGameDisplayTags`/`ListAllGameRebateTags`/`GetBadgeList` 等），尚未實作。
 - `agrabah_platform_onboard_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
+
+## launchd 常駐骨架（H13；尚未上線）
+
+`launchd/` 內含 `run-server.sh`（啟動 `src/http.ts`，port 8790）與
+`com.aladdin.agrabah-platform-server.plist`，結構比照已上線的
+`telegram-dispatcher/launchd/`（同一套 run-server.sh + plist 手法），與
+`agrabah-admin/launchd/` 完全對稱。
+
+**本機手動跑**（開發、除錯用，不透過 launchd；會一直佔用這個 terminal，
+Ctrl-C 停止）：
+
+```bash
+zsh /Users/user/aladdin/obsidian/mcps/agrabah-platform/launchd/run-server.sh
+curl http://localhost:8790/health
+```
+
+環境變數來源是根目錄 `.mcp.json` 的 `agrabah-platform` server `env`（用
+`jq` 現讀，見 `run-server.sh` 檔頭註解），**不是** `/Users/user/aladdin/.env`。
+`run-server.sh` 刻意不匯出帳密（`AGRABAH_PLATFORM_USER`/
+`AGRABAH_PLATFORM_PASSWORD`），理由見腳本內註解。
+
+**部署到 launchd 常駐（尚未執行，記錄步驟供之後的高風險 task 參考）**：
+plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd
+只認 `~/Library/LaunchAgents/` 底下的檔案，不會直接讀 repo 裡的路徑
+（比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要：
+
+```bash
+cp /Users/user/aladdin/obsidian/mcps/agrabah-platform/launchd/com.aladdin.agrabah-platform-server.plist \
+   ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.agrabah-platform-server.plist
+# 停止：launchctl bootout gui/$(id -u)/com.aladdin.agrabah-platform-server
+```
+
+H13 只驗證手動執行 `run-server.sh` 能起能停，**未執行**上面的 `cp` 與
+`launchctl bootstrap/bootout`——正式常駐與對外曝露是後續高風險 task（proxy-exposure
+模組）的範圍，動手前需與使用者確認。log 檔位置：
+`mcps/agrabah-platform/logs/launchd-server.{out,err}.log`（已加入 `.gitignore`）。

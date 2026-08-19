@@ -48,3 +48,40 @@ TOTP：dev 環境目前不需要。若未來需要，`agrabah_admin_login` 保�
 - `squareImage`/`rectangleImage`/`bannerImage` 圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；`agrabah_admin_edit_game` 要求呼叫端明確帶每個語言各自的本機檔案路徑。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（2026-08-18 用真實遊戲資料 JDB/gameId=9024 實測驗證：設值成功，但事後想還原成空陣列失敗，只能改覆蓋成別的文字）。這是 rajah/protobuf 層的限制，不是本工具的 bug；langue tag 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值。
 - 只支援 admin 後台；platform 後台的能力見 `agrabah-platform`。
+
+## launchd 常駐骨架（H13；尚未上線）
+
+`launchd/` 內含 `run-server.sh`（啟動 `src/http.ts`，port 8789）與
+`com.aladdin.agrabah-admin-server.plist`，結構比照已上線的
+`telegram-dispatcher/launchd/`（同一套 run-server.sh + plist 手法）。
+
+**本機手動跑**（開發、除錯用，不透過 launchd；會一直佔用這個 terminal，
+Ctrl-C 停止）：
+
+```bash
+zsh /Users/user/aladdin/obsidian/mcps/agrabah-admin/launchd/run-server.sh
+curl http://localhost:8789/health
+```
+
+環境變數來源是根目錄 `.mcp.json` 的 `agrabah-admin` server `env`（用 `jq`
+現讀，見 `run-server.sh` 檔頭註解），**不是** `/Users/user/aladdin/.env`——
+跟 `telegram-dispatcher` 的 `TG_*` 系列變數不同源，沿用本檔上面「環境變數」
+一節已記載的既有慣例，避免另開一份會漂移的拷貝。`run-server.sh` 刻意不匯出
+帳密（`AGRABAH_ADMIN_USER`/`AGRABAH_ADMIN_PASSWORD`），理由見腳本內註解。
+
+**部署到 launchd 常駐（尚未執行，記錄步驟供之後的高風險 task 參考）**：
+plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd
+只認 `~/Library/LaunchAgents/` 底下的檔案，不會直接讀 repo 裡的路徑
+（比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要：
+
+```bash
+cp /Users/user/aladdin/obsidian/mcps/agrabah-admin/launchd/com.aladdin.agrabah-admin-server.plist \
+   ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.agrabah-admin-server.plist
+# 停止：launchctl bootout gui/$(id -u)/com.aladdin.agrabah-admin-server
+```
+
+H13 只驗證手動執行 `run-server.sh` 能起能停，**未執行**上面的 `cp` 與
+`launchctl bootstrap/bootout`——正式常駐與對外曝露是後續高風險 task（proxy-exposure
+模組）的範圍，動手前需與使用者確認。log 檔位置：
+`mcps/agrabah-admin/logs/launchd-server.{out,err}.log`（已加入 `.gitignore`）。
