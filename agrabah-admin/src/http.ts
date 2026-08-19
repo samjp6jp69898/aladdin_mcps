@@ -56,7 +56,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 
 import { registerAdminTools } from './tools/index.ts';
 import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
-import { login, runWithIdentity } from './session.ts';
+import { login, runWithIdentity, IS_PROD, ProdConfirmRequiredError } from './session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
 import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
 import { saveUploadedFile } from './files.ts';
@@ -294,8 +294,13 @@ function withStderrStackLogging(server: McpServer): void {
                 setAuditTool(name, summarizeToolOutcome(result));
                 return result;
             } catch (err) {
-                setAuditTool(name, 'error:exception');
-                console.error(`[agrabah-admin http] tool "${ name }" 拋出未預期例外：${ err instanceof Error ? (err.stack ?? err.message) : String(err) }`);
+                // H36 review 收尾：confirm 閘門攔截是預期中的業務行為，不是「未預期例外」——
+                // 稽核 log 記成專屬的 error:prod_confirm_required，讓事後統計「prod 上有幾次
+                // 未確認的寫入嘗試」不必回頭翻 stderr 逐行比對錯誤訊息字串。
+                const isProdConfirmGate = err instanceof ProdConfirmRequiredError;
+                setAuditTool(name, isProdConfirmGate ? 'error:prod_confirm_required' : 'error:exception');
+                const label = isProdConfirmGate ? '被 prod confirm 閘門擋下' : '拋出未預期例外';
+                console.error(`[agrabah-admin http] tool "${ name }" ${ label }：${ err instanceof Error ? (err.stack ?? err.message) : String(err) }`);
                 throw err;
             }
         };
@@ -343,6 +348,10 @@ app.onError((err, c) => {
     return c.text('Internal Server Error', 500);
 });
 
+// H36 review 收尾：讓「這個實例的 prod confirm 閘門是否生效」成為開機即可肉眼確認的事實，
+// 不必實際打一次寫入 tool 才能知道——這一行印在 stdout（不是稽核 log），部署/除錯時直接看
+// launchd 的 out log 或終端機輸出即可核對，不必翻程式碼或猜測 AGRABAH_ADMIN_IS_PROD 有沒有生效。
+console.error(`[agrabah-admin MCP] prod 寫入閘門：${ IS_PROD ? '啟用（AGRABAH_ADMIN_IS_PROD=true）' : '停用（非 prod 實例）' }`);
 console.error(`[agrabah-admin MCP] http server ready on 127.0.0.1:${ PORT }`);
 
 export default {

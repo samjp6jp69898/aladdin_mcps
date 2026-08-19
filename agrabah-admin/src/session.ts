@@ -66,16 +66,39 @@ if (!BASE_URL) {
 
 /**
  * H36（plan.md D13）：這個 server 實例是否是正式環境（prod）。比照 BASE_URL 等環境相關
- * 設定的讀法，行程啟動時讀一次、存成 module 層級常數；預設未設定＝false（非 prod），
+ * 設定的讀法，行程啟動時讀一次、存成 module 層級常數；未設定或空字串＝false（非 prod），
  * 向後相容既有的 dev/pre/evi 部署行為不變。
  *
  * 只放在這裡（而不是 const.ts）：const.ts 檔頭明寫「帳號/URL 等環境相關設定不放這裡，
  * 一律走 process.env」，這個旗標跟 BASE_URL/DEFAULT_USER 同一類，比照辦理放在 session.ts。
+ *
+ * H36 review 收尾：讀法容錯 trim+小寫（`'TRUE'`/`' true'` 等寫法都算合法的 true），但對
+ * 「有設定值、trim+小寫後卻不是 'true' 也不是 'false'」的情況（拼字錯誤如 `'1'`/`'yes'`/
+ * `'True '`之外的怪值、或其他手誤）直接 throw——比照本檔 `BASE_URL` 缺失即 throw 的既有
+ * 慣例，fail-loud。這個旗標一旦被靜默判成非 prod，就等於整個 confirm 閘門機制形同虛設，
+ * 寧可讓一個設錯值的部署直接啟動失敗，也不要讓它悄悄跑起來卻沒有任何防線。
  */
-const IS_PROD = process.env.AGRABAH_ADMIN_IS_PROD === 'true';
+const IS_PROD_RAW = process.env.AGRABAH_ADMIN_IS_PROD;
+const IS_PROD_NORMALIZED = IS_PROD_RAW?.trim().toLowerCase();
+if (IS_PROD_NORMALIZED !== undefined && IS_PROD_NORMALIZED !== '' && IS_PROD_NORMALIZED !== 'true' && IS_PROD_NORMALIZED !== 'false') {
+    throw new Error(
+        `環境變數 AGRABAH_ADMIN_IS_PROD 的值不合法："${ IS_PROD_RAW }"，只接受 true 或 false（大小寫、前後空白不拘）。` +
+        '請修正部署設定——這個旗標控制 prod confirm 閘門是否生效，拼字錯誤不應該被靜默當成非 prod。',
+    );
+}
+/** H36 review 收尾：暴露給 http.ts 開機時印一行閘門啟用狀態 log（見 http.ts 檔頭附近）。 */
+export const IS_PROD = IS_PROD_NORMALIZED === 'true';
 
 /** H36：prod 寫入操作要求的明確確認字串。四支寫入 tool 共用同一個值與同一支檢查函式。 */
 export const PROD_CONFIRM_TOKEN = 'CONFIRM_PROD_WRITE';
+
+/**
+ * H36 review 收尾：`assertProdConfirmed` 攔截時拋的專屬 Error 子類，讓 http.ts 的稽核包裝層
+ * 能用 `instanceof` 把「被 confirm 閘門擋下」跟其他未預期例外區分開，audit.jsonl 記成可辨識
+ * 的 `error:prod_confirm_required` 而非泛用的 `error:exception`（見 http.ts
+ * withStderrStackLogging 的 catch 分支）。
+ */
+export class ProdConfirmRequiredError extends Error {}
 
 /**
  * H36：prod 執行前的伺服器端強制 confirm 閘門。只有 IS_PROD===true 的實例才會檢查——
@@ -90,7 +113,7 @@ export const PROD_CONFIRM_TOKEN = 'CONFIRM_PROD_WRITE';
 export function assertProdConfirmed(confirm: string | undefined): void {
     if (!IS_PROD) return;
     if (confirm !== PROD_CONFIRM_TOKEN) {
-        throw new Error(
+        throw new ProdConfirmRequiredError(
             '這是正式環境（prod），需要明確確認才能執行這個寫入操作：請先用 AskUserQuestion（或功能相同的方式）' +
             '向使用者明確詢問是否要在正式環境執行，取得明確同意後帶上 confirm="' + PROD_CONFIRM_TOKEN + '" 重新呼叫；' +
             '絕不能自行假設使用者同意。',

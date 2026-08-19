@@ -44,6 +44,7 @@ src/
 | `AGRABAH_ADMIN_API_URL` | admin 後台 dev 站台，例如 `https://admin.alddev.com` |
 | `AGRABAH_ADMIN_USER` | 預設測試帳號 |
 | `AGRABAH_ADMIN_PASSWORD` | 預設測試密碼 |
+| `AGRABAH_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，四支寫入 tool（`create_game_vendor`/`create_game`/`edit_game`/`update_platform_game_vendor_status`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 TOTP：dev 環境目前不需要。若未來需要，`agrabah_admin_login` 保留 `totpCode` 選填參數——由 agent 在對話中向操作者當場索取當下驗證碼再帶入，不寫死、不落地存檔。
 
@@ -62,7 +63,11 @@ TOTP：dev 環境目前不需要。若未來需要，`agrabah_admin_login` 保�
 `agrabah-admin` 角色支援多環境，每個環境是**同一份 `src/http.ts` 程式碼、不同
 一組 env 值**（port / `AGRABAH_ADMIN_API_URL` / `AGRABAH_ADMIN_TOKENS_PATH`），
 新增一個環境只需要複製一份 `launchd/run-server-<env>.sh` + plist + 一份
-`tokens.<env>.json` 名冊，不需要改任何 `src/` 程式碼。
+`tokens.<env>.json` 名冊，不需要改任何 `src/` 程式碼。**若新環境是 prod，必須
+額外 export `AGRABAH_ADMIN_IS_PROD=true`（見上方環境變數表），否則寫入 tool 的
+confirm 閘門不會生效**——這是唯一區分「這是 prod」與其他環境的旗標，複製骨架
+時最容易漏掉，起 server 後可從 stdout/`logs/launchd-server.out.log` 看
+`prod 寫入閘門：啟用/停用` 這一行確認有沒有生效。
 
 | 環境 | 後台網址 | port | tokens 名冊 | 狀態 |
 |---|---|---|---|---|
