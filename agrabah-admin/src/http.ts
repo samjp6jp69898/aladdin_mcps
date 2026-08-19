@@ -15,9 +15,11 @@
  *   - app.onError 只回通用訊息、完整例外只寫 stderr：session.ts 用絕對路徑
  *     import 公司 monorepo（/Users/user/aladdin/genie、abu/admin），未捕捉的
  *     堆疊會把目錄結構原樣吐給企劃端，比照 telegram-dispatcher/server.ts:51-57。
+ *   - Bearer 認證（H3 拍板，見 ./auth.ts）：掛在 /health 以外所有路徑，token
+ *     名冊為獨立 JSON 檔、現讀 + mtime 快取，撤銷/新增 token 不需重啟行程。
  *
- * 本 task（H1）只做傳輸層骨架：不加認證（H3 才做）、不改 session.ts（H5 才做）、
- * 不改任何 tool 檔案。
+ * H1 只做傳輸層骨架，不改 session.ts（H5 才做）、不改任何 tool 檔案；H3 補上
+ * 了本檔的認證層（見上面 Bearer 認證那條）。
  *
  * stateless 模式下 WebStandardStreamableHTTPServerTransport 規定一個 transport
  * 只能處理一個 request（重用會丟例外，見 SDK
@@ -52,10 +54,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerAdminTools } from './tools/index.ts';
+import { createBearerAuthGuard, type AuthVariables } from './auth.ts';
 
 const PORT = Number(process.env.AGRABAH_ADMIN_HTTP_PORT ?? 8789);
 
-const app = new Hono();
+// H3 拍板：token 名冊是獨立 JSON 檔（不放 .env），預設落在本 package 根目錄、
+// 已被 obsidian repo .gitignore 排除。可用環境變數覆蓋（測試/未來多環境用）。
+// 格式與熱重載語意見 ./auth.ts 檔頭註解。
+const TOKENS_PATH = process.env.AGRABAH_ADMIN_TOKENS_PATH
+    ?? new URL('../tokens.json', import.meta.url).pathname;
+
+const app = new Hono<{ Variables: AuthVariables }>();
 
 // 帶 Origin header 的請求一律拒絕：我們的合法用戶端是 Claude Code，不是瀏覽器，
 // 不會送 Origin；MCP streamable HTTP 規範要求驗證 Origin 防 DNS rebinding。
@@ -66,9 +75,29 @@ app.use('*', async (c, next) => {
     await next();
 });
 
+// Bearer 認證：刻意註冊在下面所有 route（含 /health）之前。Hono 依「註冊
+// 順序」把匹配的 middleware/route 組成一條鏈，一個 route handler 提前
+// return（不呼叫 next()）就會讓後面才註冊的 app.use('*', ...) 完全不會被
+// 執行到——若把這個 middleware 放在 route 定義之後，任何寫在它前面的新
+// route（例如 H6/H8 為了跟 /health 放在一起而順手加在這行之上的 /login）
+// 會直接繞過認證，且完全不會報錯，是最不容易在 review 時被發現的認證破洞。
+// 註冊在最前面則不論未來新 route 寫在檔案裡的哪個位置都一定會先經過這裡。
+// 只有 /health 例外（供 launchd/監控探測，經 proxy 後公網可達，見下方
+// /health handler 的說明），例外邏輯就在這個 middleware 內部判斷，不依賴
+// 任何其他 route 的註冊順序。
+const bearerAuthGuard = createBearerAuthGuard(TOKENS_PATH);
+app.use('*', async (c, next) => {
+    if (c.req.path === '/health') {
+        return next();
+    }
+    return bearerAuthGuard(c, next);
+});
+
 // 不驗證任何東西，供 launchd / 監控探測；不透露服務身分（比照
 // telegram-dispatcher/server.ts:68），因為經 proxy 後公網可達，回傳服務身分
-// 等於向掃描者確認這後面有一個 agrabah 後台操作介面。
+// 等於向掃描者確認這後面有一個 agrabah 後台操作介面。GET /health 不驗證是
+// 上面 Bearer middleware 內部的路徑排除決定的，不是因為這個 route 寫在
+// middleware 之前——調整這個 handler 在檔案裡的位置不影響它是否需要認證。
 app.get('/health', c => c.json({ status: 'ok', uptime_seconds: Math.floor(process.uptime()) }));
 
 // SDK 的 CallToolRequestSchema handler（mcp.js）對任何 tool 拋出的例外一律靜默接住，
