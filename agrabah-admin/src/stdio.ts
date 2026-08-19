@@ -21,7 +21,7 @@ const server = new McpServer(
     { capabilities: { tools: {} } },
 );
 
-registerAdminTools(server);
+registerAdminTools(server, 'stdio');
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

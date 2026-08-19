@@ -15,6 +15,11 @@ export const TOTP_NEEDED_ERROR_CODE = 1809;
 // 腳本的慣例（admin 站台本身沒有多平台概念，不確定是否必要，先保留）。
 export const ADMIN_HEADER_PLATFORM_CODE = '0';
 
+// H7：hosted 模式下 JWT 過期或尚未登入時回給 agent 的重登信號文字（plan.md D4/D11）。
+// D11 要求 harness 只陳述事實、不引導跨後台操作，措辭止於此，不建議改用其他帳號或後台。
+// stdio 模式不會用到這個常數——stdio 用 env 帳密自動重登，不會走到需要對外顯示訊號的分支。
+export const HOSTED_RELOGIN_REQUIRED_MESSAGE = '登入態已失效，請重新登入後重試';
+
 // WalletTypeEnum（common.rajah:1195-1202）
 export const WALLET_TYPE_MAP = { normal: 1, agent: 2, commission: 3 } as const;
 

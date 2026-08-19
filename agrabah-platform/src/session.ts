@@ -23,7 +23,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Client } from '/Users/user/aladdin/genie/src/client/index.ts';
 import { Remote } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
-import { LOGIN_REQUIRED_ERROR_CODE } from './const.ts';
+import { LOGIN_REQUIRED_ERROR_CODE, HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
 
 const BASE_URL = process.env.AGRABAH_PLATFORM_API_URL;
 const DEFAULT_USER = process.env.AGRABAH_PLATFORM_USER;
@@ -55,6 +55,11 @@ export function runWithIdentity<T>(identity: string, fn: () => T): T {
 
 function currentIdentity(): Identity {
     return identityStorage.getStore() ?? STDIO_IDENTITY;
+}
+
+/** hosted 模式：identity 是名冊字串（經 runWithIdentity 灌入）；stdio 模式：identity 是固定的 STDIO_IDENTITY Symbol。 */
+function isHostedIdentity(): boolean {
+    return currentIdentity() !== STDIO_IDENTITY;
 }
 
 /**
@@ -102,8 +107,17 @@ export async function login(opts: { identifier?: string; password?: string; totp
     return { success: true, message: '登入成功', mustBindTotp: r.data.mustBindTotp };
 }
 
+/**
+ * H7：雙模式（plan.md D3/D4），設計理由與 admin 端逐字相同，完整說明見
+ * obsidian/mcps/agrabah-admin/src/session.ts 同一段註解。stdio 模式沒有
+ * session 時用 env 帳密自動登入（行為不變）；hosted 模式回一個明確、機器
+ * 可辨識的重登信號給 agent，符合 D11「只陳述事實」。
+ */
 async function ensureLoggedIn(): Promise<void> {
     if (sessions.has(currentIdentity())) return;
+    if (isHostedIdentity()) {
+        throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+    }
     const r = await login();
     if (!r.success) throw new Error(`自動登入失敗：errorCode=${ r.errorCode } ${ r.message }`);
 }
@@ -112,6 +126,9 @@ async function ensureLoggedIn(): Promise<void> {
  * 包一層自動登入 + token 失效自動重登重試，比照 test-method skill 的規則。
  * 傳入的 call 應該是一個「已經帶好參數、只差呼叫」的 thunk，例如：
  *   withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.ListGameVendors(search, page, pageSize))
+ *
+ * H7：JWT 過期（LOGIN_REQUIRED_ERROR_CODE）時同樣雙模式——stdio 用 env 帳密
+ * 自動重登（行為不變）；hosted 模式回重登信號，不嘗試用 env 帳密重登（D3）。
  */
 export async function withAutoRelogin<T>(
     call: () => Promise<{ failed: boolean; errorCode: number; message: string; data: T | null }>,
@@ -120,6 +137,9 @@ export async function withAutoRelogin<T>(
     let r = await call();
 
     if (r.failed && r.errorCode === LOGIN_REQUIRED_ERROR_CODE) {
+        if (isHostedIdentity()) {
+            throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+        }
         const relogin = await login();
         if (!relogin.success) {
             throw new Error(`token 失效後重新登入失敗：errorCode=${ relogin.errorCode } ${ relogin.message }`);

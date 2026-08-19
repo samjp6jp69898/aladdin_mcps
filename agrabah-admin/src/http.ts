@@ -263,7 +263,7 @@ app.all('/mcp', async c => {
             { capabilities: { tools: {} } },
         );
         withStderrStackLogging(server);
-        registerAdminTools(server);
+        registerAdminTools(server, 'hosted');
 
         const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
         await server.connect(transport);

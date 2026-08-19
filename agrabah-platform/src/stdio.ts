@@ -21,7 +21,7 @@ const server = new McpServer(
     { capabilities: { tools: {} } },
 );
 
-registerPlatformTools(server);
+registerPlatformTools(server, 'stdio');
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

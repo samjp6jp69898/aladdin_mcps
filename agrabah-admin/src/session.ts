@@ -54,7 +54,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Client } from '/Users/user/aladdin/genie/src/client/index.ts';
 import { Remote } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
-import { LOGIN_REQUIRED_ERROR_CODE, ADMIN_HEADER_PLATFORM_CODE } from './const.ts';
+import { LOGIN_REQUIRED_ERROR_CODE, ADMIN_HEADER_PLATFORM_CODE, HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
 
 const BASE_URL = process.env.AGRABAH_ADMIN_API_URL;
 const DEFAULT_USER = process.env.AGRABAH_ADMIN_USER;
@@ -87,6 +87,11 @@ export function runWithIdentity<T>(identity: string, fn: () => T): T {
 
 function currentIdentity(): Identity {
     return identityStorage.getStore() ?? STDIO_IDENTITY;
+}
+
+/** hosted 模式：identity 是名冊字串（經 runWithIdentity 灌入）；stdio 模式：identity 是固定的 STDIO_IDENTITY Symbol。 */
+function isHostedIdentity(): boolean {
+    return currentIdentity() !== STDIO_IDENTITY;
 }
 
 /**
@@ -132,8 +137,19 @@ export async function login(opts: { identifier?: string; password?: string; totp
     return { success: true, message: '登入成功', mustBindTotp: r.data.mustBindTotp };
 }
 
+/**
+ * H7：雙模式（plan.md D3/D4）。stdio 模式沒有 session 時用 env 帳密自動登入
+ * （行為不變）；hosted 模式 server 記憶體不留帳密（D3），沒有 env 帳密可用，
+ * 改回一個明確、機器可辨識的重登信號給 agent，交由呼叫端（企劃端登入 skill）
+ * 重跑 POST /login 後重試。這支 Error 沒有額外堆疊資訊，MCP SDK 只會把
+ * error.message 包成 isError:true 回給呼叫端（見 http.ts 檔頭關於例外處理的
+ * 說明），符合 D11「只陳述事實」。
+ */
 async function ensureLoggedIn(): Promise<void> {
     if (sessions.has(currentIdentity())) return;
+    if (isHostedIdentity()) {
+        throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+    }
     const r = await login();
     if (!r.success) throw new Error(`自動登入失敗：errorCode=${ r.errorCode } ${ r.message }`);
 }
@@ -142,6 +158,10 @@ async function ensureLoggedIn(): Promise<void> {
  * 包一層自動登入 + token 失效自動重登重試，比照 test-method skill 的規則。
  * 傳入的 call 應該是一個「已經帶好參數、只差呼叫」的 thunk，例如：
  *   withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGameVendors(search, page, pageSize))
+ *
+ * H7：JWT 過期（LOGIN_REQUIRED_ERROR_CODE）時同樣雙模式——stdio 用 env 帳密
+ * 自動重登（行為不變）；hosted 模式回重登信號，不嘗試用 env 帳密重登（D3：
+ * hosted 模式沒有帳密可用）。
  */
 export async function withAutoRelogin<T>(
     call: () => Promise<{ failed: boolean; errorCode: number; message: string; data: T | null }>,
@@ -150,6 +170,9 @@ export async function withAutoRelogin<T>(
     let r = await call();
 
     if (r.failed && r.errorCode === LOGIN_REQUIRED_ERROR_CODE) {
+        if (isHostedIdentity()) {
+            throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+        }
         const relogin = await login();
         if (!relogin.success) {
             throw new Error(`token 失效後重新登入失敗：errorCode=${ relogin.errorCode } ${ relogin.message }`);
