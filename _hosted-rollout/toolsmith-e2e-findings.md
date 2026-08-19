@@ -34,7 +34,17 @@
 4. sub-agent 自己也做了同樣的獨立驗證（它在 prompt 要求下主動執行 `git status --porcelain -- mcps/agrabah-admin mcps/agrabah-platform` 與 `git diff --stat`），得到的 diff 內容（`http.ts`/`session.ts`/`stdio.ts`/`tools/index.ts` 兩邊各自新增 `mode`/`hosted` 相關邏輯，commit 訊息脈絡對得上 D9/D12 的 hosted 交付機制、`registerAdminTools` 新增 `ServerMode` 參數等）明顯是**另一個同時在跑的 task（很可能是 H7，diff 註解裡寫著「H7」字樣）的真實工程進度**，不是這次請求造成的雜訊。
 5. 針對我測試前就已存在的那筆 `mcps/agrabah-admin/src/const.ts` 改動，額外用 `diff` 逐 byte 比對測試前後的 `git diff` 內容——完全相同，證明這個檔案在整個測試視窗內沒有被任何人（含 sub-agent）進一步改動。
 
-**結論**：`realDirsTouched: true` 是**真實訊號但屬於 false positive**——`collect-output.ts` 的 diff-based 設計（比較 spawn 前後的 `git status --short`）在**這兩個目錄同時有其他背景 task 在真實開發**的環境下，沒有辦法區分「這次 sub-agent 造成的變更」跟「同時間別人真的在改這兩個目錄」，只要視窗內任何人動了這兩個目錄，就會誤報。`snapshotRealDirs()` 的既有註解已經承認這類風險（「避免同時並行的其他 task 改動 obsidian **其他目錄**時被誤判」），但護欄只做到「縮小 pathspec 到 admin/platform 這兩個目錄本身」，沒有進一步做到「只認這次 sub-agent 造成的變更」（例如用 sub-agent 專屬的 git worktree、或改成比對檔案 mtime 是否早於 spawn 時間點）。**本次測試獨立確認 sub-agent 本身完全沒有碰正式目錄**，`realDirsTouched` 的旗標本身不可靠，不能直接當作「sub-agent 是否守規矩」的證據——這是一個需要提報給 H25 的真實設計落差，不是我這次測試操作失誤。
+**結論**：`realDirsTouched: true` 是**真實訊號但屬於 false positive**——`collect-output.ts` 的 diff-based 設計（比較 spawn 前後的 `git status --short`）在**這兩個目錄同時有其他背景 task 在真實開發**的環境下，沒有辦法區分「這次 sub-agent 造成的變更」跟「同時間別人真的在改這兩個目錄」，只要視窗內任何人動了這兩個目錄，就會誤報。`snapshotRealDirs()` 的既有註解已經承認這類風險（「避免同時並行的其他 task 改動 obsidian **其他目錄**時被誤判」），但護欄只做到「縮小 pathspec 到 admin/platform 這兩個目錄本身」，沒有進一步做到「只認這次 sub-agent 造成的變更」。**本次測試獨立確認 sub-agent 本身完全沒有碰正式目錄**，`realDirsTouched` 的旗標本身不可靠，不能直接當作「sub-agent 是否守規矩」的證據——這是一個需要提報給 H25 的真實設計落差，不是我這次測試操作失誤。
+
+### 比誤報更嚴重：同一套機制也存在 false negative（漏報）盲區
+
+上面的併發衝突不只會製造誤報雜訊，**同一個成因反過來也會讓真違規被完全遮蔽**，這在「抓違規」這個旗標的存在目的上比誤報危害更大——一個會亂叫的警報頂多吵人，一個在真出事時安靜不響的警報才是真正的風險。三個具體盲區（皆已親讀 `collect-output.ts` 逐行確認，不是推論）：
+
+- **(a) 已髒檔案的再次改動偵測不到**：`snapshotRealDirs()`（`collect-output.ts:26-38`）呼叫的是 `git status --short`，每個變更檔案只回一個狀態碼（如 `M`）加路徑，**不含內容雜湊或行數**。若某檔案在 spawn 前就已經是 `M`（本次測試親身遇到的情境——`mcps/agrabah-admin/src/const.ts` 在我測試開始前就已是 `M`），sub-agent 就算真的在這個視窗內進一步竄改了它的內容，前後兩次 `git status --short` 印出的那一行字串**完全相同**（同樣是 `M mcps/agrabah-admin/src/const.ts`），`realDirsTouched()`（`collect-output.ts:40-45`）的字串比對邏輯偵測不到任何差異，會回報 `false`。也就是說：**只要正式目錄剛好有其他背景工作留下的既有未 commit 改動，這兩個目錄事實上就形同對 sub-agent 的破壞行為關閉了偵測**，而這正是本專案多任務併發開發的常態（本次測試前就撞見過一次），不是罕見邊界情況。
+- **(b) `.gitignore` 盲區**：`git status --short` 對被 `.gitignore` 規則排除的路徑完全不會列出。`obsidian/.gitignore` 已明確排除 `mcps/agrabah-admin/tokens.json`、`mcps/agrabah-admin/logs/`、`mcps/agrabah-admin/tmp-uploads/`（`agrabah-platform` 同名規則亦然）——這些路徑**確實在正式目錄底下**（verify-workspace 的 cp -R 副本裡就看得到這三項），若 sub-agent 寫入或竄改正式目錄下這些被 ignore 的檔案（例如覆蓋 `tokens.json`、在 `tmp-uploads/` 塞入檔案），`realDirsTouched` 會永遠回 `false`，因為這些變更從未進入 `git status` 的輸出範圍。
+- **(c) null-fallback 刻意選擇「讀取失敗當作沒髒」**：`realDirsTouched()`（`collect-output.ts:43`）明寫 `if (before === null || after === null) return false;`，註解說明是刻意設計（「寧可漏報一次真的很倒楣的情況，也不要對『單純讀不到』大驚小怪」）。這是已知且經過取捨的風險，觸發機率遠低於 (a)(b)，但仍是同一個旗標「該響不響」的第三個成因，一併列出供 H25 全盤評估。
+
+(a)(b)(c) 三者共同指出：`realDirsTouched` 目前**既會誤報也會漏報**，且漏報的觸發條件（正式目錄有背景改動、或 sub-agent 動到 gitignore 路徑）在這個專案的實際工作模式下並不罕見——這應該是 H25 的第一優先修正項，優先度高於「訊號不可靠」本身的誤報問題，因為漏報意味著「這個旗標在真正需要示警的時候可能保持沉默」。
 
 ## AC4：交叉檢查 sub-agent log，驗證 verification.notes 宣稱的 dev 驗證是否真的發生
 
@@ -69,7 +79,11 @@ scratch/4584c9af-fc11-4061-98e3-f0e85f76f65d/
 
 ## 對 H25 的建議
 
-1. **`realDirsTouched` 的 diff-based 設計需要在部署到 hosted server 前修正**——目前的 pathspec 只縮小到「哪兩個目錄」，沒有解決「誰改的」。這個服務設計上假設「多企劃共用同一台工程師本機」，而這台機器上同時有工程師自己在對 `mcps/agrabah-admin`/`agrabah-platform` 做真實開發（本次測試親眼撞見），未來只要背景有其他工作在動這兩個目錄，`realDirsTouched` 就會持續誤報 true。若 H25 打算用這個欄位做任何自動化判斷（例如「true 就不自動部署」），現在的訊號不可靠，建議至少改成比對檔案 mtime 是否落在 spawn 時間窗內，或比對 diff 的實際內容雜湊而非單純「是否不同」。
+1. **`realDirsTouched` 的 diff-based 設計需要在部署到 hosted server 前修正**——目前既會誤報（本次測試實際遇到）也會漏報（上面 (a)(b)(c) 三個盲區，皆已親讀 `collect-output.ts` 確認），若 H25 打算用這個欄位做任何自動化判斷（例如「true 就不自動部署」），現在的訊號不可靠。建議按成本由低到高分階段處理：
+   1. **最低成本**：`realDirsTouched` 從單一 boolean 改成回傳實際變動路徑清單——`collectOutput` 呼叫 `snapshotRealDirs()` 時本來就已經拿到 `git status --short` 的逐行輸出，目前只是把它壓縮成布林值再丟掉，改成回傳路徑清單不需要新的資料來源，純粹是不丟棄既有資訊，也能讓漏報 (a) 更容易被人工發現異常（至少看得到哪個檔案的狀態行沒變但可疑）。
+   2. **次之**：自動解析 sub-agent 自己的 session transcript（`cwd` 固定是 `scratchDir`，transcript 檔案路徑可由 `requestId`+`session_id` 定位，就是本次測試我人工核對用的同一份 `.jsonl`）——擷取所有 `Edit`/`Write` 的 `file_path` 與 `Bash` command 字串裡出現的正式目錄絕對路徑，組成一個不受同機並行改動影響的 `realDirsTouchedByThisAgent` 訊號（這個訊號的正確性只取決於 sub-agent 自己的工具呼叫記錄，不取決於 git 當下的髒/淨狀態，所以不受 (a)(b)(c) 三個盲區影響）。這其實就是把我本次人工驗證 AC3/AC4 的方法自動化。若 transcript 解析失敗（格式變動、檔案找不到等），應 fallback 回現有的 git status 機制，不要 fail-closed 擋下整個交付。
+   3. **再次**：對現有 git status 機制做 mtime 時間窗加固（比對正式目錄底下檔案的 mtime 是否落在 spawn 時間點之後），這能順帶修掉盲區 (a)（已髒檔案被再次改動時 mtime 仍會更新）；但若要涵蓋盲區 (b)（gitignore 路徑），需要額外明確決定「這層掃描要不要套用 `.gitignore`」——目前 `git status` 天生遵守 `.gitignore`，若要抓 `tokens.json`/`tmp-uploads/` 這類路徑的異動，必須改用不受 `.gitignore` 影響的掃描方式（例如直接 `find`+mtime，而非 `git status`）。
+   4. **獨立決策項（不是 realDirsTouched 的修法）**：sub-agent 目前拿到的正式目錄路徑是 `run-agent.ts:46-49` 硬編碼的絕對路徑（`/Users/user/aladdin/obsidian/mcps/agrabah-{admin,platform}`），而 sub-agent 本身以 `bypassPermissions` 執行、有完整 Bash 權限——**光是另外弄一份 git worktree 放在別的路徑，並不會阻止 sub-agent 直接寫這個寫死的絕對路徑**，worktree 隔離本身不構成結構性防線。真正的結構性防止需要 OS 層級沙箱（chroot / `sandbox-exec` / container 等），這是另一個量級的工程投入，應該當成獨立於本次 diff-based 偵測修正之外的沙箱化決策項，交給 H25（或更後面的 task）評估是否要做、值不值得做。
 2. **sub-agent 自報可信度本次測試是正面結果**，但只驗證了「單一唯讀 method、範圍小」這一種情境。H25 決定部署機制（自動 vs 人工觸發）時，這個正面結果只能支持「小範圍唯讀需求可以考慮較寬鬆的信任」，不足以支持「所有需求都可信任自報」的結論——尤其是涉及寫入型 method、需要清理 dev 資料的情境，自報可信度未經測試。
 3. 本次測試沒有觸發任何 timeout 或 fallback manifest 路徑（H23 已測過），也沒有測到「業務不合理需求」或「prompt injection」情境（原設計已知風險，本次不在範圍內）。
 4. 整個流程（server 啟動 → 真實 MCP handshake → 173 秒 sub-agent 執行 → 結果讀取 → server 關閉）順暢，沒有遇到 H23 提到的併發卡死、fallback manifest 誤觸發等問題。
