@@ -59,11 +59,19 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerPlatformTools } from './tools/index.ts';
-import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
+import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
 import { login, runWithIdentity } from './session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
 import { TOTP_NEEDED_ERROR_CODE } from './const.ts';
 import { saveUploadedFile } from './files.ts';
+import {
+    runWithAuditAccumulator,
+    setAuditResult,
+    setAuditTool,
+    setAuditLoginIdentifier,
+    logAuthenticatedRequest,
+    summarizeToolOutcome,
+} from './audit_log.ts';
 
 const PORT = Number(process.env.AGRABAH_PLATFORM_HTTP_PORT ?? 8790);
 
@@ -103,6 +111,32 @@ app.use('*', async (c, next) => {
     return bearerAuthGuard(c, next);
 });
 
+/**
+ * H32 稽核 log：掛在 Bearer 認證之後、所有 route 之前，/health 同樣例外（不算
+ * 「通過認證的請求」，這支端點本來就不驗證任何東西）。對每個通過認證的
+ * request 在整段處理完成後（含 route handler 拋例外的路徑，見 finally）寫
+ * 恰好一行；method/path/耗時/來源 IP 在這層就能取得，identity（顯示名）由
+ * 上面的 Bearer middleware 剛剛 c.set() 好；tool 名稱、業務結果、/login 用的
+ * agrabah identifier 這幾個欄位深處的 handler 才知道，用 audit_log.ts 的
+ * AsyncLocalStorage 累積物件回填（runWithAuditAccumulator 包住整個
+ * downstream 呼叫鏈，比照 session.ts 的 runWithIdentity 同一種手法，兩個
+ * ALS context 各自獨立可以同時巢狀）。
+ */
+app.use('*', async (c, next) => {
+    if (c.req.path === '/health') {
+        return next();
+    }
+    const startedAtMs = performance.now();
+    const identity = getDisplayName(c);
+    await runWithAuditAccumulator(async () => {
+        try {
+            await next();
+        } finally {
+            logAuthenticatedRequest(c, identity, startedAtMs);
+        }
+    });
+});
+
 // 不驗證任何東西，供 launchd / 監控探測；不透露服務身分（比照
 // telegram-dispatcher/server.ts:68），因為經 proxy 後公網可達，回傳服務身分
 // 等於向掃描者確認這後面有一個 agrabah 後台操作介面。GET /health 不驗證是
@@ -120,6 +154,7 @@ app.post('/login', async c => {
 
     const throttle = checkThrottle(identity);
     if (!throttle.allowed) {
+        setAuditResult('error:throttled');
         return c.json(
             { success: false, message: `登入嘗試失敗次數過多，請於約 ${ throttle.retryAfterSeconds } 秒後再試` },
             429,
@@ -130,6 +165,7 @@ app.post('/login', async c => {
     try {
         body = await c.req.json();
     } catch {
+        setAuditResult('error:bad_json');
         return c.json({ success: false, message: 'request body 需為合法 JSON' }, 400);
     }
 
@@ -144,6 +180,7 @@ app.post('/login', async c => {
         : undefined;
 
     if (!identifier || !password) {
+        setAuditResult('error:missing_fields');
         return c.json({ success: false, message: '缺少 identifier 或 password' }, 400);
     }
 
@@ -155,6 +192,7 @@ app.post('/login', async c => {
             // 帳密其實正確、只是後端還要求 TOTP，不算一次「登入失敗」（帳密沒被猜錯），
             // 不計入節流，否則企劃在多輪 TOTP 互動中可能因為單純還沒輸入驗證碼就被鎖住。
             if (!totpRequired) recordFailure(identity);
+            setAuditResult(`error:${ result.errorCode }`);
             console.error(`[agrabah-platform http] /login 失敗：identity=${ identity } agrabahIdentifier=${ identifier } errorCode=${ result.errorCode }`);
             return c.json(
                 { success: false, errorCode: result.errorCode, message: result.message, totpRequired },
@@ -163,12 +201,16 @@ app.post('/login', async c => {
         }
 
         recordSuccess(identity);
-        // 供未來 H32 稽核 log 沿用（與 Bearer 身分並列，使我方 log 與 agrabah 後端 log 對得起來）；
-        // 這一行只含 identity 與這次使用的 agrabah identifier，不含密碼。
+        // H32：結構化稽核紀錄同時帶 identity（外層 middleware 已附上）與這次使用
+        // 的 agrabah identifier，不含密碼；下面這行 console.error 是既有的
+        // 純文字補充說明，兩者並存。
+        setAuditResult('success');
+        setAuditLoginIdentifier(identifier);
         console.error(`[agrabah-platform http] /login 成功：identity=${ identity } agrabahIdentifier=${ identifier }`);
         return c.json({ success: true, message: result.message, identity, mustBindTotp: result.mustBindTotp });
     } catch (err) {
         recordFailure(identity);
+        setAuditResult('error:unexpected_exception');
         console.error(`[agrabah-platform http] /login 呼叫 agrabah 時發生未預期例外：identity=${ identity } ${ err instanceof Error ? err.message : String(err) }`);
         return c.json({ success: false, message: '登入時發生未預期錯誤' }, 500);
     }
@@ -194,20 +236,24 @@ app.post(
         try {
             body = await c.req.parseBody();
         } catch {
+            setAuditResult('error:bad_multipart');
             return c.json({ success: false, errorMessage: '無法解析 multipart body' }, 400);
         }
 
         const file = body['file'];
         if (!(file instanceof File)) {
+            setAuditResult('error:missing_file_field');
             return c.json({ success: false, errorMessage: '缺少 file 欄位（multipart/form-data，欄位名須為 file）' }, 400);
         }
 
         const bytes = new Uint8Array(await file.arrayBuffer());
         const result = saveUploadedFile(identity, bytes);
         if (!result.success) {
+            setAuditResult(`error:${ result.errorMessage }`);
             return c.json({ success: false, errorMessage: result.errorMessage }, 400);
         }
 
+        setAuditResult('success');
         return c.json({ success: true, fileId: result.fileId });
     },
 );
@@ -217,13 +263,21 @@ app.post(
 // 是好事，但代表 stderr 永遠看不到完整堆疊，維運者除錯時只有一行訊息可看。
 // 這裡不改動任何 tools/*.ts（維持 D8 的 tool 檔案不重寫），改在 registerTool 外面包一層：
 // 每支 tool 呼叫仍照原樣執行、原樣回傳/拋出，只是在拋出前先把完整堆疊寫進 stderr。
+//
+// H32：同一個掛勾點也是唯一拿得到「目前是哪支 tool 在跑」的地方（MCP SDK 內部
+// 路由，我們不重新解析 JSON-RPC body），順便把 tool 名稱與結果回填進這個
+// request 的稽核累積物件（見 audit_log.ts 的 setAuditTool）——外層的稽核
+// middleware 會在整個 /mcp request 處理完後讀出來寫成一行。
 function withStderrStackLogging(server: McpServer): void {
     const originalRegisterTool = server.registerTool.bind(server);
     server.registerTool = ((name: string, config: unknown, handler: (...args: unknown[]) => unknown) => {
         const wrapped = async (...args: unknown[]) => {
             try {
-                return await handler(...args);
+                const result = await handler(...args);
+                setAuditTool(name, summarizeToolOutcome(result));
+                return result;
             } catch (err) {
+                setAuditTool(name, 'error:exception');
                 console.error(`[agrabah-platform http] tool "${ name }" 拋出未預期例外：${ err instanceof Error ? (err.stack ?? err.message) : String(err) }`);
                 throw err;
             }

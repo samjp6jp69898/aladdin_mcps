@@ -49,6 +49,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import type { Context, MiddlewareHandler } from 'hono';
+import { logAuthFailure } from './audit_log.ts';
 
 export interface TokenRegistryEntry {
     id: string;
@@ -152,11 +153,16 @@ function tokenMatches(presented: Buffer, candidateToken: string): boolean {
     return timingSafeEqual(presented, candidate);
 }
 
-export type AuthVariables = { agrabahIdentity: string };
+export type AuthVariables = { agrabahIdentity: string; agrabahDisplayName: string };
 
 /** H5/H6/H8 讀取「這個 request 屬於哪位企劃」：名冊唯一 id，不是顯示名。 */
 export function getIdentity(c: Context<{ Variables: AuthVariables }>): string {
     return c.get('agrabahIdentity');
+}
+
+/** H32 稽核 log 用：讀取這個 request 的顯示名（僅供 log，不可當任何容器的 key，見上方檔頭說明）。 */
+export function getDisplayName(c: Context<{ Variables: AuthVariables }>): string {
+    return c.get('agrabahDisplayName');
 }
 
 /**
@@ -168,6 +174,9 @@ export function createBearerAuthGuard(registryPath: string): MiddlewareHandler<{
     return async (c, next) => {
         const header = c.req.header('authorization');
         if (header === undefined || !header.startsWith('Bearer ')) {
+            // H32：認證失敗也要留稽核紀錄（來源 IP + 原因），不含嘗試的 token 值——
+            // 這個分支甚至沒有 token 可記（header 缺失或格式不對）。
+            logAuthFailure(c, 'missing_or_malformed_authorization_header');
             return c.text('Unauthorized', 401);
         }
         const presented = Buffer.from(header.slice('Bearer '.length));
@@ -182,10 +191,13 @@ export function createBearerAuthGuard(registryPath: string): MiddlewareHandler<{
         }
 
         if (matched === undefined) {
+            // H32：同上，只記「token 不合法」這個事實，presented 本身絕不寫進 log。
+            logAuthFailure(c, 'invalid_token');
             return c.text('Unauthorized', 401);
         }
 
         c.set('agrabahIdentity', matched.id);
+        c.set('agrabahDisplayName', matched.display_name);
         await next();
     };
 }

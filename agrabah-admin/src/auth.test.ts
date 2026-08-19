@@ -3,7 +3,18 @@ import { mkdtempSync, rmSync, writeFileSync, utimesSync, statSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Hono } from 'hono';
-import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
+import type { AuthVariables } from './auth.ts';
+
+// auth.ts 現在 import audit_log.ts（H32：認證失敗會呼叫 logAuthFailure），後者
+// 在第一次寫入時才延遲 open 檔案，但路徑在模組載入當下就讀環境變數決定——這裡
+// 跟 files.test.ts 用同一種手法，把它指到測試專用的暫存目錄，不讓這份測試在
+// 每次執行時往真實的 logs/audit.jsonl 寫入大量 auth_failure 假資料。用
+// top-level await 確保 import 發生在設定環境變數之後（type-only import 在
+// 編譯期會被完全抹除，不會提早觸發模組載入）。
+const auditLogTestDir = mkdtempSync(join(tmpdir(), 'agrabah-admin-auth-test-auditlog-'));
+process.env.AGRABAH_ADMIN_AUDIT_LOG_PATH = join(auditLogTestDir, 'audit.jsonl');
+
+const { createBearerAuthGuard, getIdentity } = await import('./auth.ts');
 
 function buildApp(registryPath: string) {
     const app = new Hono<{ Variables: AuthVariables }>();

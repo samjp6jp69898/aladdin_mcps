@@ -28,6 +28,11 @@ export AGRABAH_ADMIN_HTTP_PORT=8792
 # override 機制自 H1/H3 起已支援，本檔不需改動任何程式碼。
 export AGRABAH_ADMIN_TOKENS_PATH="$SERVER_DIR/tokens.evi.json"
 
+# H32：獨立稽核 log 檔，不與 dev 的 logs/audit.jsonl 共用——三個環境的操作
+# 混在同一個檔案會讓稽核追查搞不清楚是哪個環境的行為。audit_log.ts 的
+# AGRABAH_ADMIN_AUDIT_LOG_PATH override 機制與 TOKENS_PATH 同一種慣例。
+export AGRABAH_ADMIN_AUDIT_LOG_PATH="$SERVER_DIR/logs/audit.evi.jsonl"
+
 # 刻意不匯出 AGRABAH_ADMIN_USER / AGRABAH_ADMIN_PASSWORD：理由同 dev 版
 # run-server.sh——hosted 模式一律走 per-token 登入態 + POST /login，不在常駐
 # 行程環境裡預先塞測試帳密。
