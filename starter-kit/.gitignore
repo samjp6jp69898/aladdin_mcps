@@ -3,3 +3,7 @@
 # 只有你複製出來、填了真值的 .env 會被這條規則擋下。
 .env
 .mcp.json
+
+# H17：TOTP 驗證碼的單次暫存檔（見 .claude/skills/login/SKILL.md）——login.sh
+# 讀到後立刻刪除，正常情況下這個檔案不該長期存在，但防手滑一併排除。
+.claude/skills/login/.totp-code.tmp
