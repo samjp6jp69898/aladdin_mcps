@@ -21,7 +21,7 @@
 
 `agrabah_platform_onboard_vendor_game` 呼叫失敗且 `errorCode=303` 時，回傳會帶 `hint` 明確告訴 agent 該去用哪支 tool，不會讓 agent 自己瞎猜重試。
 
-**另一個容易誤踩的點（2026-08-18 實測發現）**：`agrabah-admin` 剛建立的場館（`agrabah_admin_create_game_vendor`）**不會自動出現**在 `agrabah_platform_list_game_vendors` 裡——場館要先被 admin 端呼叫 `GameVendorAdmin.UpdatePlatformGameVendorStatus(platformId, gameVendorId, enabled)` 啟用給特定 platform 才查得到（本 MCP 與 `agrabah-admin` 目前都沒有提供這支啟用 tool）。
+**另一個容易誤踩的點（2026-08-18 實測發現，2026-08-19 H34 更新）**：`agrabah-admin` 剛建立的場館（`agrabah_admin_create_game_vendor`）**不會自動出現**在 `agrabah_platform_list_game_vendors` 裡——場館要先被 admin 端呼叫 `GameVendorAdmin.UpdatePlatformGameVendorStatus(platformId, gameVendorId, enabled)` 啟用給特定 platform 才查得到；`agrabah-admin` 現在已提供這支啟用 tool（`agrabah_admin_update_platform_game_vendor_status`，H34，見 `../agrabah-admin/README.md` 的「已支援 tool」），直接呼叫即可，不需要離開 MCP 手動處理。本 MCP（`agrabah-platform`）本身沒有對應的啟用 tool。
 
 ## src/ 結構
 

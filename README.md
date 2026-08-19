@@ -17,10 +17,10 @@
   常駐工程師機器，經 `telegram-dispatcher` 既有 ngrok domain 分流，給沒有公司
   原始碼的企劃用。詳見本節最後的「Hosted 模式」小節與差異對照表。
 
-給企劃用的零原始碼 starter kit 在 `mcps/starter-kit/`（H16-H17；`README.md`／
+給企劃用的零原始碼 starter kit 在 `mcps/starter-kit/`（H16-H18；`README.md`／
 `CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／`.gitignore`／
-`.claude/skills/{login,upload-image}/`，登入 skill 已由 H17 實作，上傳圖片 skill
-是 H18，本輪撰寫本文件時仍是 pending）。hosted 化的完整背景、決策與 task 拆解見
+`.claude/skills/{login,upload-image}/`，登入 skill 由 H17 實作、上傳圖片 skill 由
+H18 實作，兩支皆已完整實作完成，非佔位）。hosted 化的完整背景、決策與 task 拆解見
 `mcps/_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
 
 ---
@@ -31,7 +31,7 @@
 
 MCP（Model Context Protocol）是 JSON-RPC 2.0 協定，定義 host（Claude Code）跟 server 之間怎麼溝通 tools/resources/prompts。我們只用 tools。
 
-Transport 用 **stdio**：host 讀 `.mcp.json`，對每個 server 執行 `command` + `args`（+`env`）把它 spawn 成子行程，之後透過該行程的 stdin/stdout 傳收 JSON-RPC 訊息（純文字，一行一則）。**log 一律寫 stderr**——stdout 是協定專用管道，混進一行 log 會弄壞 JSON-RPC 解析。
+Transport 用 **stdio**（hosted 模式見本節最後的「Hosted 模式」小節）：host 讀 `.mcp.json`，對每個 server 執行 `command` + `args`（+`env`）把它 spawn 成子行程，之後透過該行程的 stdin/stdout 傳收 JSON-RPC 訊息（純文字，一行一則）。**log 一律寫 stderr**——stdout 是協定專用管道，混進一行 log 會弄壞 JSON-RPC 解析。
 
 握手流程：spawn → `initialize` 交換協定版本 → host 呼叫 `tools/list` 拿工具定義 → LLM 決定呼叫某工具時 host 送 `tools/call` → server 執行、回傳結果。
 
@@ -85,9 +85,12 @@ REST 端點。
   │ .mcp.json: url + headers.Authorization: Bearer <個人 token>
   ▼
 https://<既有 ngrok domain>/mcp-admin-dev（或 -pre / -evi / /mcp-platform / /toolsmith）
-  │  telegram-dispatcher/server.ts 的 5 條 path 分流 proxy（H14；純轉發，剝掉
-  │  前綴後打 http://localhost:<port>，見下表；純轉發不驗證身分，Authorization
-  │  header 原樣往下傳，認證在下一跳的 hosted server 才發生）
+  │  telegram-dispatcher/server.ts 的 5 條 path 分流 proxy（H14）：剝掉前綴後轉發
+  │  到 http://localhost:<port>，見下表。轉發前依序過四層流量控制——前綴格式
+  │  檢查、Authorization header 是否存在（只檢查有沒有帶，不檢查內容）、
+  │  rate limit、body size 上限 1MB（H31，見下方「已知限制」）——四層都不驗證
+  │  token 真假，真正的身分認證仍在下一跳的 hosted server 才發生；四層之一未過
+  │  一律回與「路徑不存在」相同的 401 空 body（均一回應防線，不洩漏路徑存在與否）
   ▼
 localhost:<port>  agrabah-admin 或 agrabah-platform 的 http.ts
 （Hono + Streamable HTTP，stateless；每個 request 各自 new 一個 McpServer+transport）
@@ -129,6 +132,14 @@ proxy 前綴與本機 port 對照（`telegram-dispatcher/server.ts` 的 `PROXY_R
 `agrabah-admin` 支援多環境（每個 Bearer token 綁定單一環境，token 名冊互不相交）；
 `agrabah-platform` 本輪只有 dev 一組實例。詳細環境清單與網址見
 `mcps/agrabah-admin/README.md` 的「支援環境清單」一節。
+
+**已知限制**：proxy 這一跳（`telegram-dispatcher/server.ts` 的 `MAX_PROXY_BODY_SIZE`）
+的 body 上限是 **1MB**，比 `POST /files` 自己（`files.ts`）允許的單檔 3MB（外層
+`bodyLimit` 4MB）更嚴格——1MB~3MB 的合法圖片會在 proxy 這層就被攔下，且因為
+proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑是否存在），企劃端
+收到的是誤導性的「登入態失效」訊號，而不是明確的「檔案太大」錯誤。這是已知的
+功能性落差，尚未修正，細節與建議修法見 `mcps/_hosted-rollout/tasks.json` H28 的
+`risk_notes`。
 
 ### stdio 與 hosted 差異對照
 
