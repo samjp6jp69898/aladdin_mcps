@@ -202,7 +202,13 @@ app.post('/login', async c => {
             setAuditResult(`error:${ result.errorCode }`);
             console.error(`[agrabah-admin http] /login 失敗：identity=${ identity } agrabahIdentifier=${ identifier } errorCode=${ result.errorCode }`);
             return c.json(
-                { success: false, errorCode: result.errorCode, message: result.message, totpRequired },
+                {
+                    success: false,
+                    errorCode: result.errorCode,
+                    errorName: AgrabahErrorCodeEnum[ result.errorCode ] ?? '(未知錯誤碼)',
+                    message: result.message,
+                    totpRequired,
+                },
                 401,
             );
         }

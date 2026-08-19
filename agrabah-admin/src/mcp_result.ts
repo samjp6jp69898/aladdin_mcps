@@ -19,10 +19,10 @@ export function asTextResult(payload: unknown) {
  */
 export function asErrorResult(r: { errorCode: number; message: string }, extra?: Record<string, unknown>) {
     return asTextResult({
+        ...extra,
         success: false,
         errorCode: r.errorCode,
         errorName: AgrabahErrorCodeEnum[ r.errorCode ] ?? '(未知錯誤碼)',
         message: r.message,
-        ...extra,
     });
 }

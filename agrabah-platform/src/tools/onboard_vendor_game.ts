@@ -139,7 +139,7 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
             description:
                 '把某個三方遊戲廠商「已存在於廠商遊戲母表」的一款遊戲，上架到本平台（若本平台是第一次設定該遊戲，' +
                 '後端會自動建立平台專屬設定紀錄；若已存在則是更新）——不是新增全新遊戲。' +
-                '母表資料通常由廠商同步 job 自動帶入，若呼叫失敗且 errorCode=303（gameVendorGameNotExists），' +
+                `母表資料通常由廠商同步 job 自動帶入，若呼叫失敗且 errorCode=${ AgrabahErrorCodeEnum.gameVendorGameNotExists }（gameVendorGameNotExists），` +
                 '代表母表根本沒有這個 gameId，此工具無法處理，要新增全新遊戲請改用 agrabah-admin MCP 的 ' +
                 'agrabah_admin_create_game。呼叫前會先讀既有設定當基準值，只有你有帶的欄位會覆蓋，' +
                 '沒帶的欄位維持原值，完成後自動讀回驗證。' +

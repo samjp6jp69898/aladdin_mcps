@@ -1,0 +1,48 @@
+import { describe, expect, test } from 'bun:test';
+import { asErrorResult } from './mcp_result.ts';
+
+/**
+ * H11 review 收尾（安全 review + 正確性 review 皆指出零測試覆蓋）：只測
+ * asErrorResult 的兩條最容易在未來重構時默默壞掉的分支——已知碼反查、
+ * 未知碼 fallback、extra 不覆蓋核心欄位（驗證 extra 已改放在展開式最前面，
+ * 不會蓋掉 success/errorCode/errorName/message）。
+ */
+function parsePayload(result: ReturnType<typeof asErrorResult>): Record<string, unknown> {
+    return JSON.parse(result.content[ 0 ].text);
+}
+
+describe('asErrorResult', () => {
+    test('已知碼：errorName 用 AgrabahErrorCodeEnum 反查取得', () => {
+        // 103 = AgrabahErrorCodeEnum.loginRequired（rajah/services/common.rajah:7），與
+        // session.ts 的 withAutoRelogin 判斷用的是同一個 enum member。
+        const payload = parsePayload(asErrorResult({ errorCode: 103, message: '' }));
+        expect(payload).toEqual({
+            success: false,
+            errorCode: 103,
+            errorName: 'loginRequired',
+            message: '',
+        });
+    });
+
+    test('未知碼：反查不到時保留原始數字並標示「(未知錯誤碼)」，不讓 undefined 流入回應', () => {
+        const payload = parsePayload(asErrorResult({ errorCode: 999999999, message: 'boom' }));
+        expect(payload[ 'errorCode' ]).toBe(999999999);
+        expect(payload[ 'errorName' ]).toBe('(未知錯誤碼)');
+        expect(payload[ 'message' ]).toBe('boom');
+    });
+
+    test('extra 附加診斷欄位（如 hint），不覆蓋 success/errorCode/errorName/message 四個核心欄位', () => {
+        const payload = parsePayload(
+            asErrorResult(
+                { errorCode: 103, message: 'real message' },
+                { success: true, errorCode: -1, errorName: 'spoofed', message: 'spoofed message', hint: '額外提示' },
+            ),
+        );
+        // 即使 extra 惡意/誤帶了同名欄位，核心四欄仍以真實錯誤資料為準。
+        expect(payload[ 'success' ]).toBe(false);
+        expect(payload[ 'errorCode' ]).toBe(103);
+        expect(payload[ 'errorName' ]).toBe('loginRequired');
+        expect(payload[ 'message' ]).toBe('real message');
+        expect(payload[ 'hint' ]).toBe('額外提示');
+    });
+});
