@@ -202,7 +202,11 @@ app.post('/login', async c => {
                     message: result.message,
                     totpRequired,
                 },
-                401,
+                // H17 review 收尾：totpRequired 這個情境刻意回 200，不是 401，理由與
+                // agrabah-admin/src/http.ts 對應段落完全相同（telegram-dispatcher/
+                // server.ts 對所有上游 401 一律正規化成空 body，會讓 totpRequired 欄位
+                // 經 proxy 轉發後永遠到不了企劃端的登入 skill）。
+                totpRequired ? 200 : 401,
             );
         }
 

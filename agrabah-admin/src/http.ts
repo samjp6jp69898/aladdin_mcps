@@ -209,7 +209,16 @@ app.post('/login', async c => {
                     message: result.message,
                     totpRequired,
                 },
-                401,
+                // H17 review 收尾：totpRequired 這個情境刻意回 200，不是 401。帳密本身是對
+                // 的，用 401（Unauthorized）語意不精確；更關鍵的是 telegram-dispatcher/
+                // server.ts 對所有上游 401 一律正規化成空 body（既有的防路徑探測均一防
+                // 線，只處理 exactly 401，見該檔案對應註解），若這裡仍用 401，
+                // totpRequired 這個欄位經 proxy 轉發後永遠到不了企劃端的登入 skill——
+                // 在正式對外路徑上跟帳密真的錯誤時表現一模一樣，整套 TOTP 互動機制形同
+                // 死碼。改回 200 不需要動 proxy 的均一防線一行程式碼，也沒有語意損失：
+                // body 的 success:false 已經清楚表示「這次還沒登入完成」，
+                // totpRequired:true 才是判斷原因（需要下一步 vs. 帳密錯）的欄位。
+                totpRequired ? 200 : 401,
             );
         }
 
