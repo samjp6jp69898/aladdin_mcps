@@ -55,7 +55,9 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 
 import { registerAdminTools } from './tools/index.ts';
 import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
-import { runWithIdentity } from './session.ts';
+import { login, runWithIdentity } from './session.ts';
+import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
+import { TOTP_NEEDED_ERROR_CODE } from './const.ts';
 
 const PORT = Number(process.env.AGRABAH_ADMIN_HTTP_PORT ?? 8789);
 
@@ -100,6 +102,82 @@ app.use('*', async (c, next) => {
 // 上面 Bearer middleware 內部的路徑排除決定的，不是因為這個 route 寫在
 // middleware 之前——調整這個 handler 在檔案裡的位置不影響它是否需要認證。
 app.get('/health', c => c.json({ status: 'ok', uptime_seconds: Math.floor(process.uptime()) }));
+
+/**
+ * POST /login — H6，plan.md D4 與 §4.2。REST 而非 MCP tool：密碼全程不能進
+ * LLM 對話紀錄（企劃端 skill 用 shell 從本地 .env 展開帳密直接 curl 這支），
+ * server 也不落地帳密（D3）。掛在上面的 Bearer middleware 之後，所以與
+ * /mcp 用同一套認證：沒有合法 Bearer token 進不到這裡。
+ *
+ * identifier/password 只活在這個 handler 的區域變數（含解構出來的 body 值），
+ * 全程未寫進任何 module-level 變數、Map，也不會被任何長生命週期 closure
+ * 捕獲——這支函式 return 之後就可以被 GC 回收，比照 session.ts 的 login()
+ * 對 D3 的同一套處理方式。任何失敗路徑的 log／回應都只帶 identity（H3 名冊
+ * id）與 agrabah errorCode，絕不帶 identifier 以外的帳密欄位、絕不帶
+ * message 以外的例外堆疊。
+ *
+ * 帳號層節流（AC7）：呼叫 agrabah 之前先檢查這個 Bearer 身分是否仍在冷卻期，
+ * 冷卻中直接擋下、完全不打 agrabah（避免我方變成暴力破解 agrabah 帳號的
+ * 跳板）；成功登入後計數歸零。
+ */
+app.post('/login', async c => {
+    const identity = getIdentity(c);
+
+    const throttle = checkThrottle(identity);
+    if (!throttle.allowed) {
+        return c.json(
+            { success: false, message: `登入嘗試失敗次數過多，請於約 ${ throttle.retryAfterSeconds } 秒後再試` },
+            429,
+        );
+    }
+
+    let body: unknown;
+    try {
+        body = await c.req.json();
+    } catch {
+        return c.json({ success: false, message: 'request body 需為合法 JSON' }, 400);
+    }
+
+    const identifier = typeof (body as Record<string, unknown>)?.identifier === 'string'
+        ? (body as Record<string, string>).identifier
+        : undefined;
+    const password = typeof (body as Record<string, unknown>)?.password === 'string'
+        ? (body as Record<string, string>).password
+        : undefined;
+    const totpCode = typeof (body as Record<string, unknown>)?.totpCode === 'string'
+        ? (body as Record<string, string>).totpCode
+        : undefined;
+
+    if (!identifier || !password) {
+        return c.json({ success: false, message: '缺少 identifier 或 password' }, 400);
+    }
+
+    try {
+        const result = await runWithIdentity(identity, () => login({ identifier, password, totpCode }));
+
+        if (!result.success) {
+            const totpRequired = result.errorCode === TOTP_NEEDED_ERROR_CODE;
+            // 帳密其實正確、只是後端還要求 TOTP，不算一次「登入失敗」（帳密沒被猜錯），
+            // 不計入節流，否則企劃在多輪 TOTP 互動中可能因為單純還沒輸入驗證碼就被鎖住。
+            if (!totpRequired) recordFailure(identity);
+            console.error(`[agrabah-admin http] /login 失敗：identity=${ identity } agrabahIdentifier=${ identifier } errorCode=${ result.errorCode }`);
+            return c.json(
+                { success: false, errorCode: result.errorCode, message: result.message, totpRequired },
+                401,
+            );
+        }
+
+        recordSuccess(identity);
+        // 供未來 H32 稽核 log 沿用（與 Bearer 身分並列，使我方 log 與 agrabah 後端 log 對得起來）；
+        // 這一行只含 identity 與這次使用的 agrabah identifier，不含密碼。
+        console.error(`[agrabah-admin http] /login 成功：identity=${ identity } agrabahIdentifier=${ identifier }`);
+        return c.json({ success: true, message: result.message, identity, mustBindTotp: result.mustBindTotp });
+    } catch (err) {
+        recordFailure(identity);
+        console.error(`[agrabah-admin http] /login 呼叫 agrabah 時發生未預期例外：identity=${ identity } ${ err instanceof Error ? err.message : String(err) }`);
+        return c.json({ success: false, message: '登入時發生未預期錯誤' }, 500);
+    }
+});
 
 // SDK 的 CallToolRequestSchema handler（mcp.js）對任何 tool 拋出的例外一律靜默接住，
 // 只把 error.message 包成 isError:true 回給呼叫端，從不 log——這對「回應不外洩堆疊」

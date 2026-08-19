@@ -59,7 +59,9 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 
 import { registerPlatformTools } from './tools/index.ts';
 import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
-import { runWithIdentity } from './session.ts';
+import { login, runWithIdentity } from './session.ts';
+import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
+import { TOTP_NEEDED_ERROR_CODE } from './const.ts';
 
 const PORT = Number(process.env.AGRABAH_PLATFORM_HTTP_PORT ?? 8790);
 
@@ -105,6 +107,70 @@ app.use('*', async (c, next) => {
 // 上面 Bearer middleware 內部的路徑排除決定的，不是因為這個 route 寫在
 // middleware 之前——調整這個 handler 在檔案裡的位置不影響它是否需要認證。
 app.get('/health', c => c.json({ status: 'ok', uptime_seconds: Math.floor(process.uptime()) }));
+
+/**
+ * POST /login — H6，設計理由與 admin 端逐字相同，完整說明見
+ * obsidian/mcps/agrabah-admin/src/http.ts 同一段註解（為何是 REST 不是 MCP
+ * tool、identifier/password 生命週期、帳號層節流 AC7）。
+ */
+app.post('/login', async c => {
+    const identity = getIdentity(c);
+
+    const throttle = checkThrottle(identity);
+    if (!throttle.allowed) {
+        return c.json(
+            { success: false, message: `登入嘗試失敗次數過多，請於約 ${ throttle.retryAfterSeconds } 秒後再試` },
+            429,
+        );
+    }
+
+    let body: unknown;
+    try {
+        body = await c.req.json();
+    } catch {
+        return c.json({ success: false, message: 'request body 需為合法 JSON' }, 400);
+    }
+
+    const identifier = typeof (body as Record<string, unknown>)?.identifier === 'string'
+        ? (body as Record<string, string>).identifier
+        : undefined;
+    const password = typeof (body as Record<string, unknown>)?.password === 'string'
+        ? (body as Record<string, string>).password
+        : undefined;
+    const totpCode = typeof (body as Record<string, unknown>)?.totpCode === 'string'
+        ? (body as Record<string, string>).totpCode
+        : undefined;
+
+    if (!identifier || !password) {
+        return c.json({ success: false, message: '缺少 identifier 或 password' }, 400);
+    }
+
+    try {
+        const result = await runWithIdentity(identity, () => login({ identifier, password, totpCode }));
+
+        if (!result.success) {
+            const totpRequired = result.errorCode === TOTP_NEEDED_ERROR_CODE;
+            // 帳密其實正確、只是後端還要求 TOTP，不算一次「登入失敗」（帳密沒被猜錯），
+            // 不計入節流，否則企劃在多輪 TOTP 互動中可能因為單純還沒輸入驗證碼就被鎖住。
+            if (!totpRequired) recordFailure(identity);
+            console.error(`[agrabah-platform http] /login 失敗：identity=${ identity } agrabahIdentifier=${ identifier } errorCode=${ result.errorCode }`);
+            return c.json(
+                { success: false, errorCode: result.errorCode, message: result.message, totpRequired },
+                401,
+            );
+        }
+
+        recordSuccess(identity);
+        // 供未來 H32 稽核 log 沿用（與 Bearer 身分並列，使我方 log 與 agrabah 後端 log 對得起來）；
+        // 這一行只含 identity 與這次使用的 agrabah identifier，不含密碼。
+        console.error(`[agrabah-platform http] /login 成功：identity=${ identity } agrabahIdentifier=${ identifier }`);
+        return c.json({ success: true, message: result.message, identity, mustBindTotp: result.mustBindTotp });
+    } catch (err) {
+        recordFailure(identity);
+        console.error(`[agrabah-platform http] /login 呼叫 agrabah 時發生未預期例外：identity=${ identity } ${ err instanceof Error ? err.message : String(err) }`);
+        return c.json({ success: false, message: '登入時發生未預期錯誤' }, 500);
+    }
+});
 
 // SDK 的 CallToolRequestSchema handler（mcp.js）對任何 tool 拋出的例外一律靜默接住，
 // 只把 error.message 包成 isError:true 回給呼叫端，從不 log——這對「回應不外洩堆疊」

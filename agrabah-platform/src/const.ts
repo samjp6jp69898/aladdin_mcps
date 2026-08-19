@@ -6,6 +6,11 @@
 // AgrabahErrorCodeEnum.loginRequired，見 rajah/services/common.rajah:7
 export const LOGIN_REQUIRED_ERROR_CODE = 103;
 
+// AgrabahErrorCodeEnum.totpNeeded，見 rajah/services/common.rajah:591。Auth.Login 在帳密正確但
+// 後端要求動態驗證碼時回這個 errorCode（r.data 為 null）；H6 的 POST /login 用它判斷要不要
+// 標記 totpRequired，讓企劃端 skill 能明確辨識「不是帳密錯，是還要再帶 totpCode 重打一次」。
+export const TOTP_NEEDED_ERROR_CODE = 1809;
+
 // AgrabahErrorCodeEnum.gameVendorGameNotExists，見 rajah/services/common.rajah:102
 export const GAME_VENDOR_GAME_NOT_EXISTS_ERROR_CODE = 303;
 

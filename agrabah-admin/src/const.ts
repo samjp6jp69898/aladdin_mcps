@@ -6,6 +6,11 @@
 // AgrabahErrorCodeEnum.loginRequired，見 rajah/services/common.rajah:7
 export const LOGIN_REQUIRED_ERROR_CODE = 103;
 
+// AgrabahErrorCodeEnum.totpNeeded，見 rajah/services/common.rajah:591。Auth.Login 在帳密正確但
+// 後端要求動態驗證碼時回這個 errorCode（r.data 為 null）；H6 的 POST /login 用它判斷要不要
+// 標記 totpRequired，讓企劃端 skill 能明確辨識「不是帳密錯，是還要再帶 totpCode 重打一次」。
+export const TOTP_NEEDED_ERROR_CODE = 1809;
+
 // Gate 判斷 platform 是看 HTTP Host header 查 core.domains，這個 header 是沿用既有 test-method
 // 腳本的慣例（admin 站台本身沒有多平台概念，不確定是否必要，先保留）。
 export const ADMIN_HEADER_PLATFORM_CODE = '0';
