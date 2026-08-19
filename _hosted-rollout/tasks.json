@@ -446,7 +446,7 @@
         "改完後兩個 server 在 stdio 與 hosted 兩種模式各跑一次 tools/list，description 與 instructions 內容如預期呈現",
         "程式邏輯零改動（git diff 只有字串與註解）"
       ],
-      "risk_notes": "純文案 task 容易在精簡時誤刪事實資訊（例如某欄位是 ×10000 整數、某 id 必須先呼叫哪支 tool 取得），這類資訊被刪掉會直接造成 agent 亂填參數。逐支比對改動前後，只刪引導、不刪事實。",
+      "risk_notes": "純文案 task 容易在精簡時誤刪事實資訊（例如某欄位是 ×10000 整數、某 id 必須先呼叫哪支 tool 取得），這類資訊被刪掉會直接造成 agent 亂填參數。逐支比對改動前後，只刪引導、不刪事實。\n\n【H36 收尾階段 review 發現，2026-08-19 追加，建議本 task 一併處理】H36 的 prod confirm 閘門機制有個設計缺口：agent 在被拒絕之前完全無從得知自己連的是 prod 實例——四支寫入 tool 的 description 是靜態字串，dev/pre/evi/prod 完全相同；且兩個 server 建構 McpServer 時目前完全沒有設定 instructions（D11 講的另一半 harness 管道是空的）。導致「先問使用者、再帶 confirm」這個預期流程在架構上其實走不到：agent 唯一得知「這是 prod」的時機，就是被拒絕的那則錯誤訊息，而該訊息同時把精確 confirm token 也一併奉上，變成一次來回即可繞過的 oracle。建議本 task 補 instructions 時一併處理：(a) IS_PROD===true 時在四支寫入 tool description 開頭插一句事實陳述「本實例連線的是正式環境（prod）」；或 (b) 在 http.ts/stdio.ts 建構 McpServer 時帶上 instructions，prod 實例的 instructions 載明環境身分。兩者皆為純事實陳述，符合 D11 精神，不是引導。",
       "suggested_agent": "general-purpose"
     },
     {
