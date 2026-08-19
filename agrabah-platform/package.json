@@ -9,10 +9,12 @@
   },
   "scripts": {
     "start:stdio": "bun src/stdio.ts",
+    "start:http": "bun src/http.ts",
     "inspect": "bunx @modelcontextprotocol/inspector bun src/stdio.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "hono": "^4.13.2",
     "zod": "^4.0.0"
   },
   "devDependencies": {
