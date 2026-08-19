@@ -91,6 +91,10 @@
     {
       "date": "2026-08-19",
       "note": "H35 完成（commit 7ea65992）：agrabah-admin 部署 pre(cqa)/evi 兩組多環境 hosted 實例，與 dev 並存，同一份 src/http.ts 只換 env（符合 D13「新增環境只需新增設定值不改程式碼」）。\n\n【實作】port pre=8791/evi=8792（避開 toolsmith 8788/admin-dev 8789/platform-dev 8790）。各自獨立 tokens 名冊 tokens.pre.json / tokens.evi.json（含真 token、已加 .gitignore、未進 git、歷史從未 commit）。launchd 骨架 run-server-{pre,evi}.sh + com.aladdin.agrabah-admin-{pre,evi}-server.plist 比照 H13 dev 骨架。pre 的 API URL 讀 .env 的 CQA_ADMIN_URL（https://abu-admin.ald777.com）+ 空值防呆；evi 的 URL 寫死字面值 https://admin.godev2.com（.env 無對應 URL 變數，僅有 EVI_ADMIN_USER/PASS，腳本註解說明）。README 新增支援環境清單表格（dev/pre/evi 已部署、uat/prod 待補）。未執行 launchctl bootstrap（比照 H13，僅手動驗證起停）。\n\n【三方審查全 PASSED】(1) 現場實跑（pre/evi 各 /health 200；Bearer 層 401 隔離實測——dev token 打 pre、pre token 打 evi 皆 401 純文字 Unauthorized，對照組 pre token 打 pre 回 200；pre 真實登入回 11 平台、evi 回 2 平台，各自 list_platform_game_vendors 拿真實場館；四 port 8789/8790/8791/8792 並存驗證，測試實例測後釋放）；(2) 配置/token 洩漏（git show --stat 不含 tokens 檔、check-ignore 命中、full-history 無紀錄、diff 無 token 字面值；env 名稱 AGRABAH_ADMIN_HTTP_PORT/TOKENS_PATH/API_URL 與 http.ts:64/69、session.ts:59 實際讀取一致；三 plist Label 不衝突；D13 可擴充性無寫死環境數的反例）；(3) launchd 骨架（三環境結構對稱、六個 log 路徑互不打架、exec src/http.ts hosted 入口正確、grep 空值有防呆、無 bootstrap 上線隱患）。\n\n【環境差異觀察】三環境平台數不同屬正常資料差異：dev 14 平台、pre 11 平台（MAIN/PK/NY/6T/FF/AY/N8/test/...）、evi 2 平台（6T/PK）。pre/evi 為共用測試環境，全程只呼叫唯讀 tool 無寫入。\n\n【留待後續的非阻擋小項】(a) evi run-server-evi.sh 可比照 dev/pre 補 -z 空值防呆求風格一致；(b) session.ts:64 的錯誤訊息「請確認 .mcp.json 的 agrabah-admin server env」對 pre/evi（走 shell export 非 .mcp.json）已不準確，屬 pre-existing，路過時可順手修。兩者皆非本 task 缺陷。"
+    },
+    {
+      "date": "2026-08-19",
+      "note": "H9 的實跑 review 完整回報（PASSED 判定不變）額外揭露一個高影響既有缺口：agrabah-admin 的 tools/list 所有 tool 的欄位 description 全空（platform 正常），疑因 bun.lock 巢狀 zod@3.25.76 與頂層 zod@4.4.3 的 metadata registry 不共用——直接架空 admin 端 D11 harness（企劃看不到任何欄位操作說明）。非 H9 引入（bun.lock 於 H0 commit 7d5ff0c5 就存在），故不影響 H9 done 判定，但已建 H37（hosted-core 模組，depends_on 空）追蹤：先獨立 source-first 查證根因（不把 review 的 zod 診斷當定論），再以最小改動修復並兩台 server×兩模式回歸。H37 與所有動 agrabah-admin 的 task 序列化執行（改 bun.lock/node_modules 有衝突風險）。\n另記 H9 review 額外污染的 dev 資料（連同實作者原本污染，需人工還原或標為永久測試資料，無「清空成未設定」機制）：admin gameVendorId=14/gameId=9024 的 squareImage en-US、zh-CN 語言欄位被覆蓋為測試圖；platform gameVendorId=1/gameId=147 squareImage fr-FR 被覆蓋為測試圖。"
     }
   ],
   "architecture_summary": "企劃 Claude Code 桌面版（Mac/Win，零公司原始碼，只有 starter kit：.mcp.json 填 URL + 個人 Bearer token、.env 放自己的 agrabah 帳密、兩支 skill 負責登入與上傳圖片）→ HTTPS 打 telegram-dispatcher 既有 ngrok domain → /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 依 path 分流 proxy 三條 route（/mcp-admin/* → localhost:8789、/mcp-platform/* → localhost:8790、/toolsmith/* → localhost:8788；TG webhook guard 不得攔到這三條）→ 各 hosted server（Hono + WebStandardStreamableHTTPServerTransport，stateless MCP transport）先過 Bearer 認證 middleware（timingSafeEqual，token → 企劃身分），再依 token 取得該人的登入態（D2：Map<bearerToken, 登入態>；D3：記憶體只留 agrabah JWT，絕不留帳密）→ 登入不走 MCP tool 而走 POST /login REST 端點（D4，密碼由企劃端 shell 從本地 .env 展開，不進 LLM 對話紀錄）；圖片走自家 POST /files multipart 回 fileId（D5），圖片類 tool 參數 hosted 吃 fileId、stdio 保留 filePath 向後相容 → tool 實作沿用現有扁平的 src/tools/*（D8），stdio.ts 與 http.ts 雙進入點共用同一組註冊函式 → 最終打 agrabah Gate（dev）HTTP POST /api/:group/:service/:method（protobuf + XOR，經 genie client，見既有 session.ts）。錯誤語意不硬編魔術數字，改 import rajah 對 abu 生成的 error 定義並把後端錯誤名稱原樣透傳（D10）；harness 只做事實診斷、不引導跨後台操作（D11），權限硬防線是 agrabah 後端 @Permission ＋ admin/platform 兩台獨立發 token。agrabah-toolsmith（/Users/user/.claude/plans/logical-jumping-cook.md 原設計）沿用 Phase 1-5、7-8，交付端依 D9 改為把生成的 tool 部署到 hosted server 並重載，全企劃立即可用。一切僅限 dev 環境。",
@@ -962,6 +966,24 @@
         "測試在 dev 留下的資料已清理或在報告中明確列出需人工處理的資料"
       ],
       "risk_notes": "這是一個軟體層面的防線，不能保證企劃端的 Claude 一定會先問過使用者才帶上 confirm 參數——tool description 的指示只是引導，真正的硬防線是「沒有 confirm 就不執行」這件事本身。commit message 與完成報告務必清楚寫明本 task 沒有、也不可能對真實 prod 做任何驗證（因為沒有 prod 網址），避免後續 session 誤以為 prod 流程已經跑通。",
+      "suggested_agent": "general-purpose"
+    },
+    {
+      "id": "H37",
+      "module": "hosted-core",
+      "title": "修復 agrabah-admin tools/list 欄位 description 全空（疑 bun.lock 巢狀 zod 版本不一致）",
+      "status": "pending",
+      "depends_on": [],
+      "description": "H9 的實跑 review（fresh-context agent）發現一個高影響缺口：agrabah-admin 的 tools/list 回傳的 inputSchema **完全沒有任何欄位 description**——不只 H9 新增的 fileId/filePath，連 login/create_game_vendor 等所有既有 tool 的欄位說明都消失。agrabah-platform 端則完全正常。這直接架空 admin 端所有 tool 的 harness：D11 明訂 .describe() 是企劃 agent 唯一能看到的操作說明，H7/H9/H34 等 task 花大量功夫寫的 description 在 admin 端實際上企劃一個字都看不到。\n\n【review 提出的疑似根因，需本 task 獨立 source-first 查證，不得直接當定論】mcps/agrabah-admin/bun.lock（H0 首建套件時提交，commit 7d5ff0c5，H9 未動）把 @modelcontextprotocol/sdk 的內部 zod 依賴鎖在巢狀 zod@3.25.76，而專案頂層用 zod@4.4.3；SDK 序列化 tools/list 時用巢狀那份舊 zod（v4-mini）讀欄位 description，兩個 zod 模組實例的 metadata registry 不共用，導致讀不到頂層 zod 設的 .describe()。agrabah-platform 的 bun.lock 沒有這個巢狀 zod 條目（正常 dedupe 到頂層），故正常。review agent 宣稱用乾淨 McpServer + 任意 .describe() 欄位重現了此現象。\n\n【本 task 要做】(1) 先獨立查證根因：實際比對 admin 與 platform 的 bun.lock 的 zod 解析結果、確認 SDK 讀 description 走哪個 zod 實例、用最小重現確認/推翻上述診斷（附證據）。(2) 找出修法並實施：可能是重新 bun install 讓 agrabah-admin 的 zod 正確 dedupe、或對齊 SDK 版本、或調整 package.json 的 zod 版本/overrides——擇一能讓 admin tools/list 正確帶出 description 的最小改動。(3) 修復後兩台 server 都要驗：hosted 與 stdio 模式 tools/list 各 tool 的每個欄位都能拿到 .describe() 文字。若查證推翻 review 的 zod 診斷、根因是別的原因，如實記錄並依實際根因修。\n\n注意：改 bun.lock / node_modules 可能影響同時在動 admin 的其他 task，排程上與所有動 agrabah-admin 的 task 序列化執行。",
+      "acceptance_criteria": [
+        "獨立查證並記錄 admin tools/list 欄位 description 為空的真正根因（附證據：bun.lock 比對、最小重現或推翻 review 診斷的結果）",
+        "hosted 模式（port 8789）admin tools/list：至少抽查 3 支 tool，每支的每個 inputSchema 欄位都能拿到非空 .describe() 文字",
+        "stdio 模式 admin tools/list：同樣抽查確認欄位 description 非空",
+        "agrabah-platform 端回歸：修改後 platform 的 tools/list description 仍正常（沒有因對齊依賴而弄壞原本正常的一端）",
+        "兩台 server 既有測試回歸綠燈（bun test 各套件），改動範圍限於依賴/設定檔與必要的最小程式碼，未牽動不相關邏輯",
+        "修改的 bun.lock / package.json 等變更已 commit，commit message 說明根因與修法"
+      ],
+      "risk_notes": "這是 H9 review 意外揭露、非任何既有 task 引入的既有缺口，但影響 admin 端全部 tool 的可用性（企劃看不到任何操作說明），優先級高。修依賴容易牽一髮動全身（zod v3/v4 破壞性改動、SDK 對 zod 的 peer 需求），改後務必兩台 server + 兩種模式都回歸，不可只驗 admin 而弄壞 platform。查證階段嚴守 source-first，不憑 review 的診斷當既定事實。",
       "suggested_agent": "general-purpose"
     }
   ]
