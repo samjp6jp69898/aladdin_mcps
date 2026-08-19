@@ -30,8 +30,8 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, writeFileSync, unlinkSync, existsSync, realpathSync } from 'node:fs';
+import { join, sep } from 'node:path';
 
 export const TMP_DIR = process.env.AGRABAH_ADMIN_FILES_TMP_DIR
     ?? new URL('../tmp-uploads/', import.meta.url).pathname;
@@ -197,6 +197,49 @@ export function resolveFileForIdentity(fileId: string, identity: string): Resolv
         return { found: false, reason: 'forbidden' };
     }
     return { found: true, path: join(TMP_DIR, `${ fileId }.${ entry.ext }`) };
+}
+
+const FILE_ID_PATTERN = /^[A-Za-z0-9_-]{43}$/; // 比對 generateFileId() 的實際輸出格式（randomBytes(32).toString('base64url')，固定 43 字元的 base64url 字元集，不含 `/`）
+
+export type ResolveFileIdResult =
+    | { found: true; path: string }
+    | { found: false; reason: 'invalid_format' | 'not_found' | 'forbidden' | 'outside_tmp_dir' };
+
+/**
+ * H9：圖片類 tool（edit_game.ts）解析 fileId → 本機路徑的唯一入口，消費端
+ * 不得繞過這支自行用 fileId 字串組路徑。兩層防護：
+ *   1. regex 格式白名單：fileId 必須完全符合 generateFileId() 的實際輸出格式
+ *      （43 字元 base64url），任何含 `/`、`..`、絕對路徑或其他字元的輸入在
+ *      觸碰 registry 之前就直接拒絕。
+ *   2. `resolveFileForIdentity()` 本身已經結構性安全——它用 `Map.get(fileId)`
+ *      精確比對而不是字串拼接組路徑，所以只有輸入完全等於某個由
+ *      `generateFileId()` 產生並存進 registry 的既有 key 才會命中——但這裡
+ *      仍多一層 realpath 驗證解析出的絕對路徑真的落在 TMP_DIR 底下才回傳，
+ *      defense-in-depth：即使未來 files.ts 的實作方式改變，這層保護仍然
+ *      獨立成立，不依賴上游那層假設繼續正確。
+ */
+export function resolveFileIdForIdentity(fileId: string, identity: string): ResolveFileIdResult {
+    if (!FILE_ID_PATTERN.test(fileId)) {
+        return { found: false, reason: 'invalid_format' };
+    }
+
+    const result = resolveFileForIdentity(fileId, identity);
+    if (!result.found) {
+        return result;
+    }
+
+    let realTarget: string;
+    try {
+        realTarget = realpathSync(result.path);
+    } catch {
+        return { found: false, reason: 'not_found' };
+    }
+    const realTmpDir = realpathSync(TMP_DIR);
+    if (realTarget !== realTmpDir && !realTarget.startsWith(realTmpDir + sep)) {
+        return { found: false, reason: 'outside_tmp_dir' };
+    }
+
+    return { found: true, path: realTarget };
 }
 
 /**

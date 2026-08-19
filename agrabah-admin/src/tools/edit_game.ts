@@ -13,13 +13,26 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { GameEdit } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
-import { remote, withAutoRelogin, uploadFile } from '../session.ts';
+import { remote, withAutoRelogin, uploadFile, currentIdentityForFiles } from '../session.ts';
+import { resolveFileIdForIdentity } from '../files.ts';
 import { asTextResult } from '../mcp_result.ts';
 import { GAME_TAG_MAP, GAME_TAG_KEYS, OPEN_MODE_MAP, OPEN_MODE_KEYS, IMAGE_SHAPE_MAP } from '../const.ts';
 
+// H9（plan.md D5 / §4.3）：filePath（stdio，本機工程師連線）與 fileId（hosted，
+// 企劃端遠端連線，先呼叫 POST /files 上傳取得）二選一並存，不用 zod union——
+// union 對「兩者都帶」這種情況預設會靜默用第一個匹配成員、忽略多餘欄位，
+// 無法產生 AC4 要求的明確錯誤；改用兩個都 optional 的欄位，在 handler 內用
+// 模式判斷明確擋下「都帶」與「都沒帶」兩種情況，見 uploadLocalizedImages()。
 const imageUploadSchema = z.array(z.object({
     code: z.string().describe('語系代碼，例如 zh-CN、zh-TW、en-US——是這張圖要顯示給哪個語言看，不是平台代碼'),
-    filePath: z.string().describe('本機圖片檔案的絕對路徑'),
+    filePath: z.string().optional().describe(
+        'stdio 模式專用（工程師本機直接執行這個 MCP server 時）：本機圖片檔案的絕對路徑。' +
+        '與 fileId 二選一，不可同時提供、也不可兩者都不提供。',
+    ),
+    fileId: z.string().optional().describe(
+        'hosted 模式專用（企劃端透過遠端連線呼叫）：先呼叫 POST /files 上傳圖片取得的 fileId。' +
+        '與 filePath 二選一，不可同時提供、也不可兩者都不提供。',
+    ),
 })).optional();
 
 const localizedTextSchema = z.array(z.object({
@@ -49,26 +62,56 @@ function mergeLocalizedStrings(
 
 /**
  * 這個欄位在後端設計上是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制。
- * 呼叫端要為每個想更新的語言各自帶一組 {code, filePath}；每筆各自呼叫一次
+ * 呼叫端要為每個想更新的語言各自帶一組 {code, filePath|fileId}；每筆各自呼叫一次
  * GetUploadGameVendorGameImageToken 拿新 token 再上傳（token 單次使用、1 小時過期）。
+ *
+ * H9：fileId（hosted）先解析成本機暫存路徑，再餵進與 filePath（stdio）完全相同的
+ * 下游上傳流程（GetUploadGameVendorGameImageToken → uploadFile）——上傳到 agrabah
+ * 的既有機制完全不變，hosted 模式只是多一步「fileId → 本機路徑」的解析。
  */
 async function uploadLocalizedImages(
     shape: keyof typeof IMAGE_SHAPE_MAP,
-    uploads: { code: string; filePath: string }[] | undefined,
+    uploads: { code: string; filePath?: string; fileId?: string }[] | undefined,
     existing: { code: string; value: string }[] | undefined,
 ): Promise<{ merged: { code: string; value: string }[]; errors: string[] }> {
     const merged = [ ...(existing ?? []) ];
     const errors: string[] = [];
     if (!uploads || uploads.length === 0) return { merged, errors };
 
-    for (const { code, filePath } of uploads) {
+    for (const { code, filePath, fileId } of uploads) {
+        if (filePath !== undefined && fileId !== undefined) {
+            errors.push(`[${ code }] 同時提供了 filePath 與 fileId，兩者二選一，請只帶其中一個`);
+            continue;
+        }
+        if (filePath === undefined && fileId === undefined) {
+            errors.push(`[${ code }] 缺少 filePath 或 fileId（stdio 模式帶 filePath，hosted 模式帶 fileId，擇一提供）`);
+            continue;
+        }
+
+        let resolvedFilePath: string;
+        if (fileId !== undefined) {
+            const identity = currentIdentityForFiles();
+            if (identity === undefined) {
+                errors.push(`[${ code }] fileId 僅限 hosted 模式使用；目前是 stdio 連線，請改用 filePath`);
+                continue;
+            }
+            const resolved = resolveFileIdForIdentity(fileId, identity);
+            if (!resolved.found) {
+                errors.push(`[${ code }] fileId 無法使用（${ resolved.reason }）：可能格式不合法、已過期、不存在、或不屬於你，請重新呼叫 POST /files 取得新的 fileId`);
+                continue;
+            }
+            resolvedFilePath = resolved.path;
+        } else {
+            resolvedFilePath = filePath!;
+        }
+
         const tokenR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetUploadGameVendorGameImageToken(IMAGE_SHAPE_MAP[ shape ]));
         if (tokenR.failed || !tokenR.data?.token) {
             errors.push(`[${ code }] 取得上傳 token 失敗：errorCode=${ tokenR.errorCode } ${ tokenR.message }`);
             continue;
         }
 
-        const uploadR = await uploadFile(tokenR.data.token, filePath);
+        const uploadR = await uploadFile(tokenR.data.token, resolvedFilePath);
         if (!uploadR.success) {
             errors.push(`[${ code }] ${ uploadR.message }`);
             continue;
@@ -94,8 +137,9 @@ export function registerEditGameTool(server: McpServer): void {
                 '用 gameVendorId+gameId 這組業務鍵定位（不用先知道內部流水號 id，工具內部會自動查）。' +
                 '讀既有資料當基準值，只有你有帶的欄位會覆蓋，沒帶的欄位維持原值，完成後自動讀回驗證。' +
                 'squareImage/rectangleImage/bannerImage 這三個圖片欄位是「每個語言各自一張圖」，不是一張圖套用全部語言——' +
-                '要幫哪個語言換圖，就在對應的 squareImages/rectangleImages/bannerImages 陣列裡帶一組 {code, filePath}，' +
-                'filePath 是本機圖片檔案的絕對路徑。若有任何一張圖上傳失敗，整支呼叫會直接中止、不會送出更新（避免部分寫入），' +
+                '要幫哪個語言換圖，就在對應的 squareImages/rectangleImages/bannerImages 陣列裡帶一組 {code, filePath}（stdio 模式，' +
+                '工程師本機直接執行時用）或 {code, fileId}（hosted 模式，企劃端遠端連線時用，fileId 來自先呼叫 POST /files 上傳的結果）——' +
+                '兩者二選一，每筆項目只能帶其中一個，同時帶或都不帶都會回錯誤。若有任何一張圖上傳失敗，整支呼叫會直接中止、不會送出更新（避免部分寫入），' +
                 '並在 errors 裡列出哪個語言失敗。' +
                 'localizedNames 是遊戲名稱的多語系版本（跟 name 不是同一個欄位，name 是單一顯示名稱），' +
                 '格式同樣是每個語言各帶一組 {code, value}，帶到的語言覆蓋既有值、沒帶到的語言維持原值。',
@@ -109,7 +153,7 @@ export function registerEditGameTool(server: McpServer): void {
                 openMode: z.enum(OPEN_MODE_KEYS).optional().describe('開啟模式：embedded/externalBrowser/embeddedWithTitle/inHouseGame/inHouseSport，不帶則沿用既有值'),
                 sortOrder: z.number().int().optional().describe('排序，不帶則沿用既有值'),
                 demo: z.boolean().optional().describe('是否為試玩，不帶則沿用既有值'),
-                squareImages: imageUploadSchema.describe('方形圖，每個要更新的語言各帶一組 {code, filePath}，不帶則沿用既有值'),
+                squareImages: imageUploadSchema.describe('方形圖，每個要更新的語言各帶一組 {code, filePath} 或 {code, fileId}（二選一），不帶則沿用既有值'),
                 rectangleImages: imageUploadSchema.describe('直方圖，格式同 squareImages'),
                 bannerImages: imageUploadSchema.describe('橫幅圖，格式同 squareImages'),
             },

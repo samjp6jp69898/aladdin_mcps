@@ -95,6 +95,19 @@ function isHostedIdentity(): boolean {
 }
 
 /**
+ * H9：暴露目前呼叫身分的字串形式，供 tools（edit_game.ts）解析 fileId → 本機
+ * 路徑時比對身分（見 files.ts 的 resolveFileIdForIdentity）。stdio 模式的
+ * STDIO_IDENTITY 是 Symbol，不是任何合法的名冊 id，回傳 undefined——這對應
+ * 到「stdio 模式本來就不會有合法 fileId 可用」的事實（POST /files 只存在於
+ * hosted 的 http.ts），消費端據此直接判斷沒有身分可用，而不是誤把 Symbol
+ * 字串化後的值當成一個假的身分 key。
+ */
+export function currentIdentityForFiles(): string | undefined {
+    const id = currentIdentity();
+    return typeof id === 'string' ? id : undefined;
+}
+
+/**
  * per-identity 登入態容器（D2）。只存 agrabah JWT（D3：絕不存帳密）。
  * key 是 H3 名冊唯一 id 或 STDIO_IDENTITY，不是顯示名。
  */
