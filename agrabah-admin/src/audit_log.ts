@@ -43,6 +43,16 @@
  * fd 延遲到第一次真的要寫入時才開（ensureOpen），不在 import 當下就有檔案
  * I/O 副作用：只是 import 這個模組（例如被 auth.ts 靜態 import）不該無條件在
  * 檔案系統留下東西，只有真的觸發一次 auth_failure 或 request 事件才會開檔。
+ *
+ * best-effort：稽核 I/O（open/rotate/write 任一步）失敗一律在 appendLine()
+ * 內部 catch 掉、console.error 記錄，絕不上拋給呼叫端——這個模組是輔助設施，
+ * 不能因為磁碟滿了或權限問題就讓正常的業務 request 跟著失敗（http.ts 在
+ * finally 區塊呼叫 logAuthenticatedRequest，若這裡拋出會蓋掉 next() 的
+ * 成功回應變 500；若 next() 本身已拋出，finally 再拋新例外依 JS 語意會取代
+ * 原始例外）。失敗後把 fd 重置為 null，讓下一次呼叫的 ensureOpen() 自動
+ * 重新 mkdir+open，不需要重啟行程——這對「輪替中途失敗」尤其重要：
+ * closeSync 已執行但 renameSync/openSync 還沒成功時，若不重置 fd，模組會
+ * 卡在「已關閉但非 null」，之後所有稽核寫入永久失敗直到重啟。
  */
 
 import { openSync, closeSync, renameSync, writeSync, fstatSync, mkdirSync } from 'node:fs';
@@ -77,9 +87,35 @@ function rotateIfNeeded(): void {
     fd = openSync(LOG_PATH, 'a');
 }
 
+/**
+ * best-effort 寫入：稽核 log 是輔助設施，不是業務正確性的一部分——任何一步
+ * （ensureOpen 的 mkdirSync/openSync、rotateIfNeeded 的 fstatSync/closeSync/
+ * renameSync/openSync、最後的 writeSync）失敗都只能 console.error 記錄後吞掉，
+ * 絕不能讓例外往上傳給呼叫端（http.ts 在 finally 區塊呼叫，例外會蓋掉
+ * next() 的成功回應變成 500；若 next() 本身已拋出，finally 內再拋新例外依
+ * JS 語意會取代原始例外，讓真正的錯誤原因對維運不可見）。
+ *
+ * 失敗時一律把 module-level `fd` 重置為 null：不論失敗發生在哪個階段
+ * （包含輪替中途 closeSync 已執行、renameSync/openSync 尚未成功的窗口），
+ * 下次呼叫的 ensureOpen() 只認 `fd === null` 這個條件就會重新 mkdir+open，
+ * 不會卡在「已關閉但非 null」的狀態一路失敗到行程重啟——這就是自我修復。
+ * 重置前先嘗試 closeSync 舊 fd（同樣包 try，失敗也吞掉）避免 fd 洩漏。
+ */
 function appendLine(record: Record<string, unknown>): void {
-    rotateIfNeeded();
-    writeSync(fd as number, `${ JSON.stringify(record) }\n`);
+    try {
+        rotateIfNeeded();
+        writeSync(fd as number, `${ JSON.stringify(record) }\n`);
+    } catch (err) {
+        if (fd !== null) {
+            try {
+                closeSync(fd);
+            } catch {
+                // 連 close 都失敗：忽略，反正下面就要把 fd 重置成 null 放棄這個描述符。
+            }
+        }
+        fd = null;
+        console.error(`[audit_log] 稽核寫入失敗（best-effort，不影響本次 request，下次寫入會自動重開檔案）：${ err instanceof Error ? err.message : String(err) }`);
+    }
 }
 
 // -------- 每個 request 的稽核累積狀態（tool 呼叫 / /login 成功時回填） --------

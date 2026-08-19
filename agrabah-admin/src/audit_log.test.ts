@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Hono, type Context } from 'hono';
@@ -176,5 +176,46 @@ describe('audit_log — 輪替', () => {
 
         const backupLines = readLines(`${ path }.1`);
         expect(backupLines.length).toBeGreaterThan(0); // .1 確實保留了被輪替出去的舊內容
+    });
+});
+
+describe('audit_log — best-effort：I/O 失敗不影響 request，且能自我修復', () => {
+    test('輪替中途失敗（目錄不可存取）：不拋例外；目錄恢復可存取後下一次寫入自動修復，不必重啟、不必等待', async () => {
+        const c = await fakeContext({ path: '/mcp' });
+
+        // 用 chmod 0o000（連 execute/search 權限都收回）注入一個確定性的失敗：
+        // 這會讓「路徑解析」全部失敗（renameSync 的來源/目的地、ensureOpen()
+        // 內 fd===null 時要重開的 openSync），但不影響已經開啟的 fd 本身
+        // （fstatSync/closeSync 只操作 fd 數字、不需要路徑解析，仍會成功）——
+        // 精準對應 review 指出的風險 (c)：closeSync 之後、openSync 之前失敗。
+        // 這是可注入、可重現的失敗，不靠 sleep/時間；下面的「自我修復」驗證
+        // 也是靠 chmod 改回可寫這個明確的狀態變化，不是等出來的。
+        chmodSync(testDir, 0o000);
+        try {
+            // MAX_BYTES=500，每行約 100+ bytes：不論這個測試開始時當前檔已經
+            // 多大，15 行（最壞情況從 0 開始也遠超過 500 bytes）都保證期間至少
+            // 觸發一次輪替嘗試，而輪替嘗試在目錄被鎖住時必定失敗。
+            expect(() => {
+                for (let i = 0; i < 15; i++) {
+                    runWithAuditAccumulator(() => {
+                        setAuditTool(`blocked_${ i }`, 'success');
+                        logAuthenticatedRequest(c as never, 'Landon', performance.now());
+                    });
+                }
+            }).not.toThrow(); // best-effort：即使底層 I/O 全部失敗，呼叫端也拿不到例外
+        } finally {
+            chmodSync(testDir, 0o700); // 還原可寫，供下面驗證自我修復
+        }
+
+        // 目錄恢復可存取後，緊接著（同一個同步測試流程內，沒有任何等待）呼叫
+        // 一次，應該直接成功並寫進檔案——證明 appendLine 失敗後有把 fd 重置成
+        // null，下次呼叫的 ensureOpen() 會自動重新 mkdir+open，不需要重啟行程。
+        runWithAuditAccumulator(() => {
+            setAuditTool('healed_after_chmod_back', 'success');
+            logAuthenticatedRequest(c as never, 'Landon', performance.now());
+        });
+
+        const lines = readLines(auditLogConfigForTests().path);
+        expect(lines.some(l => l.tool === 'healed_after_chmod_back')).toBe(true);
     });
 });
