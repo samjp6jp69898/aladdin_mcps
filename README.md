@@ -9,11 +9,18 @@
 | `agrabah-admin` | admin（系統管理後台） | `mcps/agrabah-admin` |
 | `agrabah-platform` | platform（平台管理後台） | `mcps/agrabah-platform` |
 
-以上兩個 server 目前是 stdio transport，只有工程師本機能跑。給沒有公司原始碼的
-企劃用的 hosted 版零原始碼 starter kit 範本在 `mcps/starter-kit/`（H16；六個檔案：
-`README.md`／`CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／
-`.gitignore`，另有 `.claude/skills/{login,upload-image}/` 兩個待 H17／H18 實作的
-skill 佔位目錄）。hosted 化的完整背景、決策與 task 拆解見
+以上兩個 server 現在**同時支援兩種 transport**：
+
+- **stdio**（原始形態）：只有工程師本機、有公司原始碼的環境能跑，host 直接
+  spawn 子行程。第一節「基礎架構」與第三節「安裝與連線」預設講的就是這個模式。
+- **hosted**（H1 起新增；`_hosted-rollout/plan.md` D1-D13）：Streamable HTTP，
+  常駐工程師機器，經 `telegram-dispatcher` 既有 ngrok domain 分流，給沒有公司
+  原始碼的企劃用。詳見本節最後的「Hosted 模式」小節與差異對照表。
+
+給企劃用的零原始碼 starter kit 在 `mcps/starter-kit/`（H16-H17；`README.md`／
+`CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／`.gitignore`／
+`.claude/skills/{login,upload-image}/`，登入 skill 已由 H17 實作，上傳圖片 skill
+是 H18，本輪撰寫本文件時仍是 pending）。hosted 化的完整背景、決策與 task 拆解見
 `mcps/_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
 
 ---
@@ -62,6 +69,83 @@ body: <raw bytes>   ← 沒有明確設定 Content-Type
 - 回應要先 XOR 解碼、再拆兩層 protobuf decode（外層 `GenieResponse` + 內層真正的 response type），這種巢狀 decode postman 的內建 protobuf 檢視器不支援。
 
 我們現在直接重用 `genie/client` + `remote.gen.ts`，本質上就是把上面這一整套手工步驟省掉——這也是為什麼選這條路而不是自己刻 HTTP client。如果真的想拿 Postman 驗證，比較實際的做法是先寫一支跟 MCP tool 邏輯一樣的小 bun script（比照 `abu/.claude/skills/test-method`），不透過 Postman。
+
+### Hosted 模式（企劃端遠端連線）
+
+上面整節談的是 stdio 模式。hosted 模式是 H1 起新增的第二個進入點（各 server 的
+`src/http.ts`，與 `stdio.ts` 並存），目的是讓沒有公司原始碼的企劃能用 Claude
+Code 桌面版直接操作，而不必在自己機器裝一份原始碼齊全的子行程。tool 程式碼
+（`tools/*.ts`）完全共用、不重寫（D8）；`http.ts` 只負責認證、傳輸層與兩支
+REST 端點。
+
+**請求鏈路**：
+
+```
+企劃 Claude Code（starter kit，零原始碼）
+  │ .mcp.json: url + headers.Authorization: Bearer <個人 token>
+  ▼
+https://<既有 ngrok domain>/mcp-admin-dev（或 -pre / -evi / /mcp-platform / /toolsmith）
+  │  telegram-dispatcher/server.ts 的 5 條 path 分流 proxy（H14；純轉發，剝掉
+  │  前綴後打 http://localhost:<port>，見下表；純轉發不驗證身分，Authorization
+  │  header 原樣往下傳，認證在下一跳的 hosted server 才發生）
+  ▼
+localhost:<port>  agrabah-admin 或 agrabah-platform 的 http.ts
+（Hono + Streamable HTTP，stateless；每個 request 各自 new 一個 McpServer+transport）
+  │  Bearer 認證 middleware（auth.ts）：token 名冊是獨立 JSON 檔，現讀 + mtime
+  │  快取，撤銷/新增 token 不需重啟行程；驗證通過後解出「這個 request 屬於哪位
+  │  企劃」（名冊唯一 id，不是顯示名）
+  │  → per-token 登入態容器（session.ts：AsyncLocalStorage 把 identity 灌進整個
+  │    request 處理範圍 + module-level `sessions: Map<identity, {token}>`；只存
+  │    agrabah JWT，絕不存帳密——D3）
+  ├─ POST /login   REST 端點（非 MCP tool）：企劃端登入 skill 用 shell 從本機
+  │                .env 展開帳密直接 curl 這支，密碼全程不進 LLM 對話紀錄、
+  │                server 也不落地（D4）；成功後 JWT 存進上面的 per-token 容器
+  ├─ POST /files   圖片上傳，multipart → 回 fileId（files.ts）：型別以 magic
+  │                bytes 判定（僅 png/jpeg/webp）、身分綁定、單人/全域配額、
+  │                15 分鐘週期清理過期檔（D5）
+  ├─ GET  /health  不驗證任何東西，供 launchd/監控探測（不透露服務身分）
+  └─ POST /mcp     MCP tools：跟 stdio 模式同一套 `registerAdminTools`/
+                   `registerPlatformTools`（tools/index.ts），只是 hosted 模式
+                   不掛 login tool（見下方差異表）；每支 tool 內部呼叫
+                   `remote.<group>.<service>.<Method>` 時，session.ts 的
+                   headerHandler 會依當下 AsyncLocalStorage 內的 identity 帶對
+                   應的 JWT，不同企劃併發呼叫互不干擾
+  ▼
+agrabah Gate（依 token 綁定的環境：dev/pre/evi）HTTP /api/:group/:service/:method
+（同一套 genie/client + remote.gen.ts + protobuf/XOR 機制，見上方「我們怎麼打進
+agrabah dev server」與「HTTP request 實際長怎樣」兩節，hosted 與 stdio 完全共用）
+```
+
+proxy 前綴與本機 port 對照（`telegram-dispatcher/server.ts` 的 `PROXY_ROUTES`）：
+
+| Proxy 前綴 | 本機 port | 服務 |
+|---|---|---|
+| `/mcp-admin-dev` | 8789 | agrabah-admin，dev 環境 |
+| `/mcp-admin-pre` | 8791 | agrabah-admin，pre（企劃口中的 cqa）環境（H35） |
+| `/mcp-admin-evi` | 8792 | agrabah-admin，evi 環境（H35） |
+| `/mcp-platform` | 8790 | agrabah-platform（本輪僅 dev，D13 明訂不擴充） |
+| `/toolsmith` | 8788 | agrabah-toolsmith，見 `mcps/agrabah-toolsmith/README.md` |
+
+`agrabah-admin` 支援多環境（每個 Bearer token 綁定單一環境，token 名冊互不相交）；
+`agrabah-platform` 本輪只有 dev 一組實例。詳細環境清單與網址見
+`mcps/agrabah-admin/README.md` 的「支援環境清單」一節。
+
+### stdio 與 hosted 差異對照
+
+| | stdio | hosted |
+|---|---|---|
+| 使用者 | 工程師本機，有公司原始碼 | 企劃，零原始碼（starter kit） |
+| transport | host 直接 spawn 子行程（stdin/stdout） | Streamable HTTP，經 tg-dispatcher proxy 轉發 |
+| 登入方式 | `agrabah_admin_login`/`agrabah_platform_login` tool，或 env 帳密自動登入 | `POST /login`（REST，非 tool），帳密不進對話紀錄（D4） |
+| login tool 是否註冊 | 有（`registerAdminTools(server, 'stdio')`，見 `tools/index.ts`） | 停用（`mode === 'hosted'` 時不掛，H7） |
+| 登入態存放 | process 記憶體單一隱含身分（`STDIO_IDENTITY` Symbol） | per-token 容器（`sessions: Map<identity, {token}>`），identity 來自 Bearer token（H5） |
+| JWT 過期行為 | `withAutoRelogin` 用 env 帳密自動重登，行為不變 | 回 `HOSTED_RELOGIN_REQUIRED_MESSAGE` 明確信號，不嘗試自動重登（server 不留帳密），交由企劃端登入 skill 重跑 `/login`（H7） |
+| 圖片上傳參數 | `{code, filePath}`（本機絕對路徑） | `{code, fileId}`（先 `POST /files` 上傳取得，H9） |
+| 帳密存放位置 | 工程師的 `.mcp.json` 的 `env` | 企劃自己機器的 `.env`（server 端只留 JWT，D3） |
+| 誰能用 | 有原始碼與 `.mcp.json` 存取權的工程師 | 名冊裡有 token 的企劃（各 server 各自一份 `tokens.json`，互不相交） |
+| 部署方式 | 無需部署，host 每次重啟自行 spawn 子行程 | launchd 常駐（`launchd/run-server*.sh` + plist）+ tg-dispatcher proxy 分流常駐 |
+| 多人共用同一常駐服務 | 天生不支援（各自獨立子行程，見下方「環境限制」） | 支援，同一常駐服務、per-token 隔離登入態，多企劃可併發（D2） |
+| 多環境/多平台 | 一份 `.mcp.json` 對應固定的一組 env 值 | `agrabah-admin` 角色 dev/pre/evi 三組獨立實例+獨立 token 名冊；`agrabah-platform` 本輪僅 dev（D13） |
 
 ---
 
@@ -143,11 +227,46 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 
 補上新 tool 到「已支援 tool 清單」表格，以及任何新發現的已知限制。
 
+### Hosted 模式下的額外注意事項
+
+上面六步驟對 hosted 模式仍然完全適用，`stdio.ts` 與 `http.ts` 共用同一份
+`register<Admin|Platform>Tools`（見 `tools/index.ts`），新 tool 一經掛上就對
+兩種 transport 同時生效，不需要為 hosted 另外寫一份 tool 程式碼。但寫 tool
+時要留意：
+
+- **驗證方式**：第 5 步「真的打一次 dev 驗證」預設是透過 stdio（Claude Code
+  spawn 子行程，或 SDK inspector）。這只驗證了 tool 邏輯本身；hosted 模式多
+  一層 Bearer 認證 + per-token 登入態，這層邏輯是 `http.ts`/`session.ts`/
+  `auth.ts` 共用的既有機制，新 tool 通常不需要額外驗證這層，除非新 tool 本身
+  改動了 session.ts 或新增了認證相關行為。
+- **身分/認證相關的敘述要對兩種模式都成立**：tool description 若提到「登入」
+  「帳密」，不要預設一定有 env 帳密可用（hosted 模式沒有，見 `ensureLoggedIn`/
+  `withAutoRelogin` 的雙模式分支，`session.ts`）。
+- **圖片類參數**：比照 `edit_game.ts`/`onboard_vendor_game.ts` 的
+  `{code, filePath}`/`{code, fileId}` 二選一設計（H9），不要只做 stdio 的
+  `filePath` 就視為完成。
+- **寫入類 tool 若未來要在 `agrabah-admin` 的 prod 實例啟用**：要接上
+  `assertProdConfirmed`/`confirm` 參數（H36 的伺服器端強制閘門，見
+  `mcps/agrabah-admin/src/session.ts` 的 `assertProdConfirmed`），不要漏接；
+  `agrabah-platform` 本輪沒有這個機制（D13 非目標）。
+- **重載生效**：改完 tool 程式碼後，stdio 模式下 Claude Code 下次重新 spawn
+  子行程即生效；hosted 模式要重啟對應環境的常駐 http server 行程（尚未
+  `launchctl bootstrap` 前是手動 `run-server*.sh`，之後才是 `launchctl`
+  重啟，見各 server README 的「launchd 常駐骨架」一節）。
+
 ---
 
 ## 三、安裝與連線
 
-因為是 stdio transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部署一個網路服務。
+以下是 **stdio 模式**（工程師本機、有公司原始碼）的安裝方式：因為是 stdio
+transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部署一個網路服務。
+
+**hosted 模式**（企劃端，零原始碼）不需要做以下任何步驟：直接使用
+`mcps/starter-kit/`（見該目錄 `README.md`），由工程師手動複製整份 kit、依授權
+範圍填入該企劃的個人 Bearer token 與對應環境的 URL 後交付（自動化的
+`make-starter-kit` 產生器是 `_hosted-rollout/plan.md` §4.5 提到的後續 task，本文
+撰寫時尚未實作）。企劃端只需要 Claude Code 桌面版，不需要 `bun install`、不需要
+公司原始碼、也不需要下面任何一步。
 
 ### 步驟
 
@@ -174,8 +293,8 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 
 ### 環境限制
 
-- 每個人的 Claude Code 都各自 spawn 一份獨立子行程，帳密要自己在 `.mcp.json` 填一份——**這個架構天生不是多人共用同一個常駐服務**。這是刻意選擇：省掉認證/TLS/防火牆這些網路層問題，代價是不能共用登入態。
-- 依賴 `abu/admin`、`abu/platform` 這兩個前端專案已經跑過 `bun install`（`node_modules/genie` 要存在且是可用的 symlink）——沒跑過的環境要先進對應前端專案裝一次。
+- 每個人的 Claude Code 都各自 spawn 一份獨立子行程，帳密要自己在 `.mcp.json` 填一份——**stdio 模式天生不是多人共用同一個常駐服務**。這是刻意選擇：省掉認證/TLS/防火牆這些網路層問題，代價是不能共用登入態。這個限制只存在於 stdio 模式；hosted 模式（見第一節「Hosted 模式」）用 per-token 登入態容器解決了這個問題——同一個常駐 http server 行程可以被多位企劃併發使用，各自的登入態互不干擾（D2）。stdio 與 hosted 兩種模式並存，不是後者取代前者：工程師本機開發/除錯仍走 stdio。
+- 依賴 `abu/admin`、`abu/platform` 這兩個前端專案已經跑過 `bun install`（`node_modules/genie` 要存在且是可用的 symlink）——沒跑過的環境要先進對應前端專案裝一次。這條對 hosted 模式的 http server 同樣成立（http.ts 跟 stdio.ts 一樣用絕對路徑 import 這兩個前端專案），只是 hosted 模式下這個安裝步驟由工程師在部署常駐服務時做一次，企劃端完全不需要碰。
 - 依賴這些前端專案的 rajah 生成檔案（`src/generated/remote.gen.ts` 等）是最新的——如果 rajah 改了欄位但前端沒重新 generate，MCP 這邊會跟著讀到舊定義。
 
 ### 除錯

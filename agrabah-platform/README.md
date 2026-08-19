@@ -27,9 +27,15 @@
 
 ```
 src/
-  stdio.ts          — MCP entry point
-  session.ts         — 登入態管理（含 uploadFile），所有 tool 共用（結構同 agrabah-admin，各自獨立一份，未共用套件）
+  stdio.ts          — MCP entry point（stdio transport）
+  http.ts            — MCP entry point（hosted，Streamable HTTP；Bearer 認證、/login、/files、/health、/mcp，見 ../README.md「Hosted 模式」；結構同 agrabah-admin，各自獨立一份，未共用套件）
+  auth.ts             — Bearer token 名冊載入與認證 middleware（hosted 專用）
+  session.ts         — 登入態管理（含 uploadFile，per-identity 容器），所有 tool 共用（結構同 agrabah-admin，各自獨立一份，未共用套件；platform 沒有 IS_PROD/confirm 機制，D13 非目標）
   const.ts            — 所有 tool 共用的 rajah enum 對照表與錯誤碼（ACTIVE_STATUS_MAP、IMAGE_SHAPE_MAP...），集中管理避免各 tool 各自重複一份
+  files.ts            — POST /files 暫存目錄管理（型別白名單、身分綁定、配額、週期清理），hosted 專用
+  instructions.ts     — hosted `/mcp` 的 McpServer instructions
+  login_throttle.ts   — /login 帳號層節流（冷卻期），hosted 專用
+  audit_log.ts        — 稽核 log（H32；每個通過認證的 request 寫一行）
   mcp_result.ts       — MCP tool 回傳值包裝
   tools/
     index.ts           — 聚合所有 register*Tool
@@ -52,7 +58,7 @@ src/
 ## 已知限制
 
 - `agrabah_platform_list_vendor_games` 只開放 `gameVendorId`/`name`/`status` 三個篩選欄位；`displayTag`/`frontendGroupTag`/`rebateTag`/`badgeId` 這些下拉篩選需要另外查對應清單（`ListAllGameDisplayTags`/`ListAllGameRebateTags`/`GetBadgeList` 等），尚未實作。
-- `agrabah_platform_onboard_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，見下）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
+- `agrabah_platform_onboard_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，先呼叫 `POST /files` 上傳取得，見 `../README.md`「Hosted 模式」）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **H9：`onboard_vendor_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**，設計與實測方式與 `agrabah-admin` 的 `edit_game.ts` 逐字相同，完整說明見 `../agrabah-admin/README.md` 同一段（D5/§4.3；`fileId → 本機路徑` 的三層防護：regex 格式白名單 + registry `Map` 精確比對 + realpath 二次確認）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
 

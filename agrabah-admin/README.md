@@ -19,9 +19,15 @@
 
 ```
 src/
-  stdio.ts          — MCP entry point
-  session.ts         — 登入態管理（Client.encoded、Remote 實例、login/ensureLoggedIn/withAutoRelogin/uploadFile），所有 tool 共用
+  stdio.ts          — MCP entry point（stdio transport）
+  http.ts            — MCP entry point（hosted，Streamable HTTP；Bearer 認證、/login、/files、/health、/mcp，見 ../README.md「Hosted 模式」）
+  auth.ts             — Bearer token 名冊載入與認證 middleware（hosted 專用）
+  session.ts         — 登入態管理（Client.encoded、Remote 實例、login/ensureLoggedIn/withAutoRelogin/uploadFile，per-identity 容器），所有 tool 共用；也是 IS_PROD/confirm 閘門所在
   const.ts            — 所有 tool 共用的 rajah enum 對照表與錯誤碼（WALLET_TYPE_MAP、GAME_TAG_MAP、IMAGE_SHAPE_MAP...），集中管理避免各 tool 各自重複一份
+  files.ts            — POST /files 暫存目錄管理（型別白名單、身分綁定、配額、週期清理），hosted 專用
+  instructions.ts     — hosted `/mcp` 的 McpServer instructions（依 IS_PROD 動態組字）
+  login_throttle.ts   — /login 帳號層節流（冷卻期），hosted 專用
+  audit_log.ts        — 稽核 log（H32；每個通過認證的 request 寫一行，含 tool 名稱/結果/agrabah identifier）
   mcp_result.ts       — MCP tool 回傳值包裝
   tools/
     index.ts           — 聚合所有 register*Tool，不放業務邏輯
