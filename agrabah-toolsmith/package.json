@@ -1,0 +1,19 @@
+{
+  "name": "agrabah-toolsmith-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server（骨架階段）：企劃自助擴充 agrabah-admin / agrabah-platform 新 tool 的中介服務，收到 agrabah_toolsmith_generate_tool 呼叫後應觸發工程師本機的 sub-agent 完成研究/實作/驗證——本階段（H22）只做傳輸層骨架與認證，sub-agent 執行邏輯是未來 task 的範圍，目前一律回傳假資料。",
+  "scripts": {
+    "start:http": "bun src/http.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "hono": "^4.13.2",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
