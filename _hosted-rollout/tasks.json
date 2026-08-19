@@ -67,6 +67,14 @@
     {
       "date": "2026-08-19",
       "note": "H33 REFUTED 結論回報使用者後，使用者拍板 H34 改走「per-call platformId 參數」方向（原 select_platform + session state 方案確認廢棄）：環境維度維持一環境一實例不變；平台維度逐 RPC 判斷——有平台參數的 RPC 包成 tool 時 platformId 為必填參數（新增 list_platforms / list_platform_game_vendors / update_platform_game_vendor_status 三支），母表類 tool 在 description 明講全平台共用；並移除無效的 platform-code header。已同步修訂：plan.md D13、tasks.json 的 H34（全面改寫）/ H35（select_platform 引用移除）/ H36（confirm 閘門擴為四支寫入 tool，涵蓋新增的 update_platform_game_vendor_status）/ H16（多環境提醒文字）/ multi-env-admin 模組描述。H33 的歷史記錄與 findings 檔按原樣保留不改。"
+    },
+    {
+      "date": "2026-08-19",
+      "note": "H7 完成（commit 1e698bd9）：withAutoRelogin 雙模式 + hosted 停用 login tool。\n\n【實作】session.ts（admin/platform 對稱）新增 isHostedIdentity()（currentIdentity() !== STDIO_IDENTITY symbol），ensureLoggedIn()/withAutoRelogin() 依此分流：stdio 維持 env 帳密自動重登；hosted 一律 throw 固定常數訊號（const.ts 新增 HOSTED_RELOGIN_REQUIRED_MESSAGE='登入態已失效，請重新登入後重試'）。MCP SDK CallToolRequest handler 只序列化 error.message 進 isError:true（親查 SDK mcp.js:135-160），天然不含堆疊。login tool 停用：tools/index.ts 的 registerAdminTools/registerPlatformTools 加 mode: 'stdio'|'hosted' 參數（預設 'stdio' 向後相容），只有 stdio 註冊 login；stdio.ts/http.ts 各自顯式傳模式。未動 H11 範圍（LOGIN_REQUIRED_ERROR_CODE 魔術數字仍在，只加分支不改判斷）。五條 AC 全過（實測用真 MCP SDK client 打 8789/8790 + stdio）。\n\n【實測踩坑，重要】agrabah_platform_list_game_vendors 不帶篩選時走 GameVendorPlatform.ListAllGameVendors（game_back_office.rajah:1043），該 service 的 @Permission 是註解掉的且此 method 自身無 @Permission——Gate 對它完全不驗登入態，帶壞 JWT 照樣回真實資料；要測登入態必須帶 status filter 逼走有 @Permission 的 ListGameVendors 分支。後續任何要驗證登入/權限行為的 task 都要注意這類「無 @Permission 方法不驗登入」的陷阱。\n\n【三方審查全 PASSED】(1) 正確性/範圍（三條邊界路徑逐一追蹤正確；hosted 重登後 login() 覆蓋 Map 舊值自我修復；admin/platform 逐字對稱；無測試殘留；stdio 路徑與改動前等價）。(2) 實跑驗證（hosted tools/list 4/3 支無 login、stdio 5/4 支含 login、從未登入身分呼叫 tool 回精確訊號無堆疊、登入後正常拿資料、stdio env 自動登入回歸過）。(3) 安全審查（Gate 對 JWT 失效統一只回 103（gate_handler_base.ts:281-289，判斷 userCode==='0'），只攔 103 完整無漏攔；104=permissionDenied 刻意不攔正確；login 停用是註冊層級真停用（不在 _registeredTools，tools/call 直呼被 SDK InvalidParams 擋下，非僅列表隱藏）；第二層防線：launchd run-server.sh:29-32 刻意不匯出帳密 env，hosted 行程記憶體根本沒有工程師憑證可被誤用）。安全審查留一開放問題：Bun 下 ALS 對 fetch/stream transport 的 context 傳遞是否任何情況都不遺失——H5 當時已做過真實 wire-level 併發交錯驗證零串號，視為已覆蓋；若未來升級 Bun 大版本建議重跑一次 H5 的 spike。\n\n【流程記錄】h7-impl 自報「測完關閉 server」但實際 8789/8790 兩個 process 未關（被 review agent 發現），由派工 session 清理。後續 task 的完成自查應包含 lsof 驗證 port 已釋放。tsc --noEmit 有大量 pre-existing 錯誤（zod 版本、remote.gen.ts 生成型別），與本次改動無關，本次改動涉及行不在錯誤清單。"
+    },
+    {
+      "date": "2026-08-19",
+      "note": "H24 完成（commit 9e8a309e 初版 findings + 95a62540 依審查回饋修訂）：toolsmith 端到端真實測試（題目：新增唯讀 tool 呼叫 GameVendorAdmin.ListAdapters）。詳見 toolsmith-e2e-findings.md，摘要：\n\n【結果】真 MCP client 呼叫 agrabah_toolsmith_generate_tool，173 秒 success:true。五條 AC：4 過 1 誠實記錄落差——(1) 過；(2) 過（生成的 list_adapters.ts/tools/index.ts/README.md 符合公版骨架，rajah 註解精確到行號，tsc 對新檔零錯誤）；(3) realDirsTouched 回 true 但為假陽性：解析 sub-agent 完整 transcript（146 行 jsonl）證實其全部 7 次 Edit/Write 都在 scratch/ 底下，多出的 diff 是同時段 H7 並行開發的真實改動（git 時間軸與檔案清單雙重吻合）；(4) 本次最大產出——sub-agent 自報「打 dev 拿到 37 個 adapter」經逐字比對 transcript 原始輸出與 const.ts KNOWN_ADAPTERS 完全一致（數量/內容/順序），自報屬實；但樣本僅 1、唯讀小範圍情境，不可外推到寫入型任務；(5) scratch 結構與 700 權限符合設計。\n\n【三方審查】讀回驗收 PASSED、transcript 證據獨立重驗 VERIFIED（審查者自行 parse transcript、自行比對 37 adapter、親跑 tsc、git 時間軸複核 H7 歸因）、設計分析 MIXED→已修訂：findings 補上 realDirsTouched 的 false negative 分析（比誤報更嚴重：spawn 前已髒的檔案被 sub-agent 再改動時 git status 字串不變、完全偵測不到——並行改動同時在遮蔽真違規；gitignored 路徑寫入回 false 的盲區；null-fallback 刻意漏報），並修正原「隔離 worktree」建議的範疇誤判（run-agent.ts 給 sub-agent 的是硬編碼絕對路徑 + bypassPermissions，worktree 擋不住直接寫入；結構性防止=OS 層級沙箱，應為獨立決策項）。\n\n【給 H25 的修正優先序（已寫入 findings）】(1) realDirsTouched 從 boolean 改回傳實際變動路徑清單（成本近零）；(2) 自動解析 sub-agent 自身 transcript 產生不受同機併發影響的 realDirsTouchedByThisAgent 訊號（本次人工驗證方法的自動化；解析失敗 fallback 不 fail-closed）；(3) mtime 時間窗加固（可修已髒檔案盲區；涵蓋 gitignore 盲區需明確決定不套用 .gitignore）；(4) worktree/沙箱化降級為獨立決策項。另：realDirsTouched 目前不可靠，H25 不應直接拿它做自動化部署判斷；sub-agent 自報可信度本次為正面訊號但僅唯讀情境樣本 1。"
     }
   ],
   "architecture_summary": "企劃 Claude Code 桌面版（Mac/Win，零公司原始碼，只有 starter kit：.mcp.json 填 URL + 個人 Bearer token、.env 放自己的 agrabah 帳密、兩支 skill 負責登入與上傳圖片）→ HTTPS 打 telegram-dispatcher 既有 ngrok domain → /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 依 path 分流 proxy 三條 route（/mcp-admin/* → localhost:8789、/mcp-platform/* → localhost:8790、/toolsmith/* → localhost:8788；TG webhook guard 不得攔到這三條）→ 各 hosted server（Hono + WebStandardStreamableHTTPServerTransport，stateless MCP transport）先過 Bearer 認證 middleware（timingSafeEqual，token → 企劃身分），再依 token 取得該人的登入態（D2：Map<bearerToken, 登入態>；D3：記憶體只留 agrabah JWT，絕不留帳密）→ 登入不走 MCP tool 而走 POST /login REST 端點（D4，密碼由企劃端 shell 從本地 .env 展開，不進 LLM 對話紀錄）；圖片走自家 POST /files multipart 回 fileId（D5），圖片類 tool 參數 hosted 吃 fileId、stdio 保留 filePath 向後相容 → tool 實作沿用現有扁平的 src/tools/*（D8），stdio.ts 與 http.ts 雙進入點共用同一組註冊函式 → 最終打 agrabah Gate（dev）HTTP POST /api/:group/:service/:method（protobuf + XOR，經 genie client，見既有 session.ts）。錯誤語意不硬編魔術數字，改 import rajah 對 abu 生成的 error 定義並把後端錯誤名稱原樣透傳（D10）；harness 只做事實診斷、不引導跨後台操作（D11），權限硬防線是 agrabah 後端 @Permission ＋ admin/platform 兩台獨立發 token。agrabah-toolsmith（/Users/user/.claude/plans/logical-jumping-cook.md 原設計）沿用 Phase 1-5、7-8，交付端依 D9 改為把生成的 tool 部署到 hosted server 並重載，全企劃立即可用。一切僅限 dev 環境。",
@@ -271,7 +279,7 @@
       "id": "H7",
       "module": "auth-login",
       "title": "hosted 模式的重登信號與 login tool 停用（withAutoRelogin 雙模式）",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "H5",
         "H6"
@@ -668,7 +676,7 @@
       "id": "H24",
       "module": "toolsmith",
       "title": "toolsmith 端到端小範圍測試（真實跑一次 sub-agent 生成流程）",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "H23"
       ],
