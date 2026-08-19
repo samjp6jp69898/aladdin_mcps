@@ -832,7 +832,7 @@
         "風險清單逐項對照 plan.md §6 與 logical-jumping-cook.md 已知風險節，無遺漏，且每項標註緩解狀態（已緩解/部分緩解/已知未緩解）；description (4) 額外列出的四項 review 新增風險全部在列",
         "文件中不含任何真實 token 值"
       ],
-      "risk_notes": "",
+      "risk_notes": "【H18 實作階段發現，2026-08-19 追加】telegram-dispatcher proxy 對 /mcp-admin-*、/mcp-platform 路由的 body size 上限是 H31 設定的 1MB（DoS/記憶體防護考量），但 agrabah-admin/src/files.ts 的 POST /files 端點自己允許單檔最多 3MB（外層 bodyLimit 4MB，留 multipart overhead 餘裕）。1MB~3MB 的合法圖片會在 proxy 這一層就被攔下，且回應是空 body 401（proxy 的均一防線把非 401 以外的大 body 拒絕行為也套用了類似效果，實際回應需以 H18 實測為準），對企劃端呈現的是誤導性的『登入態失效』訊號而非『檔案太大』——這是一個真實會擋住合法上傳的功能性落差，不是單純的殘留風險。建議 H28 定案運維參數時，把 /mcp-admin-*、/mcp-platform 路由的 proxy body limit 從 1MB 提高到至少 4MB（對齊 files.ts 實際允許的上限），同時評估這個調整對 H31 原本 DoS 防護目標的影響是否可接受（body limit 放寬不影響 rate limit 這條防線，兩者是獨立機制）。",
       "suggested_agent": "general-purpose"
     },
     {
