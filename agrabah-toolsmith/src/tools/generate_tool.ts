@@ -5,29 +5,41 @@
  * （呼叫 RPC 用）區分開，見 /Users/user/.claude/plans/logical-jumping-cook.md
  * 第 2 節。
  *
- * 本檔（H22）只掛骨架：inputSchema 已依第 2 節定案，但 handler 尚未接上真正
- * 會 spawn 本機 sub-agent 的執行邏輯（agent/run-agent.ts、prompt-builder.ts、
- * concurrency-limiter.ts、collect-output.ts）——那是未來 task 的範圍。任何
- * 呼叫目前一律回傳固定假資料，不代表任何檔案已被實際生成、也沒有任何本機
- * agent 被觸發。
+ * H23：接上真正的執行邏輯（H22 骨架階段回的是固定假資料）。併發控制 + spawn
+ * sub-agent + 收集回傳值三層邏輯分別在 ../agent/{concurrency-limiter,
+ * run-agent,collect-output}.ts，這裡只是把三者串起來：
+ *   1. tryAcquire 拿不到名額 → 立刻回 busy（不排隊、不讓連線懸掛）。
+ *   2. spawn 前後各拍一次正式目錄的 git status 快照。
+ *   3. 同步 await run-agent 跑完（完成訊號來自 child process exit 的 Promise
+ *      resolve，不是輪詢/sleep）。
+ *   4. collectOutput 組裝最終回傳值。
+ *   5. finally 一定 release 名額，不管上面哪一步拋出例外。
  */
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { asTextResult } from '../mcp_result.ts';
+import { CONCURRENCY_LIMIT } from '../const.ts';
+import { createConcurrencyLimiter } from '../agent/concurrency-limiter.ts';
+import { runAgent } from '../agent/run-agent.ts';
+import { snapshotRealDirs, collectOutput } from '../agent/collect-output.ts';
+
+// 全 process 共用同一份額度，這個檔案是唯一消費者——tryAcquire 用在 handler
+// 開頭，release 用在 finally，不管成功/失敗/例外都會執行到。
+const limiter = createConcurrencyLimiter(CONCURRENCY_LIMIT);
 
 export function registerGenerateToolTool(server: McpServer): void {
     server.registerTool(
         'agrabah_toolsmith_generate_tool',
         {
-            title: 'Generate a new agrabah-admin / agrabah-platform tool (stub — currently returns fake data)',
+            title: 'Generate a new agrabah-admin / agrabah-platform tool',
             description:
                 '用自然語言描述想要 agrabah-admin 或 agrabah-platform 新增/擴充的能力。' +
-                '正式版本會在工程師本機觸發一個具有原始碼權限的 agent 完成研究/實作/驗證，' +
-                '回傳生成的完整檔案內容。**目前版本（骨架階段）尚未接上真正的執行邏輯，' +
-                '任何呼叫都會回傳固定的假資料**，不代表任何檔案已被實際生成、也沒有任何本機' +
-                'agent 被觸發，僅供驗證 MCP 協定層與認證是否正常。',
+                '會在工程師本機觸發一個具有原始碼權限的 agent 完成研究/實作/驗證，' +
+                '回傳生成的完整檔案內容（整份內容，不是 diff，可直接整檔覆蓋貼上）。' +
+                '任一時刻只服務一個請求（N=1 併發），忙碌中會立刻回傳 errorKind:"busy"' +
+                '（不排隊），執行時間可能長達數分鐘。',
             inputSchema: {
                 target: z.enum([ 'admin', 'platform' ]).describe('要擴充哪個後台的 MCP server：admin 或 platform'),
                 request: z.string().min(10).max(4000).describe('自然語言描述想要新增/擴充的能力，至少 10 字、至多 4000 字'),
@@ -35,19 +47,32 @@ export function registerGenerateToolTool(server: McpServer): void {
             },
         },
         async ({ target, request, notes }) => {
-            return asTextResult({
-                success: true,
-                requestId: `stub-${ Date.now() }`,
-                summary:
-                    `[骨架階段假資料] 收到 target=${ target } 的需求描述（${ request.length } 字` +
-                    `${ notes !== undefined ? '，含補充說明' : '' }），尚未執行任何 sub-agent，` +
-                    '此回應不代表任何檔案已被生成。',
-                files: [],
-                verification: { ran: false, notes: '骨架階段：未執行任何驗證，因為尚未觸發 sub-agent' },
-                warnings: [ '這是 H22 骨架 task 的固定假資料，真正的 sub-agent 執行邏輯尚未實作' ],
-                realDirsTouched: false,
-                durationSeconds: 0,
-            });
+            if (!limiter.tryAcquire()) {
+                return asTextResult({
+                    success: false,
+                    errorKind: 'busy',
+                    message: '目前已有另一個請求正在執行（N=1 併發上限），請稍後再試，不會排隊。',
+                });
+            }
+
+            try {
+                const before = snapshotRealDirs();
+                const agentResult = await runAgent({ target, request, notes });
+                const after = snapshotRealDirs();
+
+                const collected = collectOutput({
+                    requestId: agentResult.requestId,
+                    manifestPath: agentResult.manifestPath,
+                    outputDir: agentResult.outputDir,
+                    before,
+                    after,
+                    durationSeconds: agentResult.durationSeconds,
+                });
+
+                return asTextResult(collected);
+            } finally {
+                limiter.release();
+            }
         },
     );
 }
