@@ -57,8 +57,8 @@ zero-args：兩個動態資訊（要上傳到哪個環境、本機圖片檔案�
 
 ## 這支 skill 會做什麼
 
-1. 從 `.mcp.json` 用 `jq` 讀出目標環境的 URL 與 Bearer token（單一事實
-   來源，skill 內不另存第二份 token）。
+1. 從 `.mcp.json` 讀出目標環境的 URL 與 Bearer token（單一事實來源，skill
+   內不另存第二份 token）。
 2. 用 `curl -F`（透過 `curl --config -` 從 stdin 餵設定，token 不進 curl
    的命令列參數）把圖片以 multipart/form-data 上傳到
    `<目標環境 URL 前綴>/files`。

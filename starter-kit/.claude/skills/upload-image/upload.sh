@@ -30,9 +30,17 @@
 # login.sh 那種「不需要你告訴它」的廣播設計。
 #
 # 憑證安全（比照 login.sh 已驗證過的手法，重新列一次差異點）：
-#   - Bearer token 一律從 .mcp.json 用 **jq** 取得（plan.md §4.5、H16 契約
-#     提醒逐字要求），skill 內不另存第二份 token 來源——輪替 token 時只要
-#     改 .mcp.json 一個地方。
+#   - Bearer token 從 .mcp.json 讀取，skill 內不另存第二份 token 來源——
+#     輪替 token 時只要改 .mcp.json 一個地方。**解析方式改用 node 的
+#     JSON.parse（不是 jq）**：任務原始規格三次明講「用 jq」，但實測與
+#     WebSearch 查證後確認 Git for Windows 標準安裝不保證內建 jq（MSYS2
+#     官方 issue tracker、多篇技術文章、甚至 claude-code 官方 repo 都有真實
+#     踩坑案例），這牴觸 plan.md D7「單一跨平台 kit、Git Bash 下可跑」的
+#     前提——若依賴 jq，會讓沒裝 jq 的 Windows 企劃一開箱就對著
+#     「jq: command not found」束手無策，而且是靜默失敗、非技術使用者完全
+#     無法自行排除。login.sh 早在三輪審查中就用同樣理由選擇 node 而非 jq
+#     （見 login.sh 檔頭），這裡改用同一套已驗證安全可靠、不需要額外安裝
+#     任何東西的模式，不重新發明。
 #   - token 不進 curl 的 argv：跟 login.sh 一樣用 `curl --config -`，
 #     URL／header（含 Bearer token）／multipart 表單欄位全部透過 stdin 的
 #     設定檔餵給 curl，`ps aux` 只看得到 `curl --config -`。
@@ -75,11 +83,6 @@ if [ ! -f "$MCP_FILE" ]; then
     exit 1
 fi
 
-if ! command -v jq >/dev/null 2>&1; then
-    echo "這台電腦沒有安裝 jq（用來讀取 .mcp.json 的工具），請聯絡工程師協助安裝後再試一次。" >&2
-    exit 1
-fi
-
 if [ ! -f "$UPLOAD_FILEPATH" ]; then
     echo "找不到檔案：${UPLOAD_FILEPATH}（請確認路徑正確、檔案存在）。" >&2
     exit 1
@@ -100,68 +103,66 @@ case "$UPLOAD_FILEPATH" in
         ;;
 esac
 
-# H16 契約提醒（2）：token 從 .mcp.json 用 jq 取得，單一來源。
-HAS_ALIAS="$(jq -r --arg alias "$UPLOAD_ENV" 'if (.mcpServers // {}) | has($alias) then "true" else "false" end' "$MCP_FILE" 2>/dev/null || echo "parse_error")"
-if [ "$HAS_ALIAS" = "parse_error" ]; then
-    echo "無法解析 ${MCP_FILE}，這份 kit 的設定檔可能已損毀，請聯絡工程師重新提供。" >&2
-    exit 1
-fi
-if [ "$HAS_ALIAS" != "true" ]; then
-    AVAILABLE_ALIASES="$(jq -r '(.mcpServers // {}) | keys | join("、")' "$MCP_FILE" 2>/dev/null || echo "（無法列出）")"
-    echo "找不到環境「${UPLOAD_ENV}」。這份 kit 的 .mcp.json 裡已設定的環境有：${AVAILABLE_ALIASES}。請確認要上傳到哪個環境，環境別名要跟 .mcp.json 裡的 server 別名完全一致。" >&2
-    exit 1
-fi
+export MCP_FILE UPLOAD_FILEPATH UPLOAD_ENV
 
-TARGET_TYPE="$(jq -r --arg alias "$UPLOAD_ENV" '.mcpServers[$alias].type // empty' "$MCP_FILE")"
-TARGET_URL="$(jq -r --arg alias "$UPLOAD_ENV" '.mcpServers[$alias].url // empty' "$MCP_FILE")"
-TARGET_AUTH="$(jq -r --arg alias "$UPLOAD_ENV" '.mcpServers[$alias].headers.Authorization // empty' "$MCP_FILE")"
-
-if [ "$TARGET_TYPE" != "http" ] || [ -z "$TARGET_URL" ]; then
-    echo "環境「${UPLOAD_ENV}」在 .mcp.json 裡的設定格式不對（不是 http 型、或沒有 url），請聯絡工程師確認 .mcp.json。" >&2
-    exit 1
-fi
-case "$TARGET_URL" in
-    */mcp) : ;;
-    *)
-        echo "環境「${UPLOAD_ENV}」的 url 不是預期的 .../mcp 格式，無法推導出上傳端點。" >&2
-        exit 1
-        ;;
-esac
-
-# H17 review 收尾（F8/N2）教訓：不分大小寫比對 scheme，且訊息固定文案、
-# 絕不把 scheme 或 token 內容印出來——真實 Bearer token 不含空白，若漏打
-# 「Bearer 」前綴，粗心的訊息會把整把 token 原樣印進對話紀錄。
-AUTH_TRIMMED="$(printf '%s' "$TARGET_AUTH" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-AUTH_SCHEME="${AUTH_TRIMMED%% *}"
-AUTH_SCHEME_LOWER="$(printf '%s' "$AUTH_SCHEME" | tr '[:upper:]' '[:lower:]')"
-if [ -z "$AUTH_TRIMMED" ] || [ "$AUTH_SCHEME_LOWER" != "bearer" ]; then
-    echo "環境「${UPLOAD_ENV}」在 .mcp.json 裡沒有設定好 Authorization header（應該以 \"Bearer \" 開頭），請聯絡工程師確認 .mcp.json。" >&2
-    exit 1
-fi
-AUTH_TOKEN="${AUTH_TRIMMED#* }"
-AUTH_TOKEN="$(printf '%s' "$AUTH_TOKEN" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-case "$AUTH_TOKEN" in
-    ''|'<'*)
-        echo "環境「${UPLOAD_ENV}」在 .mcp.json 裡的 Bearer token 是空值或還是預留佔位符，請聯絡工程師確認 .mcp.json。" >&2
-        exit 1
-        ;;
-esac
-
-FILES_URL="${TARGET_URL%/mcp}/files"
-
-export FILES_URL AUTH_TOKEN UPLOAD_FILEPATH UPLOAD_ENV
-
-# 實際的上傳邏輯（組 curl config、判讀回應）交給 node 執行——理由同
-# login.sh：Claude Code 本身依賴 Node.js，Mac／Windows Git Bash 環境下都可
-# 假設存在；用 `node -` 從 stdin 讀腳本本體，帳密／token 全部在執行期從
-# process.env 讀，不會出現在 node 的 argv 裡。
+# 從 .mcp.json 解析目標環境的 url／Bearer token，到實際組 curl config、呼叫
+# curl、判讀回應，全部交給 node 執行——理由同 login.sh：Claude Code 本身
+# 依賴 Node.js，Mac／Windows Git Bash 環境下都可假設存在（jq 則不行，見
+# 檔頭說明）；用 `node -` 從 stdin 讀腳本本體，token 全部在執行期從
+# process.env／解析出的 .mcp.json 內容取得，不會出現在 node 的 argv 裡。
 node - <<'NODE_SCRIPT'
+const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
-const filesUrl = process.env.FILES_URL;
-const token = process.env.AUTH_TOKEN;
-const filePath = process.env.UPLOAD_FILEPATH;
+const mcpPath = process.env.MCP_FILE;
 const envAlias = process.env.UPLOAD_ENV;
+const filePath = process.env.UPLOAD_FILEPATH;
+
+let mcp;
+try {
+    mcp = JSON.parse(fs.readFileSync(mcpPath, 'utf8'));
+} catch {
+    // 同 login.sh：不印錯誤訊息原文——JSON 解析錯誤訊息常常夾帶出錯位置
+    // 附近的原始檔案內容片段，.mcp.json 裡緊鄰的內容可能就是 Bearer token。
+    console.error(`無法解析 ${mcpPath}，這份 kit 的設定檔可能已損毀，請聯絡工程師重新提供。`);
+    process.exit(1);
+}
+
+const servers = (mcp && typeof mcp === 'object' && mcp.mcpServers) || {};
+const cfg = servers[envAlias];
+
+if (!cfg) {
+    const available = Object.keys(servers).join('、') || '（沒有任何環境）';
+    console.error(`找不到環境「${envAlias}」。這份 kit 的 .mcp.json 裡已設定的環境有：${available}。請確認要上傳到哪個環境，環境別名要跟 .mcp.json 裡的 server 別名完全一致。`);
+    process.exit(1);
+}
+if (cfg.type !== 'http' || typeof cfg.url !== 'string') {
+    console.error(`環境「${envAlias}」在 .mcp.json 裡的設定格式不對（不是 http 型、或沒有 url），請聯絡工程師確認 .mcp.json。`);
+    process.exit(1);
+}
+if (!cfg.url.endsWith('/mcp')) {
+    console.error(`環境「${envAlias}」的 url 不是預期的 .../mcp 格式，無法推導出上傳端點。`);
+    process.exit(1);
+}
+
+// H17 review 收尾（F8/N2）教訓：不分大小寫比對 scheme，且訊息固定文案、
+// 絕不把 scheme 或 token 內容印出來——真實 Bearer token 不含空白，若漏打
+// 「Bearer 」前綴，粗心的訊息會把整把 token 原樣印進對話紀錄。
+const auth = cfg.headers && cfg.headers.Authorization;
+const authTrimmed = typeof auth === 'string' ? auth.trim() : '';
+const spaceIdx = authTrimmed.indexOf(' ');
+const scheme = spaceIdx >= 0 ? authTrimmed.slice(0, spaceIdx) : authTrimmed;
+const tokenPart = spaceIdx >= 0 ? authTrimmed.slice(spaceIdx + 1).trim() : '';
+if (!authTrimmed || scheme.toLowerCase() !== 'bearer') {
+    console.error(`環境「${envAlias}」在 .mcp.json 裡沒有設定好 Authorization header（應該以 "Bearer " 開頭），請聯絡工程師確認 .mcp.json。`);
+    process.exit(1);
+}
+if (!tokenPart || tokenPart.startsWith('<')) {
+    console.error(`環境「${envAlias}」在 .mcp.json 裡的 Bearer token 是空值或還是預留佔位符，請聯絡工程師確認 .mcp.json。`);
+    process.exit(1);
+}
+
+const filesUrl = cfg.url.slice(0, -'/mcp'.length) + '/files';
 
 // 反斜線與雙引號各自轉義成 \\ 與 \"，並過濾 \r／\n（同 login.sh 的
 // escapeForCurlConfig：避免值裡剛好出現這兩種字元弄壞 config 語法，也避免
@@ -173,7 +174,7 @@ const escapeForCurlConfig = s => String(s)
 
 const configLines = [
     `url = "${escapeForCurlConfig(filesUrl)}"`,
-    `header = "Authorization: Bearer ${escapeForCurlConfig(token)}"`,
+    `header = "Authorization: Bearer ${escapeForCurlConfig(tokenPart)}"`,
     // 刻意不手動加 Content-Type header：-F/form 語法會讓 curl 自己產生正確
     // 的 multipart/form-data boundary，手動覆蓋反而會弄壞 body 格式。
     // 欄位名固定是 "file"（H8 端點契約唯一認得的欄位名）。
