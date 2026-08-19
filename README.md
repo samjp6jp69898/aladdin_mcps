@@ -9,6 +9,13 @@
 | `agrabah-admin` | admin（系統管理後台） | `mcps/agrabah-admin` |
 | `agrabah-platform` | platform（平台管理後台） | `mcps/agrabah-platform` |
 
+以上兩個 server 目前是 stdio transport，只有工程師本機能跑。給沒有公司原始碼的
+企劃用的 hosted 版零原始碼 starter kit 範本在 `mcps/starter-kit/`（H16；六個檔案：
+`README.md`／`CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／
+`.gitignore`，另有 `.claude/skills/{login,upload-image}/` 兩個待 H17／H18 實作的
+skill 佔位目錄）。hosted 化的完整背景、決策與 task 拆解見
+`mcps/_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
+
 ---
 
 ## 一、基礎架構

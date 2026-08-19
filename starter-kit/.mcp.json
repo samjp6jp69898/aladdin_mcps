@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "agrabah-admin-dev": {
+      "type": "http",
+      "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp",
+      "headers": {
+        "Authorization": "Bearer <YOUR_BEARER_TOKEN>"
+      }
+    }
+  },
+  "_howToAddMoreEnvironments": [
+    "本檔只先放一筆 dev 佔位 entry；你被授權的環境由發你這份 kit 的工程師決定，",
+    "實際份數與 token 由 make-starter-kit 產生器（H19）依授權清單自動填好，",
+    "不需要你自己編輯這個檔案。",
+    "",
+    "如果工程師要你自己手動加一個環境，格式是複製 agrabah-admin-dev 那個區塊、",
+    "改三個地方：",
+    "  1. server 別名（key）：agrabah-admin-<env>，例如 agrabah-admin-pre、",
+    "     agrabah-admin-evi ——別名一定要能看出環境，不要用同一個名字覆蓋掉別的環境。",
+    "  2. url 裡的路徑前綴：/mcp-admin-dev/ 換成 /mcp-admin-pre/ 或 /mcp-admin-evi/",
+    "     （domain 不變，只換路徑前綴；不同環境是不同 port 的後台，經同一個",
+    "     tg-dispatch proxy 用路徑分流，不是不同 domain）。",
+    "  3. headers.Authorization 換成該環境對應的 Bearer token——dev/pre/evi 是",
+    "     三份互不相交的名冊，你在 dev 有權限不代表 pre/evi 也有，token 也不能共用。",
+    "",
+    "agrabah-platform（平台後台）目前只有一個環境、不分 dev/pre/evi，",
+    "server 別名固定叫 agrabah-platform，url 前綴是 /mcp-platform/。",
+    "如果工程師有另外發你 platform 的 token，格式比照上面一筆，不需要環境後綴。"
+  ]
+}
