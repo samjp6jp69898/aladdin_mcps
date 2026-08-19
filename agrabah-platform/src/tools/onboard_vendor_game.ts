@@ -9,8 +9,9 @@
  * （game_vendor_games，全平台共用、通常由廠商同步 job 自動帶入）有沒有這個
  * gameVendorId+gameId 組合，沒有就直接回錯（gameVendorGameNotExists=303），
  * 不會憑空生資料。此工具做的是「把母表已存在、但本平台還沒設定過的遊戲，
- * 上架到本平台（或更新既有的平台顯示設定）」。若要新增一款全新遊戲（母表也沒有），
- * 要用 agrabah-admin 的 agrabah_admin_create_game。
+ * 上架到本平台（或更新既有的平台顯示設定）」。若母表沒有這個 gameId（代表要新增
+ * 一款全新遊戲），此工具無法處理——回報使用者並停止，是否建立全新遊戲是另一個
+ * 需要授權的決定，不由呼叫端 agent 自行判斷或代為擴大操作範圍（D11）。
  */
 
 import { z } from 'zod';
@@ -140,8 +141,8 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
                 '把某個三方遊戲廠商「已存在於廠商遊戲母表」的一款遊戲，上架到本平台（若本平台是第一次設定該遊戲，' +
                 '後端會自動建立平台專屬設定紀錄；若已存在則是更新）——不是新增全新遊戲。' +
                 `母表資料通常由廠商同步 job 自動帶入，若呼叫失敗且 errorCode=${ AgrabahErrorCodeEnum.gameVendorGameNotExists }（gameVendorGameNotExists），` +
-                '代表母表根本沒有這個 gameId，此工具無法處理，要新增全新遊戲請改用 agrabah-admin MCP 的 ' +
-                'agrabah_admin_create_game。呼叫前會先讀既有設定當基準值，只有你有帶的欄位會覆蓋，' +
+                '代表母表根本沒有這個 gameId，此工具無法處理——應回報使用者並停止，是否建立全新遊戲是另一個 ' +
+                '需要授權的決定，不可自行擴大任務範圍去嘗試其他後台或 tool。呼叫前會先讀既有設定當基準值，只有你有帶的欄位會覆蓋，' +
                 '沒帶的欄位維持原值，完成後自動讀回驗證。' +
                 '注意：displayTag/rebateTag/badgeId 是後端既有分類清單的 id（本 POC 未提供對應查詢 tool，' +
                 '不確定合法值時應先詢問操作者，不要亂猜數字）。' +
@@ -175,7 +176,7 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
             if (getR.failed) {
                 return asErrorResult(getR, {
                     hint: getR.errorCode === AgrabahErrorCodeEnum.gameVendorGameNotExists
-                        ? '廠商遊戲母表沒有這個 gameId，這是全新遊戲，此工具無法憑空建立，請改用 agrabah-admin 的 agrabah_admin_create_game。'
+                        ? '廠商遊戲母表沒有這個 gameId，這是全新遊戲，此工具無法憑空建立。回報使用者並停止：是否建立全新遊戲是另一個需要授權的決定，不要自行嘗試其他後台或 tool 繞過。'
                         : undefined,
                 });
             }

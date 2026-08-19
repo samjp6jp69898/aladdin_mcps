@@ -15,10 +15,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { registerPlatformTools } from './tools/index.ts';
+import { buildPlatformInstructions } from './instructions.ts';
 
 const server = new McpServer(
     { name: 'agrabah-platform', version: '0.1.0' },
-    { capabilities: { tools: {} } },
+    { capabilities: { tools: {} }, instructions: buildPlatformInstructions() },
 );
 
 registerPlatformTools(server, 'stdio');

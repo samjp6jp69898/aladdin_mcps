@@ -15,10 +15,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { registerAdminTools } from './tools/index.ts';
+import { buildAdminInstructions } from './instructions.ts';
 
+// stdio 模式是工程師本機直接執行，一律不是 prod（isProd 固定 false）；hosted 模式的
+// http.ts 依實際 IS_PROD 動態組字，見該檔對應段落。
 const server = new McpServer(
     { name: 'agrabah-admin', version: '0.2.0' },
-    { capabilities: { tools: {} } },
+    { capabilities: { tools: {} }, instructions: buildAdminInstructions(false) },
 );
 
 registerAdminTools(server, 'stdio');

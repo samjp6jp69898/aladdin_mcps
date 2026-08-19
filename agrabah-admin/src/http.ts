@@ -55,6 +55,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerAdminTools } from './tools/index.ts';
+import { buildAdminInstructions } from './instructions.ts';
 import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
 import { login, runWithIdentity, IS_PROD, ProdConfirmRequiredError } from './session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
@@ -332,9 +333,12 @@ app.all('/mcp', async c => {
     // McpServer 建立、tool 註冊、handleRequest、close 都包在同一個
     // identity context 內，確保沒有任何一步漏在外面。
     return runWithIdentity(getIdentity(c), async () => {
+        // H12：instructions 依這個行程的 IS_PROD 動態組字（module 層級常數，整個行程生命
+        // 週期固定，不會逐 request 變動）——prod 實例的 instructions 開頭多一句事實陳述，
+        // 讓 agent 在還沒被任何寫入 tool 拒絕之前就知道自己連的是正式環境，見 instructions.ts。
         const server = new McpServer(
             { name: 'agrabah-admin', version: '0.2.0' },
-            { capabilities: { tools: {} } },
+            { capabilities: { tools: {} }, instructions: buildAdminInstructions(IS_PROD) },
         );
         withStderrStackLogging(server);
         registerAdminTools(server, 'hosted');

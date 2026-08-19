@@ -59,6 +59,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerPlatformTools } from './tools/index.ts';
+import { buildPlatformInstructions } from './instructions.ts';
 import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
 import { login, runWithIdentity } from './session.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
@@ -313,7 +314,7 @@ app.all('/mcp', async c => {
     return runWithIdentity(getIdentity(c), async () => {
         const server = new McpServer(
             { name: 'agrabah-platform', version: '0.1.0' },
-            { capabilities: { tools: {} } },
+            { capabilities: { tools: {} }, instructions: buildPlatformInstructions() },
         );
         withStderrStackLogging(server);
         registerPlatformTools(server, 'hosted');
