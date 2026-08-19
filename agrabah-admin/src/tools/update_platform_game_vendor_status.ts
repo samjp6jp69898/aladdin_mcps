@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import { remote, withAutoRelogin } from '../session.ts';
+import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { STATUS_MAP, STATUS_KEYS } from '../const.ts';
 
@@ -40,14 +40,22 @@ export function registerUpdatePlatformGameVendorStatusTool(server: McpServer): v
                 'mysql_relational_database_engine.ts 的通用資料庫錯誤分支）——這只是數值溢位的副作用，' +
                 '**不是**「platformId 不存在」的正式偵測機制，errorCode=12 也可能是其他未特判的 DB 錯誤，不能倒推' +
                 '成任何特定原因。因此 platformId 一律只能用 agrabah_admin_list_platforms 回傳的真實 id，' +
-                '不要嘗試用「呼叫看看有沒有報錯」來驗證 platformId 是否存在。',
+                '不要嘗試用「呼叫看看有沒有報錯」來驗證 platformId 是否存在。' +
+                'prod 執行前確認（H36）：當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion' +
+                '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
+                '絕不能自行假設使用者同意。非 prod 環境（dev/pre/evi）不需要、也會忽略 confirm 欄位。',
             inputSchema: {
                 platformId: z.number().int().describe('平台 id，來自 agrabah_admin_list_platforms 的回傳結果'),
                 gameVendorId: z.number().int().describe('廠商場館 id，來自 agrabah_admin_create_game_vendor 或 agrabah_admin_list_platform_game_vendors 的回傳結果'),
                 status: z.enum(STATUS_KEYS).describe('目標狀態：unknown/enabled/disabled/frozen/deleted，一般啟用/停用場館用 enabled/disabled'),
+                confirm: z.string().optional().describe(
+                    `正式環境（prod）專用的強制確認欄位；非 prod 環境會被忽略、不需提供。當這個 server 是正式環境時，` +
+                    `必須先取得使用者明確同意，再帶上精確字串 "${ PROD_CONFIRM_TOKEN }" 才會執行，否則本工具會拒絕執行並回錯誤。`,
+                ),
             },
         },
-        async ({ platformId, gameVendorId, status }) => {
+        async ({ platformId, gameVendorId, status, confirm }) => {
+            assertProdConfirmed(confirm);
             const r = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.UpdatePlatformGameVendorStatus(platformId, gameVendorId, STATUS_MAP[ status ]));
             if (r.failed) return asErrorResult(r);
 

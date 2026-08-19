@@ -13,7 +13,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { GameEdit } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
-import { remote, withAutoRelogin } from '../session.ts';
+import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { GAME_TAG_MAP, GAME_TAG_KEYS, OPEN_MODE_MAP, OPEN_MODE_KEYS } from '../const.ts';
 
@@ -34,7 +34,10 @@ export function registerCreateGameTool(server: McpServer): void {
                 'gameId 是廠商系統裡的原始遊戲代碼，同一 gameVendorId 底下不能重複。' +
                 '成功後會呼叫 ListGames 讀回驗證。' +
                 '注意：這支不支援 squareImage/rectangleImage/bannerImage 圖片欄位與 localizedName 多語系欄位——' +
-                '建立後要設定圖片，改用 agrabah_admin_edit_game（同一支 gameVendorId+gameId 就能編輯剛建立的遊戲）。',
+                '建立後要設定圖片，改用 agrabah_admin_edit_game（同一支 gameVendorId+gameId 就能編輯剛建立的遊戲）。' +
+                'prod 執行前確認（H36）：當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion' +
+                '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
+                '絕不能自行假設使用者同意。非 prod 環境（dev/pre/evi）不需要、也會忽略 confirm 欄位。',
             inputSchema: {
                 id: z.number().int().optional().describe('留空＝新增；帶入既有遊戲 id 則為更新'),
                 gameVendorId: z.number().int().describe('廠商場館 id，新增時必填'),
@@ -45,9 +48,14 @@ export function registerCreateGameTool(server: McpServer): void {
                 openMode: z.enum(OPEN_MODE_KEYS).optional().describe('開啟模式：embedded(內嵌，預設)/externalBrowser/embeddedWithTitle/inHouseGame/inHouseSport'),
                 sortOrder: z.number().int().optional().describe('排序'),
                 demo: z.boolean().optional().describe('是否為試玩'),
+                confirm: z.string().optional().describe(
+                    `正式環境（prod）專用的強制確認欄位；非 prod 環境會被忽略、不需提供。當這個 server 是正式環境時，` +
+                    `必須先取得使用者明確同意，再帶上精確字串 "${ PROD_CONFIRM_TOKEN }" 才會執行，否則本工具會拒絕執行並回錯誤。`,
+                ),
             },
         },
         async (input) => {
+            assertProdConfirmed(input.confirm);
             const game = GameEdit.create({
                 id: input.id,
                 gameVendorId: input.gameVendorId,

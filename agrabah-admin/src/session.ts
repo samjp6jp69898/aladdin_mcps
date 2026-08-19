@@ -64,6 +64,40 @@ if (!BASE_URL) {
     throw new Error('缺少環境變數 AGRABAH_ADMIN_API_URL，請確認 .mcp.json 的 agrabah-admin server env 是否已設定');
 }
 
+/**
+ * H36（plan.md D13）：這個 server 實例是否是正式環境（prod）。比照 BASE_URL 等環境相關
+ * 設定的讀法，行程啟動時讀一次、存成 module 層級常數；預設未設定＝false（非 prod），
+ * 向後相容既有的 dev/pre/evi 部署行為不變。
+ *
+ * 只放在這裡（而不是 const.ts）：const.ts 檔頭明寫「帳號/URL 等環境相關設定不放這裡，
+ * 一律走 process.env」，這個旗標跟 BASE_URL/DEFAULT_USER 同一類，比照辦理放在 session.ts。
+ */
+const IS_PROD = process.env.AGRABAH_ADMIN_IS_PROD === 'true';
+
+/** H36：prod 寫入操作要求的明確確認字串。四支寫入 tool 共用同一個值與同一支檢查函式。 */
+export const PROD_CONFIRM_TOKEN = 'CONFIRM_PROD_WRITE';
+
+/**
+ * H36：prod 執行前的伺服器端強制 confirm 閘門。只有 IS_PROD===true 的實例才會檢查——
+ * 非 prod 實例（dev/pre/evi，或未設定 AGRABAH_ADMIN_IS_PROD）完全略過這支函式的檢查，
+ * 呼叫端就算帶了 confirm 欄位也不影響行為、不帶也不受影響，向後相容。
+ *
+ * 這是一個軟體層面的防線，不能保證上游的 agent 一定會先問過使用者才帶上正確的 confirm
+ * 值——tool description 裡對 AskUserQuestion 的指示只是引導；真正的硬防線是「沒有帶對
+ * confirm 就不執行任何下游 RPC」這件事本身，所以這支函式必須在 tool handler 呼叫任何
+ * remote.* / withAutoRelogin 之前被呼叫，讓沒過閘門的呼叫連 ensureLoggedIn 都不會觸發。
+ */
+export function assertProdConfirmed(confirm: string | undefined): void {
+    if (!IS_PROD) return;
+    if (confirm !== PROD_CONFIRM_TOKEN) {
+        throw new Error(
+            '這是正式環境（prod），需要明確確認才能執行這個寫入操作：請先用 AskUserQuestion（或功能相同的方式）' +
+            '向使用者明確詢問是否要在正式環境執行，取得明確同意後帶上 confirm="' + PROD_CONFIRM_TOKEN + '" 重新呼叫；' +
+            '絕不能自行假設使用者同意。',
+        );
+    }
+}
+
 Client.encoded = true; // request/response bytes 走 XOR，client 內部自動處理，見 genie/src/client/index.ts
 
 /** stdio 模式的固定隱含身分（單一 Symbol，不可能與任何名冊 id 字串撞號）。 */
