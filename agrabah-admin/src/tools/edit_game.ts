@@ -90,6 +90,7 @@ export function registerEditGameTool(server: McpServer): void {
             description:
                 '編輯一款「已存在」的廠商遊戲（rajah: GameVendorAdmin.CreateOrUpdateGameVendorGame 的更新語意）——' +
                 '要新增全新遊戲請用 agrabah_admin_create_game，這支只處理既有遊戲。' +
+                '本工具操作的是全平台共用母表，結果與平台無關，不需要也不接受 platformId 參數。' +
                 '用 gameVendorId+gameId 這組業務鍵定位（不用先知道內部流水號 id，工具內部會自動查）。' +
                 '讀既有資料當基準值，只有你有帶的欄位會覆蓋，沒帶的欄位維持原值，完成後自動讀回驗證。' +
                 'squareImage/rectangleImage/bannerImage 這三個圖片欄位是「每個語言各自一張圖」，不是一張圖套用全部語言——' +

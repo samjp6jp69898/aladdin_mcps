@@ -18,7 +18,8 @@ export function registerListVendorGamesTool(server: McpServer): void {
             description:
                 '查詢某個廠商在「廠商遊戲母表」裡的遊戲清單（rajah: GameVendorAdmin.ListGames）——這是全平台共用的' +
                 '母表視角，不是某個 platform 的上架清單（platform 的上架清單見 agrabah-platform 的 ' +
-                'agrabah_platform_list_vendor_games）。回傳的 gameId 可以直接帶進 agrabah_admin_edit_game 編輯。' +
+                'agrabah_platform_list_vendor_games）。本工具操作的是全平台共用母表，查詢條件只有 gameVendorId，' +
+                '結果與平台無關，不需要也不接受 platformId 參數。回傳的 gameId 可以直接帶進 agrabah_admin_edit_game 編輯。' +
                 '沒有 name/gameId 篩選參數，只有分頁；要找特定遊戲得自己在回傳結果裡比對 gameId。',
             inputSchema: {
                 gameVendorId: z.number().int().describe('廠商場館 id，來自 agrabah_admin_create_game_vendor 的讀回結果，或 agrabah-platform 的 agrabah_platform_list_game_vendors'),

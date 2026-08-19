@@ -19,7 +19,10 @@ export function registerCreateGameVendorTool(server: McpServer): void {
             title: 'Create a third-party game vendor',
             description:
                 '在 agrabah admin 後台建立一筆三方遊戲場館（rajah: GameVendorAdmin.CreateOrUpdateGameVendor，' +
-                'id 留空即為新增）。呼叫前不需要手動先登入，本工具會在偵測到未登入或 token 過期時自動登入/重登一次。' +
+                'id 留空即為新增）。本工具操作的是全平台共用母表，建立/更新的場館資料本身不分平台，結果與平台無關、' +
+                '不需要也不接受 platformId 參數；但新建立的場館預設不會出現在任何 platform 的清單裡，要讓特定 platform ' +
+                '看得到它，需另外呼叫 agrabah_admin_update_platform_game_vendor_status 啟用。' +
+                '呼叫前不需要手動先登入，本工具會在偵測到未登入或 token 過期時自動登入/重登一次。' +
                 '成功後會自動用場館名稱呼叫 ListGameVendors 讀回剛建立的資料一併回傳，方便確認實際存進去的值。' +
                 '注意：adapter / currencyCode / defaultLanguage 都是後端既有清單裡的值，不是任意字串，' +
                 '填錯會被後端拒絕（回傳非 0 的 errorCode），此時不要自行猜測重試，應把後端訊息回報給操作者確認正確值。',

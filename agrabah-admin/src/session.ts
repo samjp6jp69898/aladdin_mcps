@@ -54,7 +54,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Client } from '/Users/user/aladdin/genie/src/client/index.ts';
 import { Remote } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
-import { LOGIN_REQUIRED_ERROR_CODE, ADMIN_HEADER_PLATFORM_CODE, HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
+import { LOGIN_REQUIRED_ERROR_CODE, HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
 
 const BASE_URL = process.env.AGRABAH_ADMIN_API_URL;
 const DEFAULT_USER = process.env.AGRABAH_ADMIN_USER;
@@ -103,7 +103,7 @@ const sessions = new Map<Identity, { token: string }>();
 export const remote = new Remote();
 remote.setBaseUrlToAllGroup(BASE_URL);
 remote.setHeaderHandlerToAllGroup(() => {
-    const headers: Record<string, string> = { 'platform-code': ADMIN_HEADER_PLATFORM_CODE };
+    const headers: Record<string, string> = {};
     const session = sessions.get(currentIdentity());
     if (session?.token) headers['Authorization'] = `Bearer ${ session.token }`;
     return headers;
