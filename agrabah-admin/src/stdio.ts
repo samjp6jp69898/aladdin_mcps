@@ -16,12 +16,15 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { registerAdminTools } from './tools/index.ts';
 import { buildAdminInstructions } from './instructions.ts';
+import { IS_PROD } from './session.ts';
 
-// stdio 模式是工程師本機直接執行，一律不是 prod（isProd 固定 false）；hosted 模式的
-// http.ts 依實際 IS_PROD 動態組字，見該檔對應段落。
+// H12 review 收尾：prod confirm 閘門（assertProdConfirmed）只看環境變數 IS_PROD，跟
+// transport 類型無關——stdio 模式同樣可能連到 AGRABAH_ADMIN_IS_PROD=true 的實例（閘門會
+// 照常攔截寫入），instructions 的判斷基準必須跟閘門一致，不能寫死 false 假設本機不會是
+// prod。hosted 模式的 http.ts 同樣讀這個常數，兩條路徑現在判斷基準一致。
 const server = new McpServer(
     { name: 'agrabah-admin', version: '0.2.0' },
-    { capabilities: { tools: {} }, instructions: buildAdminInstructions(false) },
+    { capabilities: { tools: {} }, instructions: buildAdminInstructions(IS_PROD) },
 );
 
 registerAdminTools(server, 'stdio');
