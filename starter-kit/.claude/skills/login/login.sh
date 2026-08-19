@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# login.sh — H17：agrabah 登入 skill 本體。H17 review 收尾（F1-F10 + 安全 review）
-# 修過一輪，見本檔各段落內的對應說明與 handoffs/h17-review-fixup-report.md。
+# login.sh — H17：agrabah 登入 skill 本體。經過數輪 review 收尾（F1-F10、
+# 安全 review、N1/N2 等），細節見本檔各段落內的對應說明。
 #
 # 硬性契約（見 ../../settings.json 的 _securityNote 與這個目錄下 SKILL.md）：
 # Claude 呼叫這支腳本時，Bash 指令字串必須永遠逐字等於
@@ -24,12 +24,16 @@
 # 一組數字），再重跑這支 zero-arg 的 login.sh；腳本讀到這個檔案後立刻讀取
 # 內容並刪除檔案（單次使用，不留存，符合「不可預存」的精神）。
 #
-# H17 review 收尾（F10）：dev/pre/evi 是三份互不相交的帳號名冊（各自獨立的
-# agrabah 帳號與 TOTP secret），一組驗證碼在數學上不可能同時滿足兩個環境，
-# 所以本腳本**一次只處理一個需要 TOTP 的環境**：迴圈仍然對每個環境各自嘗試
-# 登入，但只對第一個回報 totpRequired 的環境給出完整的「請提供驗證碼」指示；
-# 如果同一輪還有其他環境也需要 TOTP，只給一句簡短提示，請使用者先完成第一
-# 個環境、之後再重跑一次處理下一個，不會把同一組驗證碼廣播打多個環境。
+# H17 review 收尾（F10，N1 補強）：dev/pre/evi 是三份互不相交的帳號名冊
+# （各自獨立的 agrabah 帳號與 TOTP secret），一組驗證碼在數學上不可能同時
+# 滿足兩個環境，所以本腳本**一次只處理一個需要 TOTP 的環境**：迴圈仍然對
+# 每個環境各自嘗試登入，但只對第一個回報 totpRequired 的環境給出完整的
+# 「請提供驗證碼」指示（同時把這個環境的別名記進 .totp-pending-alias.tmp）；
+# 如果同一輪還有其他環境也需要 TOTP，只給一句簡短提示。使用者提供驗證碼後，
+# 下一輪腳本會讀出這個暫存的別名，**只把驗證碼送給名字對得上的那個環境**，
+# 其餘環境這一輪一律送空字串——不會因為疊代順序剛好先繞到別的環境，就把
+# 這組碼誤送過去（那樣不但打錯環境，還會因為「錯誤的 TOTP 碼」被算成一次
+# 真正的登入失敗，連帶誤觸節流）。
 #
 # Windows CRLF 地雷（plan.md §4.5 末段）：.env 若被記事本存成 CRLF，
 # 逐行讀取時每一行尾巴會黏一個 \r，下面的逐行解析器會主動 strip 掉。
@@ -59,17 +63,27 @@ KIT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 ENV_FILE="$KIT_ROOT/.env"
 MCP_FILE="$KIT_ROOT/.mcp.json"
 TOTP_FILE="$SCRIPT_DIR/.totp-code.tmp"
+# H17 review 第三輪收尾（N1）：記錄「上一次公告需要 TOTP 的是哪個環境別名」。
+# 見下面 node 區塊對 TOTP_PENDING_ALIAS 的說明。
+TOTP_PENDING_ALIAS_FILE="$SCRIPT_DIR/.totp-pending-alias.tmp"
 
 # H17 review 收尾（F9）：TOTP 暫存檔的讀取＋刪除放在所有可能提早 exit 的檢查
 # 之前——不管後面是不是真的走得到打 agrabah 的那一步，只要這支腳本被呼叫過
 # 一次，這個檔案就該被消耗掉一次，不留到下一次執行才被誤用（過期的驗證碼
 # 本來就沒有意義；使用者若因為 .env 還沒填好而提早結束，之後補好 .env 重跑
-# 時本來就該重新提供一組新的驗證碼）。
+# 時本來就該重新提供一組新的驗證碼）。兩個暫存檔（驗證碼本身＋它綁定的環境
+# 別名）同一時間點一起消耗，生命週期完全一致。
 TOTP_CODE=""
 if [ -f "$TOTP_FILE" ]; then
     TOTP_CODE="$(cat "$TOTP_FILE")"
     TOTP_CODE="${TOTP_CODE%$'\r'}"
     rm -f "$TOTP_FILE"
+fi
+TOTP_PENDING_ALIAS=""
+if [ -f "$TOTP_PENDING_ALIAS_FILE" ]; then
+    TOTP_PENDING_ALIAS="$(cat "$TOTP_PENDING_ALIAS_FILE")"
+    TOTP_PENDING_ALIAS="${TOTP_PENDING_ALIAS%$'\r'}"
+    rm -f "$TOTP_PENDING_ALIAS_FILE"
 fi
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -122,7 +136,7 @@ if [ -z "$AGRABAH_ADMIN_USER" ] || [ -z "$AGRABAH_ADMIN_PASSWORD" ]; then
     exit 1
 fi
 
-export AGRABAH_ADMIN_USER AGRABAH_ADMIN_PASSWORD TOTP_CODE MCP_FILE
+export AGRABAH_ADMIN_USER AGRABAH_ADMIN_PASSWORD TOTP_CODE TOTP_PENDING_ALIAS MCP_FILE TOTP_PENDING_ALIAS_FILE
 
 # 實際的登入邏輯（解析 .mcp.json、逐環境組 curl config、判讀回應）交給 node
 # 執行：Claude Code 本身依賴 Node.js 才能執行，所以 node 在 Mac／Windows
@@ -139,6 +153,8 @@ const mcpPath = process.env.MCP_FILE;
 const identifier = process.env.AGRABAH_ADMIN_USER;
 const password = process.env.AGRABAH_ADMIN_PASSWORD;
 const totpCode = process.env.TOTP_CODE || '';
+const totpPendingAlias = process.env.TOTP_PENDING_ALIAS || '';
+const totpPendingAliasFile = process.env.TOTP_PENDING_ALIAS_FILE;
 
 let mcp;
 try {
@@ -164,12 +180,21 @@ for (const [alias, cfg] of Object.entries(servers)) {
     // H17 review 收尾（F8）：scheme 比對改成不分大小寫，並且對「格式看起來
     // 不對」與「格式對但 token 是空的/還是佔位符」給出不同、各自準確的訊息，
     // 不再對兩種情況都靜默 continue 或都講同一句話。
+    //
+    // H17 review 第三輪收尾（N2，安全 review 抓到的第二個真實洩漏路徑）：
+    // 絕對不能把 scheme 這個值印進訊息——真實 Bearer token 不含空白，若
+    // 工程師貼 .mcp.json 時漏打「Bearer 」前綴，authTrimmed 裡就不會有空白，
+    // `scheme` 會等於整把 token（`indexOf(' ')` 找不到空白時 `scheme` 落到
+    // else 分支＝整個字串）。原本的訊息「目前是 "${scheme}"」會把完整、
+    // 可直接使用的憑證原樣印進對話紀錄，比同一輪修過的 2a（只洩漏約 20 字元
+    // 視窗）嚴重得多。訊息固定文案、不做任何變數插值，對非技術企劃來說
+    // 「目前是什麼」本來就沒有診斷價值，只有洩漏風險。
     const authTrimmed = auth.trim();
     const spaceIdx = authTrimmed.indexOf(' ');
     const scheme = spaceIdx >= 0 ? authTrimmed.slice(0, spaceIdx) : authTrimmed;
     const tokenPart = spaceIdx >= 0 ? authTrimmed.slice(spaceIdx + 1).trim() : '';
     if (scheme.toLowerCase() !== 'bearer') {
-        console.log(`[${alias}] 略過：Authorization header 格式看起來不對（開頭應該是 "Bearer "，目前是 "${scheme}"），請聯絡工程師確認 .mcp.json。`);
+        console.log(`[${alias}] 略過：Authorization header 格式看起來不對（應該以 "Bearer " 開頭），請聯絡工程師確認 .mcp.json。`);
         continue;
     }
     if (!tokenPart || tokenPart.startsWith('<')) {
@@ -204,8 +229,38 @@ let anyFailure = false;
 let anyTotp = false;
 let totpAnnounced = false;
 
+// H17 review 第三輪收尾（N1，正確性 review 抓到的 BLOCKER）：先前的版本只用
+// totpAnnounced 控制「印出來的訊息」，但送去 curl 的 request body 全部共用
+// 同一個 totpCode 變數——如果同一輪有兩個以上環境都需要 TOTP，使用者只為
+// 其中一個提供的驗證碼會被原封不動廣播去打其他環境，造成：(1) 該環境被
+// 消耗一次不是使用者要求的登入嘗試；(2) 錯誤的 TOTP 碼不算 totpNeeded（見
+// http.ts `totpRequired = errorCode === totpNeeded`），會被 `recordFailure`
+// 計入節流，等於企劃每完成一個環境的 TOTP、就替其他還在等待的環境各記一次
+// 失敗，多環境 kit 跑兩三輪可能誤觸節流鎖住、且完全沒有線索可查。
+//
+// 修法：把「這組驗證碼是給哪個環境用的」用 .totp-pending-alias.tmp 這個
+// 固定暫存檔跟驗證碼本身綁在一起（見上面 bash 區塊，兩者同時讀取＋刪除、
+// 生命週期一致）。只有 alias 與這個記錄相符的目標，才會在下面迴圈中真的
+// 把 totpCode 帶進 request body；其餘目標一律送出空字串（agrabah 後端對
+// 不需要 TOTP 的帳號本來就會忽略這個欄位，送空字串完全無害；若那個環境
+// 剛好也需要 TOTP，空字串會讓它照原本的邏輯回報「需要 TOTP」，不算失敗、
+// 不觸發節流）。
+//
+// 如果找不到對得上的暫存檔（例如使用者手動建立 .totp-code.tmp、或上一輪
+// 的暫存檔已經因為某種原因遺失）：不要用「反正就送給第一個遇到、真的需要
+// TOTP 的環境」這種看似合理的猜測邏輯頂替——那樣在多環境情境下一樣可能猜
+// 錯目標、一樣會把碼送到並非使用者原本針對的環境。安全的作法是這一輪乾脆
+// 不套用這組碼到任何環境（下面用 `totpCodeConsumed` 初始值直接鎖死），並在
+// 迴圈跑完後告知使用者，讓他們照 SKILL.md 的正常流程（先看公告訊息、再
+// 提供驗證碼）重來一次——這個退化流程理論上不該在正常使用下發生，因為每次
+// 公告需要 TOTP 時都會同步寫入這個暫存檔。
+const pendingAliasValid = totpPendingAlias !== '' && targets.some(t => t.alias === totpPendingAlias);
+let totpCodeConsumed = totpCode === '' || !pendingAliasValid;
+
 for (const { alias, loginUrl, token } of targets) {
-    const body = JSON.stringify({ identifier, password, totpCode });
+    const totpCodeToSend = (!totpCodeConsumed && alias === totpPendingAlias) ? totpCode : '';
+    if (totpCodeToSend !== '') totpCodeConsumed = true;
+    const body = JSON.stringify({ identifier, password, totpCode: totpCodeToSend });
     const configLines = [
         `url = "${escapeForCurlConfig(loginUrl)}"`,
         `header = "Authorization: Bearer ${escapeForCurlConfig(token)}"`,
@@ -298,6 +353,12 @@ for (const { alias, loginUrl, token } of targets) {
             // 的環境給完整指示；其餘同一輪也需要 TOTP 的環境走下面的 else
             // 分支，只給簡短提示，避免廣播同一組碼造成混淆。
             totpAnnounced = true;
+            // H17 review 第三輪收尾（N1）：把這個 alias 記進暫存檔，讓使用者
+            // 之後提供的驗證碼在下一輪能精準綁定回這個環境，不會被下一輪
+            // 迴圈的疊代順序誤套用到別的環境。每次公告都覆寫（配合上面
+            // 「進入腳本就先讀取＋刪除」的單次消耗設計），所以永遠反映
+            // 「最近一次公告的是哪個環境」。
+            fs.writeFileSync(totpPendingAliasFile, alias, 'utf8');
             console.log(`[${alias}] 需要 TOTP 動態驗證碼：帳號密碼正確，但這個環境要求輸入驗證碼才能完成登入。` +
                 '請直接在對話裡把你 App 上目前顯示的 6 位數驗證碼告訴 Claude，Claude 會立刻幫你重新完成登入' +
                 '（驗證碼通常只有約 30 秒的有效期，這是設計上刻意要求「當場輸入」、不會被預先存起來，屬於正常互動，不是 bug）。');
@@ -315,6 +376,14 @@ for (const { alias, loginUrl, token } of targets) {
 
     console.log(`[${alias}] 失敗：${json.message || '帳號或密碼錯誤'}（errorName=${json.errorName || '未知'}）`);
     anyFailure = true;
+}
+
+// H17 review 第三輪收尾（N1）：提供了驗證碼，但找不到這組碼對應的環境
+// （多半是暫存的綁定紀錄遺失，理論上不該在正常使用下發生）——誠實告知，
+// 不要默默把這組碼丟掉又不講。
+if (totpCode !== '' && !pendingAliasValid) {
+    console.log('提供了 TOTP 驗證碼，但找不到這組碼對應的環境（可能是上一輪的暫存狀態遺失），這次沒有套用到任何環境。' +
+        '若某個環境仍顯示需要 TOTP，請依提示重新提供一次驗證碼。');
 }
 
 // H17 review 收尾（F7）：exit code 語意重新設計，讓「真的失敗」跟「只是還
