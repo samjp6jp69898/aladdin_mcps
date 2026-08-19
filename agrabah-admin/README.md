@@ -57,25 +57,54 @@ TOTP：dev 環境目前不需要。若未來需要，`agrabah_admin_login` 保�
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（2026-08-18 用真實遊戲資料 JDB/gameId=9024 實測驗證：設值成功，但事後想還原成空陣列失敗，只能改覆蓋成別的文字）。這是 rajah/protobuf 層的限制，不是本工具的 bug；langue tag 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值。
 - 只支援 admin 後台；platform 後台的能力見 `agrabah-platform`。
 
-## launchd 常駐骨架（H13；尚未上線）
+## 支援環境清單（D13；H35 落實 pre/evi）
 
-`launchd/` 內含 `run-server.sh`（啟動 `src/http.ts`，port 8789）與
-`com.aladdin.agrabah-admin-server.plist`，結構比照已上線的
-`telegram-dispatcher/launchd/`（同一套 run-server.sh + plist 手法）。
+`agrabah-admin` 角色支援多環境，每個環境是**同一份 `src/http.ts` 程式碼、不同
+一組 env 值**（port / `AGRABAH_ADMIN_API_URL` / `AGRABAH_ADMIN_TOKENS_PATH`），
+新增一個環境只需要複製一份 `launchd/run-server-<env>.sh` + plist + 一份
+`tokens.<env>.json` 名冊，不需要改任何 `src/` 程式碼。
+
+| 環境 | 後台網址 | port | tokens 名冊 | 狀態 |
+|---|---|---|---|---|
+| dev | `https://admin.alddev.com` | 8789 | `tokens.json` | 已部署（H1 起） |
+| pre（企劃口中的 cqa） | `https://abu-admin.ald777.com` | 8791 | `tokens.pre.json` | H35 落實，手動驗證通過，**未** launchctl 常駐 |
+| evi | `https://admin.godev2.com` | 8792 | `tokens.evi.json` | H35 落實，手動驗證通過，**未** launchctl 常駐 |
+| uat / prod | 待補 | 待補 | 待補 | 網址未知，本輪不部署（見 plan.md D13、§5 非目標） |
+
+三個環境的 tokens 名冊互不相交：dev 名冊被授權者不會自動獲得 pre/evi 存取權，
+反之亦然（各自獨立 JSON 檔，格式與撤銷/新增語意見 `src/auth.ts` 檔頭）。三組
+port（8789 dev / 8791 pre / 8792 evi，另 agrabah-platform dev 佔 8790）可
+同時啟動、互不衝突，已用 `lsof` 實測驗證。
+
+## launchd 常駐骨架（H13 dev；H35 擴充 pre/evi；尚未上線）
+
+`launchd/` 內含三組 `run-server*.sh` + plist，同一套骨架（比照已上線的
+`telegram-dispatcher/launchd/`），只有 env 值不同：
+
+| 環境 | 腳本 | plist Label |
+|---|---|---|
+| dev | `run-server.sh` | `com.aladdin.agrabah-admin-server` |
+| pre | `run-server-pre.sh` | `com.aladdin.agrabah-admin-pre-server` |
+| evi | `run-server-evi.sh` | `com.aladdin.agrabah-admin-evi-server` |
 
 **本機手動跑**（開發、除錯用，不透過 launchd；會一直佔用這個 terminal，
 Ctrl-C 停止）：
 
 ```bash
-zsh /Users/user/aladdin/obsidian/mcps/agrabah-admin/launchd/run-server.sh
+zsh /Users/user/aladdin/obsidian/mcps/agrabah-admin/launchd/run-server.sh      # dev :8789
+zsh /Users/user/aladdin/obsidian/mcps/agrabah-admin/launchd/run-server-pre.sh  # pre :8791
+zsh /Users/user/aladdin/obsidian/mcps/agrabah-admin/launchd/run-server-evi.sh  # evi :8792
 curl http://localhost:8789/health
 ```
 
-環境變數來源是根目錄 `.mcp.json` 的 `agrabah-admin` server `env`（用 `jq`
-現讀，見 `run-server.sh` 檔頭註解），**不是** `/Users/user/aladdin/.env`——
+dev 的環境變數來源是根目錄 `.mcp.json` 的 `agrabah-admin` server `env`（用
+`jq` 現讀，見 `run-server.sh` 檔頭註解），**不是** `/Users/user/aladdin/.env`——
 跟 `telegram-dispatcher` 的 `TG_*` 系列變數不同源，沿用本檔上面「環境變數」
-一節已記載的既有慣例，避免另開一份會漂移的拷貝。`run-server.sh` 刻意不匯出
-帳密（`AGRABAH_ADMIN_USER`/`AGRABAH_ADMIN_PASSWORD`），理由見腳本內註解。
+一節已記載的既有慣例，避免另開一份會漂移的拷貝。pre 的 `AGRABAH_ADMIN_API_URL`
+現讀 `/Users/user/aladdin/.env` 的 `CQA_ADMIN_URL`；evi 沒有對應的
+`EVI_ADMIN_URL` 可讀，`run-server-evi.sh` 直接寫定字面值（見腳本內註解）。
+三支腳本皆刻意不匯出帳密（`AGRABAH_ADMIN_USER`/`AGRABAH_ADMIN_PASSWORD`），
+理由見腳本內註解——hosted 模式一律走 per-token 登入態 + `POST /login`。
 
 **部署到 launchd 常駐（尚未執行，記錄步驟供之後的高風險 task 參考）**：
 plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd
