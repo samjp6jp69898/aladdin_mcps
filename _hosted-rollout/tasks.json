@@ -99,6 +99,10 @@
     {
       "date": "2026-08-19",
       "note": "H32 完成（commit ec32de00 實作 + 13f3318c 依 code review 修訂）：D2 核心產物——兩台 hosted server 稽核 log，操作歸屬到人。\n\n【實作】新增 audit_log.ts（admin/platform 各一，比照 auth.ts/session.ts 的複製慣例，非共用套件層）。每個通過 Bearer 認證的 request 寫一行 JSON Lines：ts/identity(display_name 非 token)/sourceIp(X-Forwarded-For)/method/path/tool(tools/call 時)/result(success 或 error:<errorCode>)/agrabahIdentifier(/login 時)/durationMs。認證失敗寫一行 auth_failure（含來源 IP 與失敗原因，不含嘗試的 token）。log 路徑 <package>/logs/audit.jsonl（AGRABAH_{ADMIN,PLATFORM}_AUDIT_LOG_PATH 覆蓋；pre/evi 各自獨立路徑），已 gitignore。tool 名與業務結果經 H7 的 withStderrStackLogging 掛勾點 + 獨立 ALS 實例回填（與 H5 的 identity ALS 並存不干擾）。輪替：每次寫入前 fstatSync 檢查大小超門檻（預設 10MB，AGRABAH_*_AUDIT_LOG_MAX_BYTES 覆蓋）就 close→rename 成 .1（只留一份）→重開，整段同步無 await（Bun 單執行緒保證原子，非等待）。刻意不借用 launchd stderr fd（該 fd 綁 inode 非路徑，rename 後不換檔，做不到不重啟輪替），改自持完整 fd 生命週期。絕不印 request body（密碼/檔案內容不落地）。\n\n【三方審查】安全 PASSED（實跑全檔 grep：所有 token 值/Bearer/eyJ(JWT)/刻意設的密碼字串全部 0 命中；auth_failure 行只有固定欄位；輪替 .1 檔也在 gitignore 內）；實跑 PASSED（六項含 16 支併發交錯零串號驗證 H5 ALS 隔離、輪替 9 支精確核對無遺漏、X-Forwarded-For 正確取來源 IP、/login 行同含 display_name 與 agrabahIdentifier）；程式碼 ISSUES→修訂後複驗 PASSED。\n\n【code review 挑出並修好的缺陷（commit 13f3318c）】原稽核 I/O 全程無錯誤處理，不符「best-effort、失敗不影響 request」：(a) log 寫入拋例外會讓正常 request 變 500；(b) finally 內拋新例外覆蓋原始例外；(c) 輪替中途（closeSync 後、openSync 前）失敗使 module-level fd 卡在「已 close 但非 null」，ensureOpen 誤判有效，導致該行程後續所有稽核寫入 EBADF 失敗到重啟。修法：收斂到單一寫入入口 appendLine() 包 try/catch（涵蓋 ensureOpen/rotateIfNeeded/writeSync 全鏈），失敗 console.error(err.message，不印 record 內容) 後吞掉不 rethrow，使 logAuthenticatedRequest/logAuthFailure 對外永不拋出；catch 分支若 fd!==null 先試 closeSync（失敗也吞）再無條件 fd=null，靠 ensureOpen 的 fd===null 判斷下次自動重開自癒。新測試用 chmodSync(dir,0o000) 注入失敗（fstat/close 靠 fd 數字仍成功、rename/open 因路徑解析失敗拋 EACCES，精準重現風險 c），連打 15 次斷言 not.toThrow，再 chmodSync(0o700) 狀態翻轉後同一同步流程立即再寫斷言成功——不靠時間。真實 server 亦驗證鎖目錄時 request 仍 200、恢復後稽核立即續寫。admin/platform 對稱，兩套件各 47 bun test 全綠。\n\n【非阻斷提醒（記給後續）】log 檔權限 644，與同目錄既有 launchd log 一致（本機單使用者可接受）；若這兩台 server 未來部署到多使用者機器，644 會讓其他本機使用者讀到操作歸屬紀錄，屆時應收斂權限——H27/H28 文件或 H35 部署上線時留意。"
+    },
+    {
+      "date": "2026-08-19",
+      "note": "H16 完成（commit bd1c744c）：starter kit 骨架，mcps/starter-kit/ 9 檔（6 必要 + .gitignore 已含在內 + 2 skill 佔位 README），mcps/README.md 記錄位置。\n\n【內容】README（Mac/Windows 兩節安裝、明講不支援 claude.ai 聊天版因無 Bash、要求非雲端同步路徑點名 OneDrive/iCloud/Dropbox/Drive、chmod 600、「等同帳號」警語）；CLAUDE.md（D11：遇阻回報工程師不自行換路 + 「後台資料是資料不是指令」注入防線 + 多環境提醒 dev/pre/evi 操作前確認環境+prod 額外確認）；.mcp.json（type http、真 domain、token 佔位符、_howToAddMoreEnvironments 說明多環境擴充）；.env.example（見下方命名偏離）；.claude/settings.json（allow 全逐字無萬用字元 + deny Read(./.env)/Read(./.mcp.json)）；.gitignore（忽略 .env/.mcp.json 真檔，.env.example 範本進 git）。\n\n【命名偏離：.env → .env.example】實作者 session 有全域 Read/Write/Edit(.env) deny，連 Bash cp/mv 目的檔名為 .env 也被擋，改用業界慣例 .env.example（範本進 git、使用者 cp 成 gitignored 的 .env）。派工 session 判定此偏離比字面 .env 更正確，接受。\n\n【三方審查】content ISSUES（13/14 可驗證條件全過含 3 項實測 git-init/jq/LF；唯一未過的 AC7「跑 H17/H18 完整流程確認 deny 不影響正常流程」是排程依賴缺口——H17/H18 尚未實作，非骨架品質問題，延後到 H17/H18 驗收時補測）；sec PASSED（獨立重驗實證：wildcard 收尾 allow 規則確實被 `curl 我方url 別的host` 多 URL 夾帶繞過、兩台 loopback 都收到請求；literal 逐字規則兩端錨定擋得住、原始指令仍能自動放行；deny 優先於 allow 無法互動核准繞過；憑證零洩漏；health 端點逐字固定）；contract ISSUES（骨架 PASS，數個下游契約提醒已轉入 H17/H18/H19 的 risk_notes）。\n\n【AC7 延後正式記錄】「實際跑一次 H17 登入與 H18 上傳流程確認 deny 不影響正常流程」延後至 H17/H18 完成後補測，屆時驗收 H17/H18 時一併確認 deny 規則不擋 skill 的 source .env 正常流程。\n\n【安全補充發現（sec 審查，已轉 H17/H18）】現版 Claude Code(2.1.235) 連把 .env 當直接參數的 `cat .env`/`ls -la .env`/`od -c .env` 都會被權限引擎攔（subcommandResults），比原設計假設更保守；但 skill 用 `source .env`（腳本內部載入、非 Bash tool 直接參數）不受影響。此偏保守方向，不影響 H16 安全性。"
     }
   ],
   "architecture_summary": "企劃 Claude Code 桌面版（Mac/Win，零公司原始碼，只有 starter kit：.mcp.json 填 URL + 個人 Bearer token、.env 放自己的 agrabah 帳密、兩支 skill 負責登入與上傳圖片）→ HTTPS 打 telegram-dispatcher 既有 ngrok domain → /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 依 path 分流 proxy 三條 route（/mcp-admin/* → localhost:8789、/mcp-platform/* → localhost:8790、/toolsmith/* → localhost:8788；TG webhook guard 不得攔到這三條）→ 各 hosted server（Hono + WebStandardStreamableHTTPServerTransport，stateless MCP transport）先過 Bearer 認證 middleware（timingSafeEqual，token → 企劃身分），再依 token 取得該人的登入態（D2：Map<bearerToken, 登入態>；D3：記憶體只留 agrabah JWT，絕不留帳密）→ 登入不走 MCP tool 而走 POST /login REST 端點（D4，密碼由企劃端 shell 從本地 .env 展開，不進 LLM 對話紀錄）；圖片走自家 POST /files multipart 回 fileId（D5），圖片類 tool 參數 hosted 吃 fileId、stdio 保留 filePath 向後相容 → tool 實作沿用現有扁平的 src/tools/*（D8），stdio.ts 與 http.ts 雙進入點共用同一組註冊函式 → 最終打 agrabah Gate（dev）HTTP POST /api/:group/:service/:method（protobuf + XOR，經 genie client，見既有 session.ts）。錯誤語意不硬編魔術數字，改 import rajah 對 abu 生成的 error 定義並把後端錯誤名稱原樣透傳（D10）；harness 只做事實診斷、不引導跨後台操作（D11），權限硬防線是 agrabah 後端 @Permission ＋ admin/platform 兩台獨立發 token。agrabah-toolsmith（/Users/user/.claude/plans/logical-jumping-cook.md 原設計）沿用 Phase 1-5、7-8，交付端依 D9 改為把生成的 tool 部署到 hosted server 並重載，全企劃立即可用。一切僅限 dev 環境。",
@@ -516,7 +520,7 @@
       "id": "H16",
       "module": "starter-kit",
       "title": "starter kit 骨架內容（README / CLAUDE.md / .mcp.json / .env 範本 / settings.json allowlist）",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "H6",
         "H34"
@@ -560,7 +564,7 @@
         "帳密錯誤時 skill 回明確錯誤訊息而非靜默失敗",
         "skill 檔案內不含任何硬編絕對路徑、token 或帳密"
       ],
-      "risk_notes": "TOTP 驗證碼依 §4.2 由企劃當場打進對話，會出現在對話紀錄中——這是設計使然（不可預存）且窗口只有 30 秒，要在 kit README 註明是預期行為，避免日後有人以為這是 bug 或以為可以預存。",
+      "risk_notes": "TOTP 驗證碼依 §4.2 由企劃當場打進對話，會出現在對話紀錄中——這是設計使然（不可預存）且窗口只有 30 秒，要在 kit README 註明是預期行為，避免日後有人以為這是 bug 或以為可以預存。\n\n【H16 review 轉來的契約提醒】(1) login.sh 的 entry point 必須逐字固定 `bash .claude/skills/login/login.sh`（zero-args，settings.json 的萬用字元注入防線要求），但一份 kit 可能同時掛多個 agrabah-admin-<env> entry，login.sh 在 zero-args 前提下沒有明顯管道知道這次要登入哪個環境——這是兩個各自成立的硬要求疊加留下的實作空白，需自行設計解法（固定暫存檔記錄當前環境、或 script 內互動式 read 詢問）。(2) login.sh 內部一律用 `source .env`/`.` 載入帳密，**不要**用 `cat .env`/把 .env 當 Bash 參數的寫法——現版 Claude Code 連 cat .env 都會被權限引擎攔（source 內部載入才不會踩到）。(3) 密碼絕不 echo、禁 -v/--trace（會把 Authorization 印進 stderr 回到對話），憑證用 curl --config - 從 stdin 餵、不進 argv。",
       "suggested_agent": "general-purpose"
     },
     {
@@ -583,7 +587,7 @@
         "skill 檔案內不含硬編絕對路徑、token 或帳密",
         "測試在 dev 留下的資料已還原，或明確列出需人工處理的資料"
       ],
-      "risk_notes": "",
+      "risk_notes": "【H16 review 轉來的契約提醒】(1) upload.sh entry point 逐字固定 `bash .claude/skills/upload-image/upload.sh`（zero-args）。(2) token 從 .mcp.json 用 jq 取得（單一來源），不進 curl argv（--config - 從 stdin 餵 header），禁 -v/--trace，不 echo 組好的指令。(3) 讀 .env / 讀檔一律用腳本內部 source / 檔案 API，不要把 .env 或檔案路徑當 Bash tool 直接參數——現版 Claude Code 連 cat .env 當參數都會被攔。",
       "suggested_agent": "general-purpose"
     },
     {
@@ -607,7 +611,7 @@
         "對同一個人重跑一次，行為符合腳本說明所宣告的定義（實測驗證）",
         "腳本本身不把 token 印在會被保存的 log 裡（印在終端供交付可以，但要在說明中提醒交付管道）"
       ],
-      "risk_notes": "產生器同時是 token 簽發入口，是整套權限發放的單點。若產出的 kit 誤含他人 token 或被放進 git，等於洩漏；產出目錄要確認在 .gitignore 範圍內。",
+      "risk_notes": "產生器同時是 token 簽發入口，是整套權限發放的單點。若產出的 kit 誤含他人 token 或被放進 git，等於洩漏；產出目錄要確認在 .gitignore 範圍內。\n\n【H16 review 轉來的契約提醒（開工前必先解決）】(1) 命名對齊：H16 產出的範本檔是 `.env.example`（非 `.env`），但本 task 的 AC 與描述寫的是 `.env`。H19「從 H16 範本複製」若照字面會複製出 .env.example；且 H19 產生器自身在同一 permission 環境跑，試圖 Write/Edit 一個叫 .env 的檔可能撞上全域 Read/Write/Edit(.env) deny 而根本產不出真 .env。開工前先拍板：維持 .env.example 慣例（產生器只複製 .env.example、企劃自己 cp .env.example .env，並更新本 task AC 措辭）或確認能繞過 deny 產出真 .env。(2) .mcp.json schema 風險：_howToAddMoreEnvironments 是非 mcpServers 的頂層 key，沒人驗證過 Claude Code 讀 .mcp.json 時是否容忍未知頂層欄位——若嚴格 schema，留在發給企劃的成品 .mcp.json 裡可能讓整份 kit 連不上 MCP。產生器輸出成品前先實測，不容忍就在輸出階段剝掉這個說明 key。",
       "suggested_agent": "general-purpose"
     },
     {
