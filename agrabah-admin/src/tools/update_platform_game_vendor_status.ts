@@ -28,7 +28,19 @@ export function registerUpdatePlatformGameVendorStatusTool(server: McpServer): v
                 'status 合法值（rajah StatusEnum）：unknown/enabled/disabled/frozen/deleted，一般啟用/停用只會用到 ' +
                 'enabled/disabled，其餘值語意不在本工具範圍內描述。' +
                 '這支 RPC 沒有單筆查詢方法，寫入成功後本工具會用 agrabah_admin_list_platform_game_vendors 的第一頁' +
-                '讀回驗證，若目標場館不在第一頁會如實回報、不代表寫入失敗。',
+                '讀回驗證，若目標場館不在第一頁會如實回報、不代表寫入失敗。' +
+                '重要限制（2026-08-19 讀 agrabah 後端原始碼查證）：gameVendorId 有驗證存在性' +
+                '（game_vendor_admin.ts:120-124，不存在時回 errorCode=9 invalidData，不會寫入）；但 platformId ' +
+                '完全沒有驗證是否真實存在於平台表——後端邏輯是先 UPDATE 一筆 platform_game_vendors，若沒有列被' +
+                '更新到就直接 INSERT 一筆新的（game_vendor_admin.ts:126-139），且 platform_id 欄位在 DB 沒有外鍵' +
+                '約束（migrations/game/202501071023_create_platform_game_vendors.sql）。也就是說帶一個不存在、但落在' +
+                'SMALLINT UNSIGNED 合法範圍（0–65535）內的 platformId，這支 RPC 會**靜默成功**、在 DB 裡真的寫入一筆' +
+                '綁定不存在平台的孤兒列，不會有任何錯誤提示。反過來，若 platformId 超出 0–65535 範圍（例如遠大於現有' +
+                '平台 id 的整數），DB 型別檢查會擋下並回 errorCode=12（unknownDatabaseError，' +
+                'mysql_relational_database_engine.ts 的通用資料庫錯誤分支）——這只是數值溢位的副作用，' +
+                '**不是**「platformId 不存在」的正式偵測機制，errorCode=12 也可能是其他未特判的 DB 錯誤，不能倒推' +
+                '成任何特定原因。因此 platformId 一律只能用 agrabah_admin_list_platforms 回傳的真實 id，' +
+                '不要嘗試用「呼叫看看有沒有報錯」來驗證 platformId 是否存在。',
             inputSchema: {
                 platformId: z.number().int().describe('平台 id，來自 agrabah_admin_list_platforms 的回傳結果'),
                 gameVendorId: z.number().int().describe('廠商場館 id，來自 agrabah_admin_create_game_vendor 或 agrabah_admin_list_platform_game_vendors 的回傳結果'),
