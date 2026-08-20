@@ -52,6 +52,26 @@ describe('H38 — ALADDIN_ADMIN_API_URL / ALADDIN_ADMIN_IS_PROD 交叉檢查', (
         expect(r.status).toBe(0);
     });
 
+    // review 抓到的真實繞過（H38 收尾修正）：一開始用 URL 字串子字串比對，這幾個刻意把
+    // marker 字串塞進網域其他位置的假網域全部會被誤判成「已知非 prod」而放行。改成
+    // hostname 精確/後綴比對後，這四個案例都必須被擋下——沒有 IS_PROD=true 一律拒絕啟動。
+    test.each([
+        [ 'marker 當網域前綴的一部分（prod-alddev.com-attacker.evil.com）', 'https://prod-alddev.com-attacker.evil.com' ],
+        [ 'marker 出現在更深的子網域鏈中間（prod.aladdin.com.ald777.com.evil.io）', 'https://prod.aladdin.com.ald777.com.evil.io' ],
+        [ 'localhost 只是子網域字串的一部分（evil-localhost-lookalike.attacker.com）', 'https://evil-localhost-lookalike.attacker.com' ],
+        [ 'marker 出現在 path 裡、不是 hostname（real-prod-api.internal/godev2.com/phish）', 'https://real-prod-api.internal/godev2.com/phish' ],
+    ])('子字串繞過已修：%s + 未設定 IS_PROD：拒絕啟動', (_label: string, url: string) => {
+        const r = tryImportSession({ ALADDIN_ADMIN_API_URL: url, ALADDIN_ADMIN_IS_PROD: undefined });
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain('可能是正式環境卻忘了開啟 prod confirm 閘門');
+    });
+
+    test('BASE_URL 不是合法 URL（解析不出 hostname）+ 未設定 IS_PROD：保守拒絕啟動', () => {
+        const r = tryImportSession({ ALADDIN_ADMIN_API_URL: 'not-a-valid-url', ALADDIN_ADMIN_IS_PROD: undefined });
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain('可能是正式環境卻忘了開啟 prod confirm 閘門');
+    });
+
     test('本機測試佔位網域（127.0.0.1）+ 未設定 IS_PROD：正常啟動（既有測試檔大量依賴這個組合，不得回歸）', () => {
         const r = tryImportSession({ ALADDIN_ADMIN_API_URL: 'http://127.0.0.1:1/never-called', ALADDIN_ADMIN_IS_PROD: undefined });
         expect(r.status).toBe(0);

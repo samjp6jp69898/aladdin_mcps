@@ -59,7 +59,22 @@ if (IS_PROD_NORMALIZED !== undefined && IS_PROD_NORMALIZED !== '' && IS_PROD_NOR
 export const IS_PROD = IS_PROD_NORMALIZED === 'true';
 
 const KNOWN_NON_PROD_URL_MARKERS = [ 'alddev.com', 'ald777.com', 'godev2.com', 'jxpre.com', '127.0.0.1', 'localhost' ];
-if (!IS_PROD && !KNOWN_NON_PROD_URL_MARKERS.some(marker => BASE_URL.includes(marker))) {
+/**
+ * hostname 精確比對或真正的子網域關係——不接受任何形式的子字串包含。review 發現的真實
+ * 繞過（H38 收尾修正）：一開始用 `.includes()` 對整個 URL 字串做子字串比對，
+ * `https://prod-alddev.com-attacker.evil.com` 這種把 marker 字串塞進網域任何位置的
+ * URL 會被誤判放行，完整理由見 admin 端 session.ts 同一段註解。
+ */
+function isKnownNonProdUrl(url: string): boolean {
+    let hostname: string;
+    try {
+        hostname = new URL(url).hostname.toLowerCase();
+    } catch {
+        return false;
+    }
+    return KNOWN_NON_PROD_URL_MARKERS.some(marker => hostname === marker || hostname.endsWith(`.${ marker }`));
+}
+if (!IS_PROD && !isKnownNonProdUrl(BASE_URL)) {
     throw new Error(
         `環境變數 ALADDIN_PLATFORM_API_URL（"${ BASE_URL }"）不符合任何已知的非 prod 網域特徵` +
         `（${ KNOWN_NON_PROD_URL_MARKERS.join('、') }），但 ALADDIN_PLATFORM_IS_PROD 不是明確的 true。` +

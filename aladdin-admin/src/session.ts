@@ -114,9 +114,26 @@ export const IS_PROD = IS_PROD_NORMALIZED === 'true';
  * 新增一個真正的 prod 部署時，唯一合法路徑是明確設定 `ALADDIN_ADMIN_IS_PROD=true`；
  * 新增一個「不是 prod、但網域剛好不在清單裡」的新測試/開發環境時，把該網域加進
  * KNOWN_NON_PROD_URL_MARKERS——這兩種情境不能都不做，否則新環境會直接啟動失敗。
+ *
+ * review 發現的真實繞過（H38 收尾修正）：一開始用 `BASE_URL.includes(marker)` 對整個
+ * URL 字串做子字串比對，`https://prod-alddev.com-attacker.evil.com` 這種刻意（或巧合）
+ * 把 marker 字串塞進網域任何位置的 URL 會被誤判成「已知非 prod」而放行，讓這個檢查
+ * 本身出現一個跟它想堵住的「靜默放行」同類型的縫隙。改成只比對 `new URL(url).hostname`，
+ * 且要求 hostname 精確等於 marker 或以 `.` + marker 結尾（真正的子網域關係），
+ * `evil.com` 掛在後面、`attacker.` 掛在前面都無法再通過。
  */
 const KNOWN_NON_PROD_URL_MARKERS = [ 'alddev.com', 'ald777.com', 'godev2.com', 'jxpre.com', '127.0.0.1', 'localhost' ];
-if (!IS_PROD && !KNOWN_NON_PROD_URL_MARKERS.some(marker => BASE_URL.includes(marker))) {
+/** hostname 精確比對或真正的子網域關係——不接受任何形式的子字串包含。 */
+function isKnownNonProdUrl(url: string): boolean {
+    let hostname: string;
+    try {
+        hostname = new URL(url).hostname.toLowerCase();
+    } catch {
+        return false; // 連 hostname 都解析不出來，一律視為不安全，交叉檢查照樣生效。
+    }
+    return KNOWN_NON_PROD_URL_MARKERS.some(marker => hostname === marker || hostname.endsWith(`.${ marker }`));
+}
+if (!IS_PROD && !isKnownNonProdUrl(BASE_URL)) {
     throw new Error(
         `環境變數 ALADDIN_ADMIN_API_URL（"${ BASE_URL }"）不符合任何已知的非 prod 網域特徵` +
         `（${ KNOWN_NON_PROD_URL_MARKERS.join('、') }），但 ALADDIN_ADMIN_IS_PROD 不是明確的 true。` +
