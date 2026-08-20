@@ -17,6 +17,41 @@
 #   chmod +x "開始使用-Mac-圖形介面.command"
 # （make-starter-kit.ts 產生 kit 時已經自動設好這個權限，正常情況下你不需要
 # 自己做這一步；只有在你自己重新複製這個檔案之類的情況權限才可能被重設。）
+#
+# 成功打開 Claude 之後自動關閉這個終端機視窗：macOS 的 Terminal.app 預設
+# 不會因為腳本執行完就自動關視窗（要留給使用者看輸出），這裡改用 AppleScript
+# 主動關掉——用「這個腳本自己所在的 tty」精確比對要關的視窗/分頁，不是抓
+# 「最前面那個視窗」（使用者可能同時開好幾個 Terminal 視窗，抓錯會關掉別人
+# 正在用的東西）。真的失敗（例如使用者把 .command 的預設開啟程式改成別的
+# 終端機模擬器，不是 Terminal.app）就安靜放棄，視窗留著讓使用者自己關，
+# 不影響其他功能——這不是關鍵路徑，失敗要優雅降級，不能讓整支腳本因此報錯。
+close_this_terminal_window() {
+    local my_tty
+    my_tty="$(tty 2>/dev/null)"
+    # tty 指令在沒有控制終端機時是印出字面字串「not a tty」（不是空字串）
+    # 並回傳非 0——只檢查空字串接不住這種情況，改成確認開頭真的是
+    # /dev/ 這種裝置路徑格式，才是真的拿到一個 tty。
+    case "$my_tty" in
+        /dev/*) ;;
+        *) return ;;
+    esac
+    # 用 & 丟到背景後立刻讓這支腳本自己結束（成功路徑最後一行就是呼叫這個
+    # function，之後沒有其他指令了）：等 osascript 真的執行到「關閉視窗」
+    # 那一刻，這個 shell 已經跑完、不再是「有行程還在跑」的狀態，Terminal
+    # 才不會跳出「這個視窗還有工作在執行，確定要關閉嗎」的確認對話框
+    # （那個對話框會讓「自動關閉」變成還是要使用者手動點一下，等於沒做到）。
+    osascript >/dev/null 2>&1 <<EOF &
+tell application "Terminal"
+    repeat with w in windows
+        repeat with t in tabs of w
+            if tty of t is "$my_tty" then
+                close w
+            end if
+        end repeat
+    end repeat
+end tell
+EOF
+}
 
 # 切換到這支腳本所在的資料夾——雙擊執行時的工作目錄是使用者家目錄，
 # 不是 kit 目錄。
@@ -97,22 +132,5 @@ fi
 # （macOS 內建 pbcopy，不需要額外安裝任何東西）。
 echo -n "$KIT_PATH" | pbcopy 2>/dev/null
 
-echo "  ✅ 設定檢查通過，Claude 正在啟動…"
-echo ""
-echo "  ─────────────────────────────────────────"
-echo "  接下來請在 Claude 視窗裡："
-echo ""
-echo "    1. 切到「Code」功能"
-echo "    2. 點「選擇資料夾」"
-echo "    3. 貼上這個路徑（已經幫你複製到剪貼簿，直接 Cmd+V）："
-echo ""
-echo "       $KIT_PATH"
-echo ""
-echo "  選好資料夾之後，直接用中文說話即可，例如："
-echo ""
-echo "      幫我登入"
-echo "      列出目前有哪些遊戲場館"
-echo ""
-echo "  這個視窗接下來不需要了，可以直接關閉（不用按 Enter，直接關掉這個視窗即可）。"
-echo "  ─────────────────────────────────────────"
-echo ""
+echo "  ✅ 已開啟 Claude，資料夾路徑已複製到剪貼簿，到「選擇資料夾」直接貼上即可。"
+close_this_terminal_window

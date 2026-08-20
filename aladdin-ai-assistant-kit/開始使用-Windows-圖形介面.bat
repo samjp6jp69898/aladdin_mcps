@@ -77,35 +77,13 @@ REM （clip 是 Windows 內建指令，不需要額外安裝）。
 
 if defined GUI_APP (
     start "" "%GUI_APP%"
-    echo   [OK] 設定檢查通過，Claude 正在啟動…
+    echo   [OK] 已開啟 Claude，資料夾路徑已複製到剪貼簿，到「選擇資料夾」直接貼上即可。
 ) else (
     echo   [!] 沒能自動找到 Claude 桌面應用程式的安裝位置
     echo.
-    echo   請自己從「開始」選單搜尋「Claude」並點開它
+    echo   請自己從「開始」選單搜尋「Claude」並點開它，資料夾路徑已複製到剪貼簿，
+    echo   到「選擇資料夾」直接貼上即可
     echo   （如果還沒安裝，到 https://claude.com/download 下載安裝）。
-)
-
-echo.
-echo   -----------------------------------------
-echo   接下來請在 Claude 視窗裡：
-echo.
-echo     1. 切到「Code」功能
-echo     2. 點「選擇資料夾」
-echo     3. 貼上這個路徑（已經幫你複製到剪貼簿，直接 Ctrl+V）：
-echo.
-echo        %KIT_PATH%
-echo.
-echo   選好資料夾之後，直接用中文說話即可，例如：
-echo.
-echo       幫我登入
-echo       列出目前有哪些遊戲場館
-echo.
-if defined GUI_APP (
-    echo   這個視窗接下來不需要了，可以直接關閉（不用按任何鍵，直接關掉這個視窗即可）。
-    echo   -----------------------------------------
-    echo.
-) else (
-    echo   -----------------------------------------
     echo.
     pause
 )
