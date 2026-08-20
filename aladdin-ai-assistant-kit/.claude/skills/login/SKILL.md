@@ -33,12 +33,15 @@ Bearer token／密碼一起送出去的風險開了一個口）。
 ## 這支 skill 會做什麼
 
 1. 從 kit 根目錄的 `.env` 讀出你的 agrabah 帳號密碼（純文字逐行解析，不會
-   被印出來、不會出現在跟你的對話紀錄裡）。帳密是**依環境分別讀**的：每個
-   環境先找自己專屬的欄位（欄位名由 `.mcp.json` 的 server 別名推導——轉大寫、
-   `-` 換成 `_`，加上 `_USER`／`_PASSWORD`，例如 `agrabah-admin-dev` 對應
-   `AGRABAH_ADMIN_DEV_USER`／`AGRABAH_ADMIN_DEV_PASSWORD`），沒填的話才回頭
-   用共用組 `AGRABAH_ADMIN_USER`／`AGRABAH_ADMIN_PASSWORD`。dev／pre／evi 與
-   平台後台是各自獨立的帳號名冊，帳密本來就可能不一樣。
+   被印出來、不會出現在跟你的對話紀錄裡）。帳密是**一個後台一組、依環境分別
+   讀**的：欄位名由 `.mcp.json` 的 server 別名機械推導——轉大寫、`-` 換成 `_`，
+   加上 `_USER`／`_PASSWORD`。例如 `agrabah-admin-dev` 對應
+   `AGRABAH_ADMIN_DEV_USER`／`AGRABAH_ADMIN_DEV_PASSWORD`，
+   `agrabah-platform-dev-6t` 對應
+   `AGRABAH_PLATFORM_DEV_6T_USER`／`AGRABAH_PLATFORM_DEV_6T_PASSWORD`。
+   **沒有「填一組就通用」的共用欄位**：後台是「環境 × 平台產品」兩個維度
+   （dev 的 PK 平台跟 dev 的 6T 平台是兩個不同站台、不同帳號），各自是互不
+   相通的帳號名冊。某個環境沒填，就只有那個環境登不了，不影響其他環境。
 2. 掃過 `.mcp.json` 裡每一筆已經填好真實 Bearer token 的環境（`agrabah-admin-dev`／
    `agrabah-admin-pre`／`agrabah-admin-evi`／`agrabah-platform`……你的 kit
    裡實際有哪幾筆，取決於工程師授權給你的範圍），對每一筆各自打一次該環境
@@ -87,11 +90,11 @@ Bearer token／密碼一起送出去的風險開了一個口）。
 - **找不到 `.env`／`.mcp.json`，或帳密欄位是空的**：照腳本印出的訊息指引
   使用者，通常是還沒完成 `cp .env.example .env` 並填好帳密這一步
   （詳見 kit 根目錄 `README.md` 的安裝步驟）。
-- **某個環境印出「略過：.env 裡找不到這個環境可以用的帳號密碼」**：只有那
-  一個環境沒填帳密，其他環境仍然照常登入了。把腳本指名的欄位名原樣告訴
-  使用者請他補填即可；如果他根本沒有那個環境的帳號，請他聯絡工程師確認是
-  不是不該拿到那個環境的 token，**不要建議他把別的環境的帳密填進去試**
-  ——各環境帳號名冊互不相通，試錯只會累積登入失敗次數（連續失敗會被鎖）。
+- **某個環境印出「略過：.env 裡找不到這個環境的帳號密碼」**：只有那一個
+  環境沒填帳密，其他環境仍然照常登入了。把腳本指名的欄位名原樣告訴使用者
+  請他補填即可；如果他根本沒有那個後台的帳號，請他聯絡工程師確認是不是不
+  該拿到那個環境的 token，**不要建議他把別的環境的帳密填進去試**——各後台
+  帳號名冊互不相通，試錯只會累積登入失敗次數（連續失敗會被鎖）。
 
 ## 這支 skill 絕對不會做的事（設計上的硬限制，不是遺漏）
 

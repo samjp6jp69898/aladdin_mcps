@@ -114,6 +114,10 @@ fi
 # 裡用 Map 存是唯一乾淨的寫法。解析方式的安全性質完全不變：仍然是純文字比
 # 對（split 行、找第一個 `=`、右邊原樣當值），沒有任何 eval／source／展開。
 #
+# 一個後台一組帳密，沒有共用欄位：後台是「環境 × 平台產品」兩個維度（dev 的
+# PK 平台與 dev 的 6T 平台是兩個不同站台、不同帳號），任何「填一組就通用」的
+# 設計在這種形狀下都只會把帳密送去錯的站台。
+#
 # 附帶好處：帳密不再需要 `export` 進環境變數就能傳給 node，node 直接讀檔，
 # 所以帳密現在連環境變數都不經過，curl 子行程也不會繼承到它們。
 export ENV_FILE MCP_FILE TOTP_CODE TOTP_PENDING_ALIAS TOTP_PENDING_ALIAS_FILE
@@ -171,58 +175,65 @@ const envFields = new Map();
 }
 const envValue = name => envFields.get(name) || '';
 
-// 共用組：所有環境的預設帳密（改動前唯一的一組欄位，名字保持不變，舊的
-// .env 不用動就能繼續用）。
-const GENERIC_USER_FIELD = 'AGRABAH_ADMIN_USER';
-const GENERIC_PASSWORD_FIELD = 'AGRABAH_ADMIN_PASSWORD';
-const genericUser = envValue(GENERIC_USER_FIELD);
-const genericPassword = envValue(GENERIC_PASSWORD_FIELD);
-
-// 環境專屬組：欄位名由 .mcp.json 的 server 別名推導——非英數字元一律換成
-// 底線、轉大寫，再加 _USER／_PASSWORD。例如 agrabah-admin-dev →
-// AGRABAH_ADMIN_DEV_USER／AGRABAH_ADMIN_DEV_PASSWORD，agrabah-platform →
-// AGRABAH_PLATFORM_USER／AGRABAH_PLATFORM_PASSWORD。
+// 欄位名一律由 .mcp.json 的 server 別名「機械轉換」而來：非英數字元換成底線、
+// 轉大寫，再加 _USER／_PASSWORD。
+//   agrabah-admin-dev        → AGRABAH_ADMIN_DEV_USER／..._PASSWORD
+//   agrabah-platform-dev-pk  → AGRABAH_PLATFORM_DEV_PK_USER／..._PASSWORD
+//   agrabah-platform-dev-6t  → AGRABAH_PLATFORM_DEV_6T_USER／..._PASSWORD
+//
+// 這裡刻意**不維護任何「有哪些環境／哪些平台」的清單**。後台實際上是「環境 ×
+// 平台產品」兩個維度（光 dev 一個環境底下就有 MAIN／TEST／FF／PK／NY／6T…
+// 十幾個平台，各自是不同站台、不同帳號），列舉法遲早會漏；純機械轉換則是
+// .mcp.json 新增任何別名都自動支援，不必再動這支腳本。
 const fieldPrefix = alias => alias.replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
 
-// 解析優先序：環境專屬組 > 共用組。
-// 「環境專屬組只填了一半」刻意當成錯誤、不 fallback 回共用組：那種情況下
-// 拿共用組的密碼配環境專屬的帳號（或反過來）去打登入，必定失敗，而失敗會被
-// agrabah 的帳號層節流記一次（5 次失敗鎖 5 分鐘）——寧可完全不發請求，直接
-// 告訴使用者少填了哪一個欄位。
+// 一個後台一組帳密，沒有共用／fallback 欄位：各後台是互不相通的帳號名冊，
+// 「沒填就是沒填」比「悄悄拿別的環境的帳密去試」安全——後者不但打錯環境，
+// 失敗還會被 agrabah 的帳號層節流記一次（連續 5 次鎖 5 分鐘）。
+//
+// 同理，一組只填了一半時也直接當錯誤、不送出請求：那次登入必定失敗，唯一的
+// 效果就是白白消耗一次節流額度。
 const resolveCredentials = alias => {
     const prefix = fieldPrefix(alias);
     const userField = `${prefix}_USER`;
     const passwordField = `${prefix}_PASSWORD`;
-    const specificUser = envValue(userField);
-    const specificPassword = envValue(passwordField);
 
-    if (specificUser !== '' || specificPassword !== '') {
-        if (specificUser !== '' && specificPassword !== '') {
-            return { ok: true, specificFilled: true, identifier: specificUser, password: specificPassword };
-        }
-        const missingField = specificUser === '' ? userField : passwordField;
+    // 別名開頭若是數字，推導出來的欄位名（例如 6T_PLATFORM_USER）不是合法的
+    // 欄位名，上面的解析器會直接略過那一行——使用者不管怎麼填都不會生效。
+    // 與其讓他對著一個永遠填不好的欄位名鬼打牆，不如明講這是設定問題。
+    if (!/^[A-Za-z_]/.test(prefix)) {
         return {
             ok: false,
-            specificFilled: true,
-            message: `.env 裡這個環境專屬的 ${missingField} 沒有填，但同一組的另一個欄位已經填了。` +
-                `${userField} 與 ${passwordField} 必須成對填寫；如果這個環境要改用所有環境共用的那組帳密，` +
-                `請把這兩個環境專屬欄位都清空。（為了不讓一次註定失敗的登入被記進帳號層節流，這個環境這次不會發出登入請求。）`,
+            filled: false,
+            message: `.mcp.json 裡這個環境的名字是數字開頭，推導不出合法的 .env 欄位名，` +
+                `這份 kit 的設定需要調整，請聯絡工程師。`,
         };
     }
 
-    if (genericUser !== '' && genericPassword !== '') {
-        return { ok: true, specificFilled: false, identifier: genericUser, password: genericPassword };
+    const user = envValue(userField);
+    const password = envValue(passwordField);
+
+    if (user !== '' && password !== '') {
+        return { ok: true, filled: true, identifier: user, password };
     }
 
-    // 訊息把環境專屬欄位放在前面：它優先序較高，也是 .env.example 主要在教的
-    // 填法；共用組放後面當成「所有環境同帳密」時的簡寫選項。
+    if (user === '' && password === '') {
+        return {
+            ok: false,
+            filled: false,
+            message: `.env 裡找不到這個環境的帳號密碼——請填 ${userField} 與 ${passwordField} 這兩個欄位。` +
+                `（欄位名的規則是把 .mcp.json 裡的環境名字轉大寫、減號換底線，再加 _USER／_PASSWORD。` +
+                `每個後台都有自己的一組欄位，不會共用，也沒有「填一組就通用」的欄位。）`,
+        };
+    }
+
+    const missingField = user === '' ? userField : passwordField;
     return {
         ok: false,
-        specificFilled: false,
-        message: `.env 裡找不到這個環境可以用的帳號密碼。請填 ${userField} 與 ${passwordField} 這兩個欄位` +
-            `（欄位名的規則是把 .mcp.json 裡的環境名字轉大寫、減號換底線，再加 _USER／_PASSWORD）。` +
-            `如果你所有後台用的都是同一組帳號密碼，也可以改填共用組 ${GENERIC_USER_FIELD} 與 ${GENERIC_PASSWORD_FIELD}，` +
-            `每個沒有自己專屬欄位的環境都會自動用它。`,
+        filled: true,
+        message: `.env 裡這個環境的 ${missingField} 沒有填，但同一組的另一個欄位已經填了。` +
+            `${userField} 與 ${passwordField} 必須成對填寫。` +
+            `（為了不讓一次註定失敗的登入被記進帳號層節流，這個環境這次不會發出登入請求。）`,
     };
 };
 // ──────────────────────────────────────────────────────────────────────────
@@ -285,25 +296,28 @@ if (targets.length === 0) {
     process.exit(1);
 }
 
-// D13：每個環境各自解出要用哪一組帳密。缺欄位改成「這個環境跳過、其他環境
+// D13：每個環境各自解出自己那組帳密。缺欄位改成「這個環境跳過、其他環境
 // 照跑」（改動前是任一欄位沒填就整支 exit 1），因為多環境情境下，某個環境
-// 沒填專屬帳密不該連帶擋掉其他已經填好的環境。
+// 沒填帳密不該連帶擋掉其他已經填好的環境。
 //
 // 取捨：per-environment 錯誤在最常見的「.env 剛 cp 出來、整個沒填」情境下，
 // 會對每個環境各印一次幾乎一樣的長訊息，對非技術企劃反而更難讀。所以這裡
-// 保留一條前置的整體判斷——如果一個帳密欄位都沒填到，就照改動前的行為印
-// 一句話並結束；只有在「至少填了一部分、但某些環境仍解不出帳密」時，才逐
-// 環境報告（那時每個環境缺的欄位名確實不同，值得分開講）。
+// 保留一條前置的整體判斷——如果一個帳密欄位都沒填到，就一次把整份清單交代
+// 完並結束；只有在「至少填了一部分、但某些環境仍解不出帳密」時，才逐環境
+// 報告（那時每個環境缺的欄位名確實不同，值得分開講）。
 const resolutions = targets.map(t => ({ target: t, cred: resolveCredentials(t.alias) }));
-const nothingFilledAtAll = genericUser === '' && genericPassword === '' &&
-    !resolutions.some(r => r.cred.specificFilled);
-if (nothingFilledAtAll) {
-    const exampleAlias = targets[0].alias;
-    const examplePrefix = fieldPrefix(exampleAlias);
-    console.error(`${envPath} 裡還沒填任何帳號密碼（也可能是等號前後多了空白，導致那一行沒被辨識出來）。` +
-        `請照 .env.example 的說明，把你被授權的每個環境各填一組——例如 ${exampleAlias} 這個環境對應的是 ` +
-        `${examplePrefix}_USER 與 ${examplePrefix}_PASSWORD。` +
-        `如果你所有後台用的都是同一組帳號密碼，也可以只填共用組 ${GENERIC_USER_FIELD} 與 ${GENERIC_PASSWORD_FIELD}。`);
+if (!resolutions.some(r => r.cred.filled)) {
+    // 一個欄位都沒填到（最常見的情況：.env 才剛從 .env.example 複製出來）。
+    // 這時逐環境各印一次長訊息只會洗版，改成一次把「你的 kit 有哪幾個後台、
+    // 每個要填哪兩個欄位」整理成清單交代完。
+    const lines = targets.map(t => {
+        const prefix = fieldPrefix(t.alias);
+        return `  ${t.alias}\n      ${prefix}_USER\n      ${prefix}_PASSWORD`;
+    });
+    console.error(`${envPath} 裡還沒填任何帳號密碼（也可能是等號前後多了空白，導致那一行沒被辨識出來）。\n` +
+        `你的 .mcp.json 裡有下面這幾個後台，每一個都要填自己的那一組（各後台帳號互不相通，沒有共用欄位）：\n` +
+        `${lines.join('\n')}\n` +
+        `詳細說明見 .env.example 的註解。`);
     process.exit(1);
 }
 
