@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/health)",
-      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-pre/health)",
-      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-evi/health)",
-      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-platform/health)",
+      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/health)",
       "Bash(bash .claude/skills/login/login.sh)",
       "Bash(bash .claude/skills/upload-image/upload.sh)"
     ],
@@ -34,6 +31,16 @@
     "後果：這份 allow 清單只能覆蓋『指令內容從頭到尾固定不變』的操作",
     "（本檔目前只有不需要 token、無 request body 的 GET /health 健康檢查；",
     "以及呼叫 H17/H18 兩支登入／上傳 skill 的『固定腳本呼叫』本身）。",
+    "",
+    "【2026-08-20 H15 修正】原本這裡放行的是四條各環境的 /mcp-<env>/health，",
+    "已改成單一條 proxy 自身的 /health。原因：那四條端點在 H15 的 M1 安全修正後",
+    "一律回 401 空 body（帶不帶 token 都一樣）——因為『能否到達某個環境前綴』",
+    "本身就是不該洩漏的資訊，任何人只要塞一個假 Authorization header 就能靠",
+    "回應差異掃出『哪些環境存在、哪些正在跑、跑了多久』。現在改用的",
+    "https://<我方domain>/health 是 proxy 自己的端點、不經前綴分流，回 200 且",
+    "不透露任何服務身分，能回答企劃真正需要的問題：『這條線路整體通不通』。",
+    "要判斷某個特定環境的後端是否活著，請聯絡工程師從本機探測",
+    "（curl http://127.0.0.1:8789/health），那不是企劃端該有的能力。",
     "H17／H18 兩支 skill 內部真正需要帶 token／帳密／檔案路徑等動態內容的 curl，",
     "一定要包在一支不吃額外參數的固定 wrapper script 裡（agent 只呼叫",
     "`bash .claude/skills/login/login.sh`／`bash .claude/skills/upload-image/upload.sh`",
