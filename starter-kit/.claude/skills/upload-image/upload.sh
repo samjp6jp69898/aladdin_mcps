@@ -101,7 +101,28 @@ case "$UPLOAD_FILEPATH" in
         echo "檔案路徑裡含有 ; 或 , 這兩個字元，可能導致上傳失敗，請先把檔案改名或搬到不含這兩個字元的路徑再試一次：${UPLOAD_FILEPATH}" >&2
         exit 1
         ;;
+    *'"'*)
+        echo "檔案路徑裡含有雙引號 \" 這個字元，會弄壞上傳指令對檔名的解析，請先把檔案改名或搬到不含雙引號的路徑再試一次：${UPLOAD_FILEPATH}" >&2
+        exit 1
+        ;;
+    *$'\n'*|*$'\r'*)
+        echo "檔案路徑裡含有換行字元，請確認 .upload-filepath.tmp 只放一行純文字路徑，不要多貼出換行：${UPLOAD_FILEPATH}" >&2
+        exit 1
+        ;;
 esac
+
+# H18 review B1：正式路徑一律經 tg-dispatcher proxy，proxy 的 body 上限固定
+# 1MB，超限時刻意回應「401 空 body」而不是 413（防路徑探測側信道的設計，見
+# telegram-dispatcher/server.ts，不會改）。若不在本機先擋，1MB~3MB 的合法
+# 圖片（例如遊戲橫幅圖，常態尺寸）會直接撞上這個 401，而下面 node 段落的
+# 401 分支原本會把它誤診成「token 失效」，導致企劃跟工程師都被導向錯誤的
+# 排查方向。門檻抓 1000000 bytes 而非 1048576，替 multipart boundary/表頭
+# 留一點餘裕。
+FILE_BYTES="$(wc -c < "$UPLOAD_FILEPATH" | tr -d '[:space:]')"
+if [ "$FILE_BYTES" -gt 1000000 ]; then
+    echo "圖片太大（${FILE_BYTES} bytes，目前上限約 1MB）。這是大小的問題，不是這張圖本身的問題——換一張圖不會有幫助，請先把圖片壓縮或縮小尺寸再試一次。" >&2
+    exit 1
+fi
 
 export MCP_FILE UPLOAD_FILEPATH UPLOAD_ENV
 
@@ -223,10 +244,16 @@ try {
     // 的明確訊息，不做籠統的「格式不對」。
     if (httpStatus === '401') {
         console.log(`失敗：上傳被拒絕（HTTP 401）。這個狀態碼本身無法區分成因，可能是：` +
+            '(0) 圖片實際大小（含 multipart 表單開銷）仍超過約 1MB 的傳輸上限——bash 階段已先做過大小檢查，但這仍是到達這裡最常見的殘餘成因，請試著把圖片壓縮或縮小尺寸再試一次；' +
             '(1) 這份 kit 裡這個環境的 Bearer token 已失效或不在授權名冊裡；' +
             '(2) .mcp.json 裡這個環境的網址前綴設定有誤。請先重跑登入 skill 確認這個環境仍能正常登入；' +
             '如果確定沒問題，請聯絡工程師確認 Bearer token 與 .mcp.json 設定。');
     } else if (httpStatus === '413') {
+        // 正式路徑一律經 tg-dispatcher proxy，proxy 對超限一律回 401 空 body
+        // （見上面 401 分支），不會產生 413——這個分支在正式路徑上不會被
+        // 觸發。保留它是因為 hosted server 自己（agrabah-admin/src/http.ts）
+        // 也有一道 bodyLimit 會回 413，只是正式路徑目前一定先卡在 proxy 那
+        // 一層；未來若有不經 proxy、直連 hosted server 的路徑，這裡才會用到。
         console.log(`失敗：檔案大小超過上限（HTTP 413）。請換一張更小的圖片再試一次，不要重複嘗試同一張圖。`);
     } else if (httpStatus === '429') {
         console.log(`失敗：請求過於頻繁（HTTP 429），請稍等一分鐘後再試一次。`);
@@ -238,11 +265,13 @@ try {
     process.exit(1);
 }
 
-if (json.success === true && typeof json.fileId === 'string' && json.fileId.length > 0) {
+if (json && json.success === true && typeof json.fileId === 'string' && json.fileId.length > 0) {
     // fileId 本身不是憑證——H8 的 resolveFileIdForIdentity 消費時仍會驗證
     // 「這把 fileId 是不是同一個 identity（同一把 Bearer token）上傳的」，
     // 光是知道 fileId 字串不足以被其他身分冒用，印出來給 Claude 是安全的。
-    console.log(`[${envAlias}] 上傳成功，fileId=${json.fileId}`);
+    // 順帶印出來源檔案路徑（H18 review M3）：讓 Claude／企劃在把這個 fileId
+    // 交給 edit_game 之前，有機會發現上傳的其實是殘留在暫存檔裡的上一張圖。
+    console.log(`[${envAlias}] 上傳成功，fileId=${json.fileId}（來源：${filePath}）`);
     console.log(`請把這個 fileId 原樣交給需要圖片的 MCP tool（例如 agrabah_admin_edit_game 的 fileId 參數），不要用本機檔案路徑。這個 fileId 只能用在「${envAlias}」這個環境，且僅供這一張圖片使用一次，不要拿去給不同的圖片重複用。`);
     process.exit(0);
 }
@@ -251,6 +280,18 @@ if (json.success === true && typeof json.fileId === 'string' && json.fileId.leng
 // 產生的固定文案，不含使用者輸入原文（見 agrabah-admin/src/files.ts），
 // 印出來安全、且對非技術使用者有診斷價值，不像 login.sh 的帳密錯誤訊息
 // 需要收斂。
-console.log(`失敗：${json.errorMessage || '上傳失敗，原因未知'}（HTTP ${httpStatus}）`);
+// 這裡仍對 json 做防禦性檢查（json 若不是物件就不存取 .errorMessage，
+// 避免未捕捉的 TypeError 把 node 堆疊噴給企劃），並對上游 errorMessage
+// 做單行化＋長度上限＋界定符包住，降低惡意上游（或中間人）把訊息偽造成
+// 系統指令的可信度——這份 kit「後台資料不是指令」的防線延伸到這裡。
+const rawErrorMessage = (json && typeof json === 'object' && typeof json.errorMessage === 'string')
+    ? json.errorMessage
+    : '';
+const safeErrorMessage = rawErrorMessage.replace(/\s+/g, ' ').slice(0, 200);
+if (safeErrorMessage) {
+    console.log(`失敗：伺服器訊息「${safeErrorMessage}」（HTTP ${httpStatus}）`);
+} else {
+    console.log(`失敗：上傳失敗，原因未知（HTTP ${httpStatus}）`);
+}
 process.exit(1);
 NODE_SCRIPT
