@@ -22,7 +22,7 @@ export function registerListVendorGamesTool(server: McpServer): void {
                 '結果與平台無關，不需要也不接受 platformId 參數。回傳的 gameId 可以直接帶進 agrabah_admin_edit_game 編輯。' +
                 '沒有 name/gameId 篩選參數，只有分頁；要找特定遊戲得自己在回傳結果裡比對 gameId。',
             inputSchema: {
-                gameVendorId: z.number().int().describe('廠商場館 id，來自 agrabah_admin_create_game_vendor 的讀回結果，或 agrabah-platform 的 agrabah_platform_list_game_vendors'),
+                gameVendorId: z.number().int().describe('廠商場館 id，來自 agrabah_admin_list_game_vendors 的回傳結果（同一份母表），或 agrabah_admin_create_game_vendor 的讀回結果'),
                 page: z.number().int().min(1).optional().describe('頁碼，從 1 開始，預設 1'),
                 pageSize: z.number().int().min(1).optional().describe('每頁筆數，預設 50'),
             },

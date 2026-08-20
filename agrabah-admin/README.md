@@ -10,6 +10,7 @@
 | `agrabah_admin_create_game_vendor` | `GameVendorAdmin.CreateOrUpdateGameVendor` | 建立三方遊戲場館，成功後自動讀回驗證 |
 | `agrabah_admin_create_game` | `GameVendorAdmin.CreateOrUpdateGameVendorGame` | **唯一真正能建立全新廠商遊戲的入口**（寫進全平台共用的廠商遊戲母表）；platform 後台沒有這個能力，只能對母表已存在的遊戲做「上架到某平台」（見 `agrabah-platform` 的 `agrabah_platform_onboard_vendor_game`）；不支援圖片/多語系欄位，建完要設圖改用 `agrabah_admin_edit_game` |
 | `agrabah_admin_edit_game` | `ListGames`（定位）+ `GetGameVendorGameForEdit` + `CreateOrUpdateGameVendorGame`（更新） | 編輯**既有**遊戲，用 gameVendorId+gameId 業務鍵定位（不用先知道內部流水號）。讀既有資料當基準值、只覆蓋有帶的欄位，支援方形圖/直方圖/橫幅圖上傳、`localizedNames` 多語系名稱 |
+| `agrabah_admin_list_game_vendors` | `GameVendorAdmin.ListGameVendors` / `ListAllGameVendors` | 列出「三方場館母表」的場館清單，**參數全選填、不帶參數即列出全部**（無篩選且無 `page` 時走 `ListAllGameVendors` 一次拿全部）。補上 admin 端原本缺的「無參數列出全部場館」能力——先前 7 支 tool 沒有任何一支做得到（`list_vendor_games` 必填 `gameVendorId`、`list_platform_game_vendors` 必填 `platformId` 且只涵蓋該平台已建立關聯的場館），導致 agent 為了拿場館 id 跑去 `agrabah-platform` 的 `agrabah_platform_list_game_vendors`（那是「已上架到該平台」的清單，不是母表）。回傳的 `id` 就是其他 admin tool 的 `gameVendorId` |
 | `agrabah_admin_list_vendor_games` | `GameVendorAdmin.ListGames` | 查某廠商在「廠商遊戲母表」的遊戲清單（全平台共用視角，不是某個 platform 的上架清單）；只有分頁，沒有 name/gameId 篩選 |
 | `agrabah_admin_list_platforms` | `PlatformManagement.ListPlatformDetails` | 列出全部平台（id/code/status...），供其他兩支平台化 tool 取得合法 platformId；刻意未綁 `@Permission` |
 | `agrabah_admin_list_platform_game_vendors` | `GameVendorAdmin.ListPlatformGameVendors` | 查指定 platformId 底下的廠商場館清單與各自 status——真正平台化的查詢（RPC 簽名有明確 platformId） |
@@ -23,7 +24,7 @@ src/
   http.ts            — MCP entry point（hosted，Streamable HTTP；Bearer 認證、/login、/files、/health、/mcp，見 ../README.md「Hosted 模式」）
   auth.ts             — Bearer token 名冊載入與認證 middleware（hosted 專用）
   session.ts         — 登入態管理（Client.encoded、Remote 實例、login/ensureLoggedIn/withAutoRelogin/uploadFile，per-identity 容器），所有 tool 共用；也是 IS_PROD/confirm 閘門所在
-  const.ts            — 所有 tool 共用的 rajah enum 對照表與錯誤碼（WALLET_TYPE_MAP、GAME_TAG_MAP、IMAGE_SHAPE_MAP...），集中管理避免各 tool 各自重複一份
+  const.ts            — 所有 tool 共用的 rajah enum 對照表與錯誤碼（ACTIVE_STATUS_MAP、WALLET_TYPE_MAP、GAME_TAG_MAP、IMAGE_SHAPE_MAP...），集中管理避免各 tool 各自重複一份
   files.ts            — POST /files 暫存目錄管理（型別白名單、身分綁定、配額、週期清理），hosted 專用
   instructions.ts     — hosted `/mcp` 的 McpServer instructions（依 IS_PROD 動態組字）
   login_throttle.ts   — /login 帳號層節流（冷卻期），hosted 專用
@@ -35,6 +36,7 @@ src/
     create_game_vendor.ts
     create_game.ts
     edit_game.ts         — 含圖片上傳邏輯（uploadLocalizedImages）與多語名稱合併（mergeLocalizedStrings）
+    list_game_vendors.ts — 母表場館清單（參數全選填；無篩選且無 page 時改走 ListAllGameVendors）
     list_vendor_games.ts
     list_platforms.ts
     list_platform_game_vendors.ts
@@ -58,7 +60,7 @@ TOTP：dev 環境目前不需要。若未來需要，`agrabah_admin_login` 保�
 
 - `adapter`（建場館）只在 tool description 列出某次實測的已知合法值供參考，沒有對應查詢 tool，清單會過期。
 - **場館建立後不會自動出現在任何 platform**：`agrabah_admin_create_game_vendor` 建出來的場館，要先由 admin 端呼叫 `agrabah_admin_update_platform_game_vendor_status`（platformId、gameVendorId、status=enabled）幫它啟用特定 platform，`agrabah-platform` 的 `agrabah_platform_list_game_vendors` 才查得到——場館內部 id 是全域共用沒錯，但「該 id 在哪些 platform 可見」是另一張獨立的關聯表（2026-08-18 實測發現，之前文件誤寫成「id 通用即可直接用」，已修正；2026-08-19 H34 補上這支啟用 tool）。
-- **admin 角色沒有平台切換 header**：H33 查證確認 `platform-code` header 後端無人讀取（真名是 `aladdin-platform-code`，Gate 轉發前無條件依 Host 覆寫，AdminGate 結構上不載入 domains 表故 platformId 恆為 0），H34 已移除該 header。admin 角色的平台 scope 一律走 RPC 明確的 `platformId` 參數——只有 `agrabah_admin_list_platform_game_vendors` 與 `agrabah_admin_update_platform_game_vendor_status` 這兩支是真正平台化的；其餘 tool（`create_game_vendor`/`create_game`/`edit_game`/`list_vendor_games`）操作的都是全平台共用母表，與平台無關。詳見 `../_hosted-rollout/multi-env-platform-code-findings.md`。
+- **admin 角色沒有平台切換 header**：H33 查證確認 `platform-code` header 後端無人讀取（真名是 `aladdin-platform-code`，Gate 轉發前無條件依 Host 覆寫，AdminGate 結構上不載入 domains 表故 platformId 恆為 0），H34 已移除該 header。admin 角色的平台 scope 一律走 RPC 明確的 `platformId` 參數——只有 `agrabah_admin_list_platform_game_vendors` 與 `agrabah_admin_update_platform_game_vendor_status` 這兩支是真正平台化的；其餘 tool（`create_game_vendor`/`create_game`/`edit_game`/`list_game_vendors`/`list_vendor_games`）操作的都是全平台共用母表，與平台無關。詳見 `../_hosted-rollout/multi-env-platform-code-findings.md`。
 - `squareImage`/`rectangleImage`/`bannerImage` 圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；`agrabah_admin_edit_game` 要求呼叫端明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，見下）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **H9：`edit_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**（D5/§4.3）：stdio 模式帶 `filePath`（本機絕對路徑），hosted 模式先呼叫 `POST /files` 上傳拿到 `fileId` 再帶入；同時帶或都不帶都回明確錯誤，整個圖片欄位不帶則沿用既有值（不受影響）。`fileId → 本機路徑` 的解析（`files.ts` 的 `resolveFileIdForIdentity`）先過 regex 格式白名單、再用 `Map` 精確比對、再用 `realpath` 二次確認落在暫存目錄內，三層防護擋路徑逃逸——已用 `../../../../Users/user/aladdin/.env`、絕對路徑、含 `/` 的 fileId 三種輸入實測全部被拒且無檔案被讀取。既有的「圖片一旦設定過就只能覆蓋、不能清空成未設定狀態」限制同樣適用（同下方 localizedName 的 proto3 限制）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（2026-08-18 用真實遊戲資料 JDB/gameId=9024 實測驗證：設值成功，但事後想還原成空陣列失敗，只能改覆蓋成別的文字）。這是 rajah/protobuf 層的限制，不是本工具的 bug；langue tag 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值。

@@ -26,8 +26,8 @@ export function registerCreateGameTool(server: McpServer): void {
                 '在 agrabah admin 後台建立一筆全新的廠商遊戲（rajah: GameVendorAdmin.CreateOrUpdateGameVendorGame，' +
                 'id 留空即為新增），會寫進全平台共用的廠商遊戲母表——這是唯一真正的「建立新遊戲」入口，' +
                 'platform 後台做不到這件事。本工具操作的是全平台共用母表，結果與平台無關，不需要也不接受 platformId 參數。' +
-                'gameVendorId 必須是既有場館的 id（可用 agrabah_admin_create_game_vendor ' +
-                '的讀回結果拿到）——注意：場館的內部 id 全域共用（admin 建立的 id，platform 端看到的也是同一個數字），' +
+                'gameVendorId 必須是既有場館的 id（可用 agrabah_admin_list_game_vendors 查母表，或用 ' +
+                'agrabah_admin_create_game_vendor 的讀回結果拿到）——注意：場館的內部 id 全域共用（admin 建立的 id，platform 端看到的也是同一個數字），' +
                 '但新建立的場館預設不會出現在任何 platform 的清單裡，要先由 admin 端呼叫 ' +
                 'agrabah_admin_update_platform_game_vendor_status 為該場館啟用特定 platform，' +
                 '否則 agrabah-platform 的 agrabah_platform_list_game_vendors 查不到剛建立的場館。' +

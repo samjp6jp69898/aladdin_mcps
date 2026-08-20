@@ -23,8 +23,8 @@ export function registerUpdatePlatformGameVendorStatusTool(server: McpServer): v
                 'agrabah_admin_create_game_vendor 新建立的場館預設不會出現在任何 platform 的清單裡，要靠這支把 status ' +
                 '設成 enabled 才會出現在該 platform（見 agrabah_admin_list_platform_game_vendors / ' +
                 'agrabah-platform 的 agrabah_platform_list_game_vendors）。' +
-                'platformId 從 agrabah_admin_list_platforms 取得，gameVendorId 從 agrabah_admin_create_game_vendor ' +
-                '或 agrabah_admin_list_platform_game_vendors 的回傳結果取得。' +
+                'platformId 從 agrabah_admin_list_platforms 取得，gameVendorId 從 agrabah_admin_list_game_vendors ' +
+                '（母表全部場館，含尚未對任何平台啟用的）或 agrabah_admin_create_game_vendor 的讀回結果取得。' +
                 'status 合法值（rajah StatusEnum）：unknown/enabled/disabled/frozen/deleted，一般啟用/停用只會用到 ' +
                 'enabled/disabled，其餘值語意不在本工具範圍內描述。' +
                 '這支 RPC 沒有單筆查詢方法，寫入成功後本工具會用 agrabah_admin_list_platform_game_vendors 的第一頁' +

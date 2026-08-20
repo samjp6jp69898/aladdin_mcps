@@ -12,6 +12,9 @@
 // stdio 模式不會用到這個常數——stdio 用 env 帳密自動重登，不會走到需要對外顯示訊號的分支。
 export const HOSTED_RELOGIN_REQUIRED_MESSAGE = '登入態已失效，請重新登入後重試';
 
+// ActiveStatusEnum（common.rajah:1075-1078）——GameVendorEssentialSearch 的 status / maintenanceStatus 用這組值
+export const ACTIVE_STATUS_MAP = { enabled: 1, disabled: 2 } as const;
+
 // WalletTypeEnum（common.rajah:1195-1202）
 export const WALLET_TYPE_MAP = { normal: 1, agent: 2, commission: 3 } as const;
 
