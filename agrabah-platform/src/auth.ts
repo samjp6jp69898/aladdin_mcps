@@ -33,11 +33,30 @@
  *   }
  * token 產生方式：bun -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
  *
- * 名冊格式驗證：載入時若發現重複 token 或重複 id，一律拒絕本次載入（含第一
- * 次載入），log 到 stderr 並沿用前一份有效名冊；第一次載入本身失敗（檔案
- * 不存在、JSON 壞掉、格式錯誤）則沿用「空名冊」——所有請求 401，但不阻擋
- * 伺服器啟動（比照「認證層缺設定不阻擋啟動」，同時對認證本身維持
- * fail-closed：缺設定時一律拒絕，絕不放行）。
+ * 名冊載入語意（M3 修正，取代原先的「拒絕本次載入並沿用前一份有效名冊」）：
+ * **每次認證都重讀名冊檔，且只有一份完整通過驗證的名冊能授權請求**。任何讀不
+ * 到、解析不了、或驗證不過的情況（檔案被刪除、JSON 壞掉、tokens 不是陣列、
+ * 條目缺 id/token、token 或 id 重複）一律回空名冊 → 所有請求 401，並在 stderr
+ * 印一行明確的「已進入拒絕所有請求狀態」。伺服器仍不會因此拒絕啟動（比照
+ * 「認證層缺設定不阻擋啟動」）。
+ *
+ * 為什麼不再沿用前一份：舊寫法在「曾經成功載入、之後檔案消失或損毀」時，會繼續
+ * 拿記憶體裡的舊名冊授權——等於用一份磁碟上已不存在的狀態放行請求。外洩通報後
+ * 最直覺的兩個止血動作（把名冊檔刪掉、或手改存壞）因此都不會撤銷任何 token，
+ * 畫面上還完全沒有回饋，維運者會以為已經止血。撤銷必須在**所有**誤操作下都生效；
+ * 只保證其中一部分（移除條目存檔）形同沒有保證，因為維運者無法分辨自己踩到哪種。
+ *
+ * 這個統一也讓「單筆條目格式錯誤」變成全體 401。這是刻意的取捨：代價有界且可
+ * 自癒——改好檔案後下一個 request 重讀就恢復，不必重啟，session.ts 的 per-token
+ * 登入態容器（`sessions`）完全不受影響，沒有人需要重新登入；換到的是「撤銷一定
+ * 生效」這個不分情境都成立的保證。原本這段驗證要防的事情依然成立，見
+ * loadRegistry 上方註解：不合格的條目在任何情況下都不會進入授權路徑。
+ *
+ * 不做 mtime/size 快取：名冊只有幾 KB，每個 request 讀一次的成本遠低於本服務每
+ * 次 tool call 對 agrabah 的 RPC（也低於同一條失敗路徑上 audit_log 的寫檔），而
+ * 任何「檔案沒變」的推測都可能被騙——撤銷後把 mtime 還原成相同值、或就地改掉
+ * 一個字元讓 size 與 ino 都不變，都會讓快取繼續放行已撤銷的 token。認證正確性
+ * 優先於效能，同上面第二點。
  *
  * timingSafeEqual 用法比照已上線的
  * telegram-dispatcher/lib/security/webhook-secret-guard.ts：逐一比對名冊內
@@ -49,7 +68,7 @@
  */
 
 import { timingSafeEqual } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import type { Context, MiddlewareHandler } from 'hono';
 import { logAuthFailure } from './audit_log.ts';
 
@@ -65,58 +84,60 @@ interface RegistryFile {
     tokens: TokenRegistryEntry[];
 }
 
-interface RegistryCache {
-    mtimeMs: number;
-    entries: TokenRegistryEntry[];
-}
-
-// 每個 registryPath 各自快取，admin/platform 互不干擾，也讓 auth.test.ts
-// 能用彼此獨立的暫存名冊檔測試而不互相污染快取。
-const cacheByPath = new Map<string, RegistryCache>();
+// 名冊載入失敗時的 stderr 去重狀態。**只影響 log，不參與任何授權判斷**：授權
+// 一律以「本次讀檔的結果」為準。沒有它的話，一份壞名冊會讓每個 request 都印一
+// 行，真正該被維運者看見的第一行瞬間被洗掉。key 是 registryPath，value 是上次
+// 印過的原因，原因變了或修好後再壞都會重新印。
+const lastFailureByPath = new Map<string, string>();
 
 /**
- * 現讀名冊檔 + mtime 快取，回傳目前有效的 entries（可能是沿用前一份，見
- * 檔頭「名冊格式驗證」）。找不到檔案時回傳空陣列且不建立快取——下次請求
- * 會再試著讀一次，讓「先啟動服務、稍晚才補名冊檔」這個操作順序也能生效。
+ * fail-closed：回空名冊（→ 所有請求 401），並確保維運者在 stderr 看得見。
  *
- * 驗證刻意做到「每個欄位的型別/存在性都檢查」而不是只擋重複值：一份手誤
- * 缺了 id 或 token 欄位的名冊，若被當成合法資料快取起來，輕則某個身分的
- * agrabahIdentity 變成 undefined（登入態容器若用它當 key，undefined 不是
- * 一個安全的 key），重則後面比對 token 時對 undefined 呼叫 `Buffer.from()`
- * 直接拋例外——而且是在「這次載入本身」的 try/catch 之外（比對邏輯屬於
- * 每個 request 各自執行），一份壞名冊會讓**所有**身分（不只壞掉那筆）從下
- * 一次快取失效開始全部 500，等於整層認證被單一筆手誤打掛。所有拒絕訊息
- * 只帶 index 或已驗證過的 id，絕不印出 token 或整筆 entry（entry 內容含
- * 真實 token 值，印出來就是把祕密寫進 log）。
+ * reason 只帶固定字串、條目 index、或已驗證是字串的 id，**絕不帶 token 值、
+ * 整筆 entry、或 JSON 解析器的原始訊息**（H17/H18 教訓）。解析器訊息尤其危險：
+ * Bun 的 `JSON.parse` 會把出錯位置附近的原文嵌進訊息，實測
+ * `{"tokens": <未加引號的 token>}` 會產生 `Unexpected identifier "<token 原文>"`
+ * ——手滑漏一組引號就等於把 token 寫進 log。
+ */
+function failClosed(registryPath: string, reason: string): TokenRegistryEntry[] {
+    if (lastFailureByPath.get(registryPath) !== reason) {
+        lastFailureByPath.set(registryPath, reason);
+        console.error(`[auth] 名冊載入失敗，已進入拒絕所有請求狀態（所有 token 一律 401，直到名冊修好）：${ reason }（${ registryPath }）`);
+    }
+    return [];
+}
+
+/**
+ * 每次認證都重讀名冊檔並完整驗證，回傳這一刻磁碟上真正有效的 entries；讀不到
+ * 或驗證不過一律回空陣列（fail-closed），不保留、也不沿用任何前一次的結果。
+ * 沒有快取同時也讓「先啟動服務、稍晚才補名冊檔」這個操作順序自動生效。
+ *
+ * 驗證刻意做到「每個欄位的型別/存在性都檢查」而不是只擋重複值：一份手誤缺了
+ * id 或 token 欄位的名冊，若被當成合法資料收下，輕則某個身分的 agrabahIdentity
+ * 變成 undefined（登入態容器若用它當 key，undefined 不是一個安全的 key），重則
+ * 後面比對 token 時對 undefined 呼叫 `Buffer.from()` 直接拋例外——而且是在本函式
+ * try/catch 之外（比對邏輯屬於每個 request 各自執行），會讓**所有**身分（不只
+ * 壞掉那筆）全部 500。改成 fail-closed 後這層保護不但還在，而且更強：不合格的
+ * 條目連「這次」都不會進入授權路徑，結果是乾淨的 401 而不是 500。
  */
 function loadRegistry(registryPath: string): TokenRegistryEntry[] {
-    const previous = cacheByPath.get(registryPath);
-
-    let mtimeMs: number;
+    let raw: string;
     try {
-        mtimeMs = statSync(registryPath).mtimeMs;
-    } catch {
-        return previous?.entries ?? [];
+        raw = readFileSync(registryPath, 'utf-8');
+    } catch (err) {
+        const code = (err as { code?: string }).code;
+        return failClosed(registryPath, code === 'ENOENT' ? '名冊檔不存在' : `名冊檔無法讀取（${ code ?? 'unknown' }）`);
     }
-
-    if (previous && previous.mtimeMs === mtimeMs) {
-        return previous.entries;
-    }
-
-    const reject = (reason: string): TokenRegistryEntry[] => {
-        console.error(`[auth] 名冊格式錯誤：${ reason }，拒絕本次載入，沿用前一份有效名冊（${ registryPath }）`);
-        return previous?.entries ?? [];
-    };
 
     let parsed: unknown;
     try {
-        parsed = JSON.parse(readFileSync(registryPath, 'utf-8'));
-    } catch (err) {
-        return reject(`JSON 解析失敗：${ err instanceof Error ? err.message : String(err) }`);
+        parsed = JSON.parse(raw);
+    } catch {
+        return failClosed(registryPath, 'JSON 解析失敗（解析器原始訊息刻意不輸出，它會夾帶出錯位置附近的原文，那可能就是 token 值）');
     }
 
     if (parsed === null || typeof parsed !== 'object' || !Array.isArray((parsed as RegistryFile).tokens)) {
-        return reject('tokens 欄位不存在或不是陣列');
+        return failClosed(registryPath, 'tokens 欄位不存在或不是陣列');
     }
 
     const rawEntries = (parsed as RegistryFile).tokens;
@@ -126,23 +147,27 @@ function loadRegistry(registryPath: string): TokenRegistryEntry[] {
     for (let i = 0; i < rawEntries.length; i++) {
         const entry = rawEntries[i];
         if (typeof entry?.id !== 'string' || entry.id.length === 0) {
-            return reject(`第 ${ i } 筆條目缺少合法的 id`);
+            return failClosed(registryPath, `第 ${ i } 筆條目缺少合法的 id`);
         }
         if (typeof entry.token !== 'string' || entry.token.length === 0) {
-            return reject(`id=${ entry.id } 缺少合法的 token`);
+            return failClosed(registryPath, `id=${ entry.id } 缺少合法的 token`);
         }
         if (seenTokens.has(entry.token)) {
-            return reject(`token 重複（id=${ entry.id }）`);
+            return failClosed(registryPath, `token 重複（id=${ entry.id }）`);
         }
         if (seenIds.has(entry.id)) {
-            return reject(`id 重複（id=${ entry.id }）`);
+            return failClosed(registryPath, `id 重複（id=${ entry.id }）`);
         }
         seenTokens.add(entry.token);
         seenIds.add(entry.id);
         entries.push(entry);
     }
 
-    cacheByPath.set(registryPath, { mtimeMs, entries });
+    // 只在「剛剛還是壞的」時候印恢復訊息：維運者修好檔案後要有正向回饋，才知道
+    // 上面那行「拒絕所有請求」已經解除，而不是自己還在盲猜。
+    if (lastFailureByPath.delete(registryPath)) {
+        console.error(`[auth] 名冊已重新載入成功（${ entries.length } 筆條目），恢復正常認證（${ registryPath }）`);
+    }
     return entries;
 }
 

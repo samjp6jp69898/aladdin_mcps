@@ -140,7 +140,14 @@ describe('createBearerAuthGuard', () => {
         expect(await afterBob.text()).toBe('bob');
     });
 
-    test('名冊格式驗證：重複 token 時拒絕該次載入，沿用前一份有效名冊', async () => {
+    // ── M3 fail-closed 語意 ───────────────────────────────────────────────
+    // 以下這組測試的期望在 M3 被整批反轉：舊行為是「名冊載入失敗 → 沿用前一份
+    // 有效名冊」，等於用一份磁碟上已不存在的狀態繼續放行請求；外洩通報後維運者
+    // 最直覺的止血動作（刪掉名冊檔、或手改存壞）因此完全不撤銷任何 token。
+    // 新語意：只有一份完整通過驗證的名冊能授權請求，任何讀不到/解析不了/驗證
+    // 不過的情況一律全部 401。詳細取捨見 auth.ts 檔頭。
+
+    test('名冊格式驗證：重複 token 時 fail-closed，舊 token 一併失效', async () => {
         dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
         const registryPath = join(dir, 'tokens.json');
         writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
@@ -149,22 +156,21 @@ describe('createBearerAuthGuard', () => {
         const before = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
         expect(before.status).toBe(200);
 
-        // 壞掉的名冊：同一個 token 出現兩次（id 不同）。
+        // 壞掉的名冊：同一個 token 出現兩次（id 不同）——身分變得有歧義，不可授權。
         writeRegistry(registryPath, [
             { id: 'alice', token: 'dup-token', display_name: 'Alice', issued_at: '2026-08-19' },
             { id: 'mallory', token: 'dup-token', display_name: 'Mallory', issued_at: '2026-08-19' },
         ]);
         bumpMtime(registryPath, 1000);
 
-        // 沿用前一份有效名冊：alice 的舊 token 仍然有效，壞名冊裡的新 token 不生效。
-        const stillOld = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
-        expect(stillOld.status).toBe(200);
+        const oldToken = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(oldToken.status).toBe(401);
 
-        const rejectedNew = await app.request('/whoami', { headers: { authorization: 'Bearer dup-token' } });
-        expect(rejectedNew.status).toBe(401);
+        const ambiguous = await app.request('/whoami', { headers: { authorization: 'Bearer dup-token' } });
+        expect(ambiguous.status).toBe(401);
     });
 
-    test('名冊格式驗證：重複 id 時拒絕該次載入，沿用前一份有效名冊', async () => {
+    test('名冊格式驗證：重複 id 時 fail-closed，舊 token 一併失效', async () => {
         dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
         const registryPath = join(dir, 'tokens.json');
         writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
@@ -180,21 +186,20 @@ describe('createBearerAuthGuard', () => {
         ]);
         bumpMtime(registryPath, 1000);
 
-        const stillOld = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
-        expect(stillOld.status).toBe(200);
+        const oldToken = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(oldToken.status).toBe(401);
 
         const rejectedNew = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token-2' } });
         expect(rejectedNew.status).toBe(401);
     });
 
-    // 三個 review 找到的真實 bug（見 commit）的回歸測試：一份手誤缺欄位的
-    // 名冊，過去會被當成合法資料快取（缺 id 時 identity 變成 undefined、
-    // 缺 token 時比對邏輯對 undefined 呼叫 Buffer.from() 直接拋例外），而且
-    // 後者的例外發生在每個 request 各自的比對迴圈裡、不在 loadRegistry 的
-    // try/catch 保護範圍內，會讓「這次載入」之後的所有身分（不只壞掉那筆）
-    // 全部 500，直到名冊修好——一筆手誤打掛整層認證。
+    // 缺欄位的名冊：M3 之前這裡的風險是「被當成合法資料收下」——缺 id 時 identity
+    // 變成 undefined、缺 token 時比對邏輯對 undefined 呼叫 Buffer.from() 直接拋
+    // 例外，而該例外在每個 request 各自的比對迴圈裡、不在 loadRegistry 的
+    // try/catch 內，會讓所有身分（不只壞掉那筆）全部 500。fail-closed 之後這層
+    // 保護更強：不合格條目連這次都進不了授權路徑，結果是乾淨的 401 而不是 500。
 
-    test('條目缺少 token：拒絕該次載入，不拋例外、不誤放行、沿用前一份有效名冊', async () => {
+    test('條目缺少 token：fail-closed 回 401，不拋例外也不回 500', async () => {
         dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
         const registryPath = join(dir, 'tokens.json');
         writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
@@ -206,16 +211,15 @@ describe('createBearerAuthGuard', () => {
         writeRegistry(registryPath, [{ id: 'orphan', display_name: 'Orphan', issued_at: '2026-08-19' }]);
         bumpMtime(registryPath, 1000);
 
-        // 沿用前一份有效名冊：alice 仍然有效。
-        const stillOld = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
-        expect(stillOld.status).toBe(200);
+        const oldToken = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(oldToken.status).toBe(401);
 
-        // 用任何 token 都不該打進壞掉的那筆條目而拋例外導致 500。
+        // 關鍵：是 401 而不是 500——沒有任何 request 打進壞條目的比對而拋例外。
         const noCrash = await app.request('/whoami', { headers: { authorization: 'Bearer anything' } });
         expect(noCrash.status).toBe(401);
     });
 
-    test('條目缺少 id：拒絕該次載入，不把 identity 設成 undefined、沿用前一份有效名冊', async () => {
+    test('條目缺少 id：fail-closed 回 401，不把 identity 設成 undefined', async () => {
         dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
         const registryPath = join(dir, 'tokens.json');
         writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
@@ -227,14 +231,14 @@ describe('createBearerAuthGuard', () => {
         writeRegistry(registryPath, [{ token: 'orphan-token', display_name: 'Orphan', issued_at: '2026-08-19' }]);
         bumpMtime(registryPath, 1000);
 
-        const stillOld = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
-        expect(stillOld.status).toBe(200);
+        const oldToken = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(oldToken.status).toBe(401);
 
         const rejectedNew = await app.request('/whoami', { headers: { authorization: 'Bearer orphan-token' } });
         expect(rejectedNew.status).toBe(401);
     });
 
-    test('tokens 欄位不是陣列（如 null）：不靜默清空成功名冊，沿用前一份有效名冊', async () => {
+    test('tokens 欄位不是陣列（如 null）：fail-closed 回 401', async () => {
         dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
         const registryPath = join(dir, 'tokens.json');
         writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
@@ -246,12 +250,11 @@ describe('createBearerAuthGuard', () => {
         writeFileSync(registryPath, JSON.stringify({ tokens: null }));
         bumpMtime(registryPath, 1000);
 
-        // 過去的 bug：非陣列被當成空陣列，靜默覆蓋掉前一份有效快取，alice 會變 401。
-        const stillOld = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
-        expect(stillOld.status).toBe(200);
+        const oldToken = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(oldToken.status).toBe(401);
     });
 
-    test('名冊檔內容是空物件 {}：不拋例外，視為格式錯誤沿用前一份有效名冊', async () => {
+    test('名冊檔內容是空物件 {}：fail-closed 回 401，不拋例外', async () => {
         dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
         const registryPath = join(dir, 'tokens.json');
         writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
@@ -263,7 +266,153 @@ describe('createBearerAuthGuard', () => {
         writeFileSync(registryPath, JSON.stringify({}));
         bumpMtime(registryPath, 1000);
 
-        const stillOld = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
-        expect(stillOld.status).toBe(200);
+        const oldToken = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(oldToken.status).toBe(401);
+    });
+
+    // ── M3 主場景：載入成功「之後」名冊消失或損毀 ─────────────────────────
+    // 原本的測試只覆蓋「名冊檔從未存在」（上面那則），而真正的事故形狀是
+    // 「服務已經跑一陣子、名冊載入成功過，維運者才去刪檔／改壞」。
+
+    test('載入成功後名冊檔被刪除：立刻全部 401，不沿用記憶體裡的舊名冊', async () => {
+        dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
+        const registryPath = join(dir, 'tokens.json');
+        writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
+
+        const app = buildApp(registryPath);
+        const before = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(before.status).toBe(200);
+
+        // 外洩通報後最直覺的止血動作：把整份名冊刪掉。這必須真的撤銷所有 token。
+        rmSync(registryPath);
+
+        const afterDelete = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(afterDelete.status).toBe(401);
+    });
+
+    test('載入成功後名冊被寫成壞 JSON：立刻全部 401，被撤銷的 token 不會存活', async () => {
+        dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
+        const registryPath = join(dir, 'tokens.json');
+        writeRegistry(registryPath, [
+            { id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' },
+            { id: 'mallory', token: 'leaked-token', display_name: 'Mallory', issued_at: '2026-08-19' },
+        ]);
+
+        const app = buildApp(registryPath);
+        expect((await app.request('/whoami', { headers: { authorization: 'Bearer leaked-token' } })).status).toBe(200);
+
+        // 維運者想刪掉 mallory 那筆，但存檔時手滑弄出語法錯誤（少一個右大括號）。
+        writeFileSync(registryPath, '{"tokens":[{"id":"alice","token":"alice-token","display_name":"Alice","issued_at":"2026-08-19"}');
+        bumpMtime(registryPath, 1000);
+
+        // 舊行為：解析失敗 → 沿用前一份 → 外洩的 leaked-token continue 有效。
+        const leaked = await app.request('/whoami', { headers: { authorization: 'Bearer leaked-token' } });
+        expect(leaked.status).toBe(401);
+
+        const alice = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(alice.status).toBe(401);
+    });
+
+    test('壞名冊修好後自動恢復認證，不需要重啟行程', async () => {
+        dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
+        const registryPath = join(dir, 'tokens.json');
+        writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
+
+        const app = buildApp(registryPath);
+        expect((await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } })).status).toBe(200);
+
+        writeFileSync(registryPath, 'not json at all');
+        bumpMtime(registryPath, 1000);
+        expect((await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } })).status).toBe(401);
+
+        // fail-closed 的代價必須是有界且可自癒的：改回合法名冊後，同一支 app、
+        // 同一個行程就恢復——這是「單筆手誤讓全體 401」這個取捨能成立的前提。
+        writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
+        bumpMtime(registryPath, 2000);
+
+        const recovered = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(recovered.status).toBe(200);
+        expect(await recovered.text()).toBe('alice');
+    });
+
+    test('撤銷後 mtime 被還原成完全相同的值：撤銷仍然生效', async () => {
+        dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
+        const registryPath = join(dir, 'tokens.json');
+        writeRegistry(registryPath, [
+            { id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' },
+            { id: 'mallory', token: 'leaked-token', display_name: 'Mallory', issued_at: '2026-08-19' },
+        ]);
+        const originalMtime = statSync(registryPath).mtimeMs;
+
+        const app = buildApp(registryPath);
+        expect((await app.request('/whoami', { headers: { authorization: 'Bearer leaked-token' } })).status).toBe(200);
+
+        // 撤銷 mallory，然後把 mtime 還原成一模一樣的值（編輯器保留時間戳、rsync
+        // --times、手動 touch -r 都會造成這個結果）。任何以 mtime 判定「檔案沒變」
+        // 的快取都會在這裡繼續放行已撤銷的 token。
+        writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
+        const restored = new Date(originalMtime);
+        utimesSync(registryPath, restored, restored);
+        expect(statSync(registryPath).mtimeMs).toBe(originalMtime);
+
+        const revoked = await app.request('/whoami', { headers: { authorization: 'Bearer leaked-token' } });
+        expect(revoked.status).toBe(401);
+
+        const alice = await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+        expect(alice.status).toBe(200);
+    });
+
+    test('fail-closed 的 stderr 訊息明確說明已拒絕所有請求，且不含任何 token 值', async () => {
+        dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
+        const registryPath = join(dir, 'tokens.json');
+        writeRegistry(registryPath, [{ id: 'alice', token: 'SUPERSECRETTOKENVALUE', display_name: 'Alice', issued_at: '2026-08-19' }]);
+
+        const app = buildApp(registryPath);
+        expect((await app.request('/whoami', { headers: { authorization: 'Bearer SUPERSECRETTOKENVALUE' } })).status).toBe(200);
+
+        const captured: string[] = [];
+        const originalError = console.error;
+        console.error = (...args: unknown[]) => { captured.push(args.map(String).join(' ')); };
+        try {
+            // 少一組引號，token 值變成 JSON 語法錯誤的位置——Bun 的 JSON.parse 訊息
+            // 會把它原樣嵌進 `Unexpected identifier "SUPERSECRETTOKENVALUE"`，舊碼
+            // 直接把該訊息插進 stderr，等於把 token 寫進 log（H17/H18 教訓）。
+            writeFileSync(registryPath, '{"tokens": SUPERSECRETTOKENVALUE}');
+            bumpMtime(registryPath, 1000);
+
+            const res = await app.request('/whoami', { headers: { authorization: 'Bearer SUPERSECRETTOKENVALUE' } });
+            expect(res.status).toBe(401);
+        } finally {
+            console.error = originalError;
+        }
+
+        const log = captured.join('\n');
+        expect(log).toContain('拒絕所有請求');
+        expect(log).not.toContain('SUPERSECRETTOKENVALUE');
+    });
+
+    test('名冊載入失敗時 stderr 不會每個 request 都刷一行（同一原因只印一次）', async () => {
+        dir = mkdtempSync(join(tmpdir(), 'auth-test-'));
+        const registryPath = join(dir, 'tokens.json');
+        writeRegistry(registryPath, [{ id: 'alice', token: 'alice-token', display_name: 'Alice', issued_at: '2026-08-19' }]);
+
+        const app = buildApp(registryPath);
+        expect((await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } })).status).toBe(200);
+
+        const captured: string[] = [];
+        const originalError = console.error;
+        console.error = (...args: unknown[]) => { captured.push(args.map(String).join(' ')); };
+        try {
+            writeFileSync(registryPath, 'not json at all');
+            bumpMtime(registryPath, 1000);
+            for (let i = 0; i < 5; i++) {
+                await app.request('/whoami', { headers: { authorization: 'Bearer alice-token' } });
+            }
+        } finally {
+            console.error = originalError;
+        }
+
+        // 去重是為了讓「第一行」不被洗掉；它只影響 log，不影響授權（上面每一次都 401）。
+        expect(captured.filter(line => line.includes('拒絕所有請求')).length).toBe(1);
     });
 });
