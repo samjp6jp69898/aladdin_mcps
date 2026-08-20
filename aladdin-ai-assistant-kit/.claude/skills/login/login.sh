@@ -43,10 +43,13 @@
 #     含空白／`$`／反引號／`$(...)`／雙引號這類字元時，會被 shell 展開、
 #     觸發 `unbound variable`，甚至把錯誤片段（可能含密碼）印到 stderr、
 #     直接進入 Claude 對話紀錄——這正是 D4「密碼絕不能進對話紀錄」這個核心
-#     目標被繞過的方式。改用下面的逐行純文字解析（只做字串裁切，不做任何
-#     shell 展開／命令替換），`=` 後面整行原樣當成值，只 strip `\r`（CRLF）
-#     與檔首可能出現的 UTF-8 BOM。
-#   - 帳密只活在 shell/子行程的環境變數，不出現在任何指令列參數。
+#     目標被繞過的方式。改用逐行純文字解析（只做字串裁切，不做任何 shell
+#     展開／命令替換），`=` 後面整行原樣當成值，只 strip `\r`（CRLF）與檔首
+#     可能出現的 UTF-8 BOM。這段解析在下面的 node 區塊裡（見 D13 多環境帳密
+#     那段註解），性質與原本的 bash 版逐行解析完全相同，只是換了執行語言。
+#   - 帳密只在 node 行程的記憶體裡存在，不進環境變數、不出現在任何指令列
+#     參數。（D13 之前的版本是 bash 解析完 `export` 給 node；改由 node 直接
+#     讀檔之後，帳密連環境變數都不再經過，curl 子行程也不會繼承到它們。）
 #   - 呼叫 agrabah 後台一律用 `curl --config -`：URL／header（含 Bearer
 #     token）／body 全部透過 stdin 的設定檔餵給 curl，curl 本身收到的
 #     command line 只有 `curl --config -`，`ps aux` 看不到任何密碼或 token。
@@ -104,39 +107,16 @@ if [ ! -f "$MCP_FILE" ]; then
     exit 1
 fi
 
-# H17 review 收尾（F3）：逐行解析 .env，不執行 shell、不做任何展開——只找
-# `AGRABAH_ADMIN_USER=`／`AGRABAH_ADMIN_PASSWORD=` 開頭的行，把 `=` 後面的
-# 整段文字原樣當值。這樣密碼裡的空白／`$`／反引號／`$(...)`／雙引號都只是
-# 普通字元，不會被當成 shell 語法解讀，也不會有任何錯誤訊息夾帶密碼片段的
-# 風險（因為根本沒有執行的機會可以出錯）。
-AGRABAH_ADMIN_USER=""
-AGRABAH_ADMIN_PASSWORD=""
-_first_line=1
-while IFS= read -r _line || [ -n "$_line" ]; do
-    if [ "$_first_line" = 1 ]; then
-        # UTF-8 BOM（記事本「另存新檔」常見的編碼選項）只可能出現在檔案最
-        # 開頭，把這三個位元組從第一行行首剝掉。
-        _line="${_line#$'\xEF\xBB\xBF'}"
-        _first_line=0
-    fi
-    _line="${_line%$'\r'}"
-    case "$_line" in
-        AGRABAH_ADMIN_USER=*)
-            AGRABAH_ADMIN_USER="${_line#AGRABAH_ADMIN_USER=}"
-            ;;
-        AGRABAH_ADMIN_PASSWORD=*)
-            AGRABAH_ADMIN_PASSWORD="${_line#AGRABAH_ADMIN_PASSWORD=}"
-            ;;
-    esac
-done < "$ENV_FILE"
-unset _line _first_line
-
-if [ -z "$AGRABAH_ADMIN_USER" ] || [ -z "$AGRABAH_ADMIN_PASSWORD" ]; then
-    echo "$ENV_FILE 裡 AGRABAH_ADMIN_USER／AGRABAH_ADMIN_PASSWORD 還沒填（或等號前後多了空白，導致這一行沒被辨識出來），請先填好帳號密碼再試一次。" >&2
-    exit 1
-fi
-
-export AGRABAH_ADMIN_USER AGRABAH_ADMIN_PASSWORD TOTP_CODE TOTP_PENDING_ALIAS MCP_FILE TOTP_PENDING_ALIAS_FILE
+# D13 多環境帳密（本次改動）：`.env` 的逐行純文字解析整段移到下面的 node
+# 區塊。原因是「哪些欄位要讀」不再是固定的兩個名字，而要依 `.mcp.json` 裡每
+# 個 server 別名各自推導一組欄位名（別名含 `-`，shell 變數名不能有 `-`，在
+# bash 3.2 又沒有 associative array 可以用來存「別名→帳密」的對應），在 node
+# 裡用 Map 存是唯一乾淨的寫法。解析方式的安全性質完全不變：仍然是純文字比
+# 對（split 行、找第一個 `=`、右邊原樣當值），沒有任何 eval／source／展開。
+#
+# 附帶好處：帳密不再需要 `export` 進環境變數就能傳給 node，node 直接讀檔，
+# 所以帳密現在連環境變數都不經過，curl 子行程也不會繼承到它們。
+export ENV_FILE MCP_FILE TOTP_CODE TOTP_PENDING_ALIAS TOTP_PENDING_ALIAS_FILE
 
 # 實際的登入邏輯（解析 .mcp.json、逐環境組 curl config、判讀回應）交給 node
 # 執行：Claude Code 本身依賴 Node.js 才能執行，所以 node 在 Mac／Windows
@@ -150,11 +130,102 @@ const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
 const mcpPath = process.env.MCP_FILE;
-const identifier = process.env.AGRABAH_ADMIN_USER;
-const password = process.env.AGRABAH_ADMIN_PASSWORD;
+const envPath = process.env.ENV_FILE;
 const totpCode = process.env.TOTP_CODE || '';
 const totpPendingAlias = process.env.TOTP_PENDING_ALIAS || '';
 const totpPendingAliasFile = process.env.TOTP_PENDING_ALIAS_FILE;
+
+// ── .env 逐行純文字解析（D13） ────────────────────────────────────────────
+// 只做字串裁切：split 出每一行，找第一個 `=`，左邊當欄位名、右邊整段原樣當
+// 值。密碼裡的空白／`$`／反引號／`$(...)`／雙引號／單引號全都只是普通字元。
+// 絕不 source／eval／做任何形式的展開，也絕不把任何值印出來（下面所有錯誤
+// 訊息一律只提欄位「名字」）。
+let envText;
+try {
+    envText = fs.readFileSync(envPath, 'utf8');
+} catch {
+    // 不印例外訊息原文，理由同下面 .mcp.json 那段：例外訊息可能夾帶檔案內容。
+    console.error(`無法讀取 ${envPath}，請確認這個檔案存在、而且你這個使用者帳號有讀取權限。`);
+    process.exit(1);
+}
+// 用 Map 而不是物件字面量：欄位名直接來自檔案內容，物件會讓 `__proto__`
+// 這種名字撞進原型鏈，Map 沒有這個問題。
+const envFields = new Map();
+{
+    let text = envText;
+    // UTF-8 BOM（記事本「另存新檔」常見的編碼選項）只可能出現在檔案最開頭。
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    for (let line of text.split('\n')) {
+        // Windows CRLF：記事本存出的檔案每一行尾巴會多一個 \r。
+        if (line.endsWith('\r')) line = line.slice(0, -1);
+        if (line === '' || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq <= 0) continue;
+        const name = line.slice(0, eq);
+        // 欄位名必須是乾淨的英數底線；等號前面多了空白（「FOO = bar」）這種
+        // 寫法一律不辨識——跟改動前的 bash 版逐行解析行為一致，.env.example
+        // 也已經明確提醒過這個地雷。
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) continue;
+        envFields.set(name, line.slice(eq + 1));
+    }
+}
+const envValue = name => envFields.get(name) || '';
+
+// 共用組：所有環境的預設帳密（改動前唯一的一組欄位，名字保持不變，舊的
+// .env 不用動就能繼續用）。
+const GENERIC_USER_FIELD = 'AGRABAH_ADMIN_USER';
+const GENERIC_PASSWORD_FIELD = 'AGRABAH_ADMIN_PASSWORD';
+const genericUser = envValue(GENERIC_USER_FIELD);
+const genericPassword = envValue(GENERIC_PASSWORD_FIELD);
+
+// 環境專屬組：欄位名由 .mcp.json 的 server 別名推導——非英數字元一律換成
+// 底線、轉大寫，再加 _USER／_PASSWORD。例如 agrabah-admin-dev →
+// AGRABAH_ADMIN_DEV_USER／AGRABAH_ADMIN_DEV_PASSWORD，agrabah-platform →
+// AGRABAH_PLATFORM_USER／AGRABAH_PLATFORM_PASSWORD。
+const fieldPrefix = alias => alias.replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
+
+// 解析優先序：環境專屬組 > 共用組。
+// 「環境專屬組只填了一半」刻意當成錯誤、不 fallback 回共用組：那種情況下
+// 拿共用組的密碼配環境專屬的帳號（或反過來）去打登入，必定失敗，而失敗會被
+// agrabah 的帳號層節流記一次（5 次失敗鎖 5 分鐘）——寧可完全不發請求，直接
+// 告訴使用者少填了哪一個欄位。
+const resolveCredentials = alias => {
+    const prefix = fieldPrefix(alias);
+    const userField = `${prefix}_USER`;
+    const passwordField = `${prefix}_PASSWORD`;
+    const specificUser = envValue(userField);
+    const specificPassword = envValue(passwordField);
+
+    if (specificUser !== '' || specificPassword !== '') {
+        if (specificUser !== '' && specificPassword !== '') {
+            return { ok: true, specificFilled: true, identifier: specificUser, password: specificPassword };
+        }
+        const missingField = specificUser === '' ? userField : passwordField;
+        return {
+            ok: false,
+            specificFilled: true,
+            message: `.env 裡這個環境專屬的 ${missingField} 沒有填，但同一組的另一個欄位已經填了。` +
+                `${userField} 與 ${passwordField} 必須成對填寫；如果這個環境要改用所有環境共用的那組帳密，` +
+                `請把這兩個環境專屬欄位都清空。（為了不讓一次註定失敗的登入被記進帳號層節流，這個環境這次不會發出登入請求。）`,
+        };
+    }
+
+    if (genericUser !== '' && genericPassword !== '') {
+        return { ok: true, specificFilled: false, identifier: genericUser, password: genericPassword };
+    }
+
+    // 訊息把環境專屬欄位放在前面：它優先序較高，也是 .env.example 主要在教的
+    // 填法；共用組放後面當成「所有環境同帳密」時的簡寫選項。
+    return {
+        ok: false,
+        specificFilled: false,
+        message: `.env 裡找不到這個環境可以用的帳號密碼。請填 ${userField} 與 ${passwordField} 這兩個欄位` +
+            `（欄位名的規則是把 .mcp.json 裡的環境名字轉大寫、減號換底線，再加 _USER／_PASSWORD）。` +
+            `如果你所有後台用的都是同一組帳號密碼，也可以改填共用組 ${GENERIC_USER_FIELD} 與 ${GENERIC_PASSWORD_FIELD}，` +
+            `每個沒有自己專屬欄位的環境都會自動用它。`,
+    };
+};
+// ──────────────────────────────────────────────────────────────────────────
 
 let mcp;
 try {
@@ -214,6 +285,28 @@ if (targets.length === 0) {
     process.exit(1);
 }
 
+// D13：每個環境各自解出要用哪一組帳密。缺欄位改成「這個環境跳過、其他環境
+// 照跑」（改動前是任一欄位沒填就整支 exit 1），因為多環境情境下，某個環境
+// 沒填專屬帳密不該連帶擋掉其他已經填好的環境。
+//
+// 取捨：per-environment 錯誤在最常見的「.env 剛 cp 出來、整個沒填」情境下，
+// 會對每個環境各印一次幾乎一樣的長訊息，對非技術企劃反而更難讀。所以這裡
+// 保留一條前置的整體判斷——如果一個帳密欄位都沒填到，就照改動前的行為印
+// 一句話並結束；只有在「至少填了一部分、但某些環境仍解不出帳密」時，才逐
+// 環境報告（那時每個環境缺的欄位名確實不同，值得分開講）。
+const resolutions = targets.map(t => ({ target: t, cred: resolveCredentials(t.alias) }));
+const nothingFilledAtAll = genericUser === '' && genericPassword === '' &&
+    !resolutions.some(r => r.cred.specificFilled);
+if (nothingFilledAtAll) {
+    const exampleAlias = targets[0].alias;
+    const examplePrefix = fieldPrefix(exampleAlias);
+    console.error(`${envPath} 裡還沒填任何帳號密碼（也可能是等號前後多了空白，導致那一行沒被辨識出來）。` +
+        `請照 .env.example 的說明，把你被授權的每個環境各填一組——例如 ${exampleAlias} 這個環境對應的是 ` +
+        `${examplePrefix}_USER 與 ${examplePrefix}_PASSWORD。` +
+        `如果你所有後台用的都是同一組帳號密碼，也可以只填共用組 ${GENERIC_USER_FIELD} 與 ${GENERIC_PASSWORD_FIELD}。`);
+    process.exit(1);
+}
+
 // curl config 檔案格式：反斜線與雙引號各自要轉義成 \\ 與 \"，避免密碼／
 // token 裡剛好出現這兩種字元時弄壞設定檔語法。額外過濾掉 \r／\n——
 // url／token 是直接原文插值進 config（不像 body 有經過 JSON.stringify 天然
@@ -257,10 +350,20 @@ let totpAnnounced = false;
 const pendingAliasValid = totpPendingAlias !== '' && targets.some(t => t.alias === totpPendingAlias);
 let totpCodeConsumed = totpCode === '' || !pendingAliasValid;
 
-for (const { alias, loginUrl, token } of targets) {
+for (const { target, cred } of resolutions) {
+    const { alias, loginUrl, token } = target;
+
+    // 帳密解不出來：只跳過這一個環境，不影響其他環境。訊息只提欄位「名字」，
+    // 不會回顯任何欄位的值。
+    if (!cred.ok) {
+        console.log(`[${alias}] 略過：${cred.message}`);
+        anyFailure = true;
+        continue;
+    }
+
     const totpCodeToSend = (!totpCodeConsumed && alias === totpPendingAlias) ? totpCode : '';
     if (totpCodeToSend !== '') totpCodeConsumed = true;
-    const body = JSON.stringify({ identifier, password, totpCode: totpCodeToSend });
+    const body = JSON.stringify({ identifier: cred.identifier, password: cred.password, totpCode: totpCodeToSend });
     const configLines = [
         `url = "${escapeForCurlConfig(loginUrl)}"`,
         `header = "Authorization: Bearer ${escapeForCurlConfig(token)}"`,
