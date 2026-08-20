@@ -119,10 +119,23 @@ M=/Users/<USER>/aladdin/obsidian/mcps
 plutil -extract EnvironmentVariables json -o - "$M/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist"
 ```
 
-> 改網址就是改 plist：**改完 repo 正本要重新 `cp` 到 `~/Library/LaunchAgents/` 再
-> `launchctl kickstart -k`**，否則 launchd 仍在用舊值（它只讀 `~/Library/LaunchAgents/`
-> 底下那份）。網址沒設或設成空字串時，服務會 fail-loud 退出（exit 1），err log 直接
-> 指名要去看哪一份 plist。
+> **改 plist 之後不能只用 `kickstart`**——這是實測踩過的坑（2026-08-20）：
+> `launchctl kickstart -k` 只重啟行程、**不會重新讀取 plist**，環境變數仍是舊的，
+> 服務會帶著空的 `ALADDIN_ADMIN_API_URL` 啟動然後 fail-loud 退出。
+>
+> 正確流程是 **cp → bootout → bootstrap**：
+> ```bash
+> cp "$M/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist" ~/Library/LaunchAgents/
+> launchctl bootout   gui/$(id -u)/com.aladdin.mcp-admin-server
+> launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.mcp-admin-server.plist
+> ```
+> **bootout 與 bootstrap 之間要留一點時間**：卸載尚未完成就 bootstrap 會得到
+> `Bootstrap failed: 5: Input/output error`。遇到就再執行一次 bootstrap 即可。
+>
+> 對照：**只改了程式碼（`src/*.ts`）**時用 `kickstart -k` 就夠，不必 bootout。
+> 判準是「有沒有動到 plist 內容」。
+>
+> 網址沒設或設成空字串時，服務會 fail-loud 退出（exit 1），err log 直接指名要去看哪一份 plist。
 
 ### 2.2 各 server 的 `tokens.json`（Bearer 名冊，不進 git）
 

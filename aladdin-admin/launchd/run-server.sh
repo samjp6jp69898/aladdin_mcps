@@ -35,7 +35,7 @@ export ALADDIN_ADMIN_HTTP_PORT=8789
 # stdio 模式（.mcp.json 已有完整帳密設定）。
 
 if [ -z "${ALADDIN_ADMIN_API_URL:-}" ]; then
-  echo "ERROR: 環境變數 ALADDIN_ADMIN_API_URL 未設定或為空。請檢查 plist 的 EnvironmentVariables 是否有 ALADDIN_ADMIN_API_URL：正本在 $SERVER_DIR/launchd/com.aladdin.mcp-admin-server.plist，但 launchd 讀的是 ~/Library/LaunchAgents/com.aladdin.mcp-admin-server.plist——改完正本要重新 cp 過去再 kickstart 才會生效。" >&2
+  echo "ERROR: 環境變數 ALADDIN_ADMIN_API_URL 未設定或為空。請檢查 plist 的 EnvironmentVariables 是否有 ALADDIN_ADMIN_API_URL：正本在 $SERVER_DIR/launchd/com.aladdin.mcp-admin-server.plist，但 launchd 讀的是 ~/Library/LaunchAgents/com.aladdin.mcp-admin-server.plist——改完正本要重新 cp 過去，然後 bootout + bootstrap（只用 kickstart 不會重讀 plist）。" >&2
   exit 1
 fi
 

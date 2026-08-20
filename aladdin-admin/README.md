@@ -133,7 +133,7 @@ ALADDIN_ADMIN_API_URL=https://admin.alddev.com \
 的 `CQA_ADMIN_URL`、evi 寫死在腳本裡，已全部統一到 plist——常駐服務的存活不該
 綁在「給 stdio 用的」設定區塊上（有人清掉那個 key，服務會在下次重啟時才死、當下
 毫無徵兆），且部署到新機器時不必為了起服務而先備妥一份含帳密的 `.mcp.json`。
-換站台＝改 plist，改完要重新 `cp` 到 `~/Library/LaunchAgents/` 再 kickstart。
+換站台＝改 plist，改完要重新 `cp` 到 `~/Library/LaunchAgents/` 然後 bootout + bootstrap（只用 kickstart 不會重讀 plist，實測踩過）。
 三支腳本皆刻意不匯出帳密（`ALADDIN_ADMIN_USER`/`ALADDIN_ADMIN_PASSWORD`），
 理由見腳本內註解——hosted 模式一律走 per-token 登入態 + `POST /login`。
 

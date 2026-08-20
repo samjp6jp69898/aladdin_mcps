@@ -32,7 +32,7 @@ export ALADDIN_PLATFORM_HTTP_PORT=8790
 # 範圍，尚未定案；本 task 只驗證服務起得來、/health 通）。
 
 if [ -z "${ALADDIN_PLATFORM_API_URL:-}" ]; then
-  echo "ERROR: 環境變數 ALADDIN_PLATFORM_API_URL 未設定或為空。請檢查 plist 的 EnvironmentVariables 是否有 ALADDIN_PLATFORM_API_URL：正本在 $SERVER_DIR/launchd/com.aladdin.mcp-platform-server.plist，但 launchd 讀的是 ~/Library/LaunchAgents/com.aladdin.mcp-platform-server.plist——改完正本要重新 cp 過去再 kickstart 才會生效。" >&2
+  echo "ERROR: 環境變數 ALADDIN_PLATFORM_API_URL 未設定或為空。請檢查 plist 的 EnvironmentVariables 是否有 ALADDIN_PLATFORM_API_URL：正本在 $SERVER_DIR/launchd/com.aladdin.mcp-platform-server.plist，但 launchd 讀的是 ~/Library/LaunchAgents/com.aladdin.mcp-platform-server.plist——改完正本要重新 cp 過去，然後 bootout + bootstrap（只用 kickstart 不會重讀 plist）。" >&2
   exit 1
 fi
 

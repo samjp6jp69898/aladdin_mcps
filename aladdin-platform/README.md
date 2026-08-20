@@ -92,7 +92,7 @@ curl http://localhost:8790/health
 來源，見本檔上面「環境變數」一節）、也不讀 `/Users/user/aladdin/.env`。原本是用
 `jq` 從 `.mcp.json` 現讀，已改掉——常駐服務的存活不該綁在「給 stdio 用的」設定區塊
 上，且部署到新機器時不必為了起服務而先備妥一份含帳密的 `.mcp.json`。換站台＝改
-plist，改完要重新 `cp` 到 `~/Library/LaunchAgents/` 再 kickstart。`run-server.sh`
+plist，改完要重新 `cp` 到 `~/Library/LaunchAgents/` 然後 bootout + bootstrap（只用 kickstart 不會重讀 plist，實測踩過）。`run-server.sh`
 刻意不匯出帳密（`ALADDIN_PLATFORM_USER`/`ALADDIN_PLATFORM_PASSWORD`），理由見腳本
 內註解。
 
