@@ -121,15 +121,21 @@ export async function login(opts: { identifier?: string; password?: string; totp
 }
 
 /**
+ * hosted 模式「需要重新登入」的專屬 Error 子類，設計理由與 admin 端逐字相同，
+ * 完整說明見 obsidian/mcps/agrabah-admin/src/session.ts 同一段註解。
+ */
+export class ReloginRequiredError extends Error {}
+
+/**
  * H7：雙模式（plan.md D3/D4），設計理由與 admin 端逐字相同，完整說明見
  * obsidian/mcps/agrabah-admin/src/session.ts 同一段註解。stdio 模式沒有
- * session 時用 env 帳密自動登入（行為不變）；hosted 模式回一個明確、機器
- * 可辨識的重登信號給 agent，符合 D11「只陳述事實」。
+ * session 時用 env 帳密自動登入（行為不變）；hosted 模式拋 ReloginRequiredError，
+ * 由 http.ts 的包裝層轉成一般的 tool result 回給 agent，符合 D11「只陳述事實」。
  */
 async function ensureLoggedIn(): Promise<void> {
     if (sessions.has(currentIdentity())) return;
     if (isHostedIdentity()) {
-        throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+        throw new ReloginRequiredError(HOSTED_RELOGIN_REQUIRED_MESSAGE);
     }
     const r = await login();
     if (!r.success) throw new Error(`自動登入失敗：errorCode=${ r.errorCode } ${ r.message }`);
@@ -141,7 +147,7 @@ async function ensureLoggedIn(): Promise<void> {
  *   withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.ListGameVendors(search, page, pageSize))
  *
  * H7：JWT 過期（AgrabahErrorCodeEnum.loginRequired）時同樣雙模式——stdio 用 env 帳密
- * 自動重登（行為不變）；hosted 模式回重登信號，不嘗試用 env 帳密重登（D3）。
+ * 自動重登（行為不變）；hosted 模式拋 ReloginRequiredError，不嘗試用 env 帳密重登（D3）。
  */
 export async function withAutoRelogin<T>(
     call: () => Promise<{ failed: boolean; errorCode: number; message: string; data: T | null }>,
@@ -151,7 +157,7 @@ export async function withAutoRelogin<T>(
 
     if (r.failed && r.errorCode === AgrabahErrorCodeEnum.loginRequired) {
         if (isHostedIdentity()) {
-            throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+            throw new ReloginRequiredError(HOSTED_RELOGIN_REQUIRED_MESSAGE);
         }
         const relogin = await login();
         if (!relogin.success) {

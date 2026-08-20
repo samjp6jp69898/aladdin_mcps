@@ -208,17 +208,30 @@ export async function login(opts: { identifier?: string; password?: string; totp
 }
 
 /**
+ * hosted 模式「需要重新登入」的專屬 Error 子類，比照 H36 的 ProdConfirmRequiredError：
+ * 讓 http.ts 的包裝層能用 instanceof 把這個**預期中的業務狀態**與真正的未預期例外
+ * 分開處理。
+ *
+ * 為什麼需要一個子類、而不是繼續拋泛用 Error：泛用 Error 會被包裝層原樣往上拋，
+ * MCP SDK 收到 tool handler 拋出的例外後會把它變成 JSON-RPC 層的錯誤，企劃端的
+ * Claude Code 把那種錯誤解讀成傳輸問題、畫面只顯示「連線失敗」——寫得再清楚的
+ * 重登訊號都到不了企劃眼前（真實使用者測試中發生過）。改成可辨識的子類後，
+ * 包裝層會把它轉成一般的 tool result 回傳（見 http.ts withStderrStackLogging），
+ * 訊號才真的送得到 agent 手上。
+ */
+export class ReloginRequiredError extends Error {}
+
+/**
  * H7：雙模式（plan.md D3/D4）。stdio 模式沒有 session 時用 env 帳密自動登入
  * （行為不變）；hosted 模式 server 記憶體不留帳密（D3），沒有 env 帳密可用，
- * 改回一個明確、機器可辨識的重登信號給 agent，交由呼叫端（企劃端登入 skill）
- * 重跑 POST /login 後重試。這支 Error 沒有額外堆疊資訊，MCP SDK 只會把
- * error.message 包成 isError:true 回給呼叫端（見 http.ts 檔頭關於例外處理的
- * 說明），符合 D11「只陳述事實」。
+ * 改拋 ReloginRequiredError 這個明確、機器可辨識的重登信號，由 http.ts 的包裝層
+ * 轉成 tool result 回給 agent，交由呼叫端（企劃端登入 skill）重跑 POST /login
+ * 後重試。措辭止於 HOSTED_RELOGIN_REQUIRED_MESSAGE，符合 D11「只陳述事實」。
  */
 async function ensureLoggedIn(): Promise<void> {
     if (sessions.has(currentIdentity())) return;
     if (isHostedIdentity()) {
-        throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+        throw new ReloginRequiredError(HOSTED_RELOGIN_REQUIRED_MESSAGE);
     }
     const r = await login();
     if (!r.success) throw new Error(`自動登入失敗：errorCode=${ r.errorCode } ${ r.message }`);
@@ -230,8 +243,8 @@ async function ensureLoggedIn(): Promise<void> {
  *   withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGameVendors(search, page, pageSize))
  *
  * H7：JWT 過期（AgrabahErrorCodeEnum.loginRequired）時同樣雙模式——stdio 用 env 帳密
- * 自動重登（行為不變）；hosted 模式回重登信號，不嘗試用 env 帳密重登（D3：
- * hosted 模式沒有帳密可用）。
+ * 自動重登（行為不變）；hosted 模式拋 ReloginRequiredError，不嘗試用 env 帳密重登
+ * （D3：hosted 模式沒有帳密可用）。
  */
 export async function withAutoRelogin<T>(
     call: () => Promise<{ failed: boolean; errorCode: number; message: string; data: T | null }>,
@@ -241,7 +254,7 @@ export async function withAutoRelogin<T>(
 
     if (r.failed && r.errorCode === AgrabahErrorCodeEnum.loginRequired) {
         if (isHostedIdentity()) {
-            throw new Error(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+            throw new ReloginRequiredError(HOSTED_RELOGIN_REQUIRED_MESSAGE);
         }
         const relogin = await login();
         if (!relogin.success) {

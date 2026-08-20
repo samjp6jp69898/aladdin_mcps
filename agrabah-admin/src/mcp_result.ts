@@ -3,6 +3,7 @@
  */
 
 import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
+import { HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
 
 export function asTextResult(payload: unknown) {
     return {
@@ -25,4 +26,22 @@ export function asErrorResult(r: { errorCode: number; message: string }, extra?:
         errorName: AgrabahErrorCodeEnum[ r.errorCode ] ?? '(未知錯誤碼)',
         message: r.message,
     });
+}
+
+/**
+ * hosted 模式「需要重新登入」的失敗回應（由 http.ts 的包裝層在攔到
+ * session.ts 的 ReloginRequiredError 時回傳，不是各 tool 自己組）。
+ *
+ * 刻意走 asErrorResult 而不是另造一種格式：agent 端解析失敗回應的方式對所有
+ * 業務錯誤一致（success/errorCode/errorName/message），重登這種狀態沒有理由
+ * 例外。errorCode 用 loginRequired——這就是後端對「登入態失效」的既有代碼，
+ * 尚未登入時後端還沒被呼叫、也是同一種狀態。額外的 reloginRequired 旗標讓
+ * agent 不必比對中文字串就能判斷下一步是重跑登入 skill；文案本身仍止於
+ * HOSTED_RELOGIN_REQUIRED_MESSAGE（D11 只陳述事實，不引導跨後台操作）。
+ */
+export function asReloginRequiredResult() {
+    return asErrorResult(
+        { errorCode: AgrabahErrorCodeEnum.loginRequired, message: HOSTED_RELOGIN_REQUIRED_MESSAGE },
+        { reloginRequired: true },
+    );
 }

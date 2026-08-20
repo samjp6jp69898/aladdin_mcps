@@ -57,7 +57,8 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { registerAdminTools } from './tools/index.ts';
 import { buildAdminInstructions } from './instructions.ts';
 import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
-import { login, runWithIdentity, IS_PROD, ProdConfirmRequiredError } from './session.ts';
+import { login, runWithIdentity, IS_PROD, ProdConfirmRequiredError, ReloginRequiredError } from './session.ts';
+import { asReloginRequiredResult } from './mcp_result.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
 import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/admin/src/generated/remote.gen.ts';
 import { saveUploadedFile } from './files.ts';
@@ -289,13 +290,14 @@ app.post(
 // 只把 error.message 包成 isError:true 回給呼叫端，從不 log——這對「回應不外洩堆疊」
 // 是好事，但代表 stderr 永遠看不到完整堆疊，維運者除錯時只有一行訊息可看。
 // 這裡不改動任何 tools/*.ts（維持 D8 的 tool 檔案不重寫），改在 registerTool 外面包一層：
-// 每支 tool 呼叫仍照原樣執行、原樣回傳/拋出，只是在拋出前先把完整堆疊寫進 stderr。
+// 每支 tool 呼叫仍照原樣執行、原樣回傳/拋出，只是在拋出前先把完整堆疊寫進 stderr
+// （唯一的例外是「需要重新登入」這個預期狀態，改回 tool result 不上拋，見下方 catch）。
 //
 // H32：同一個掛勾點也是唯一拿得到「目前是哪支 tool 在跑」的地方（MCP SDK 內部
 // 路由，我們不重新解析 JSON-RPC body），順便把 tool 名稱與結果回填進這個
 // request 的稽核累積物件（見 audit_log.ts 的 setAuditTool）——外層的稽核
 // middleware 會在整個 /mcp request 處理完後讀出來寫成一行。
-function withStderrStackLogging(server: McpServer): void {
+export function withStderrStackLogging(server: McpServer): void {
     const originalRegisterTool = server.registerTool.bind(server);
     server.registerTool = ((name: string, config: unknown, handler: (...args: unknown[]) => unknown) => {
         const wrapped = async (...args: unknown[]) => {
@@ -304,6 +306,19 @@ function withStderrStackLogging(server: McpServer): void {
                 setAuditTool(name, summarizeToolOutcome(result));
                 return result;
             } catch (err) {
+                // 「需要重新登入」（session.ts 的 ReloginRequiredError）是預期中的業務狀態，
+                // 不是未預期例外——企劃只是還沒對這個後台登入而已。這條路徑**不往上拋**，
+                // 改回一個正常的 tool result：例外一旦上拋，MCP SDK 會把它變成 JSON-RPC
+                // 層的錯誤，企劃端的 Claude Code 解讀成傳輸問題、畫面只顯示「連線失敗」，
+                // 那句寫得很清楚的重登訊號根本沒機會被看到（真實使用者測試中發生過）。
+                // 稽核記專屬的 error:relogin_required 與 error:exception 區分開，維運端才
+                // 分得出「程式壞了」與「使用者還沒登入」；stderr 只留可追蹤的一行、不印
+                // 堆疊（預期狀態的堆疊是噪音，會淹沒真正的例外）。
+                if (err instanceof ReloginRequiredError) {
+                    setAuditTool(name, 'error:relogin_required');
+                    console.error(`[agrabah-admin http] tool "${ name }" 因登入態失效中止：${ err.message }`);
+                    return asReloginRequiredResult();
+                }
                 // H36 review 收尾：confirm 閘門攔截是預期中的業務行為，不是「未預期例外」——
                 // 稽核 log 記成專屬的 error:prod_confirm_required，讓事後統計「prod 上有幾次
                 // 未確認的寫入嘗試」不必回頭翻 stderr 逐行比對錯誤訊息字串。

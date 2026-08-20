@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { asErrorResult } from './mcp_result.ts';
+import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
+import { asErrorResult, asReloginRequiredResult } from './mcp_result.ts';
+import { HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
 
 /**
  * H11 review 收尾（安全 review + 正確性 review 皆指出零測試覆蓋）：只測
@@ -45,5 +47,18 @@ describe('asErrorResult', () => {
         expect(payload[ 'errorName' ]).toBe('gameVendorGameNotExists');
         expect(payload[ 'message' ]).toBe('real message');
         expect(payload[ 'hint' ]).toBe('額外提示');
+    });
+});
+
+describe('asReloginRequiredResult', () => {
+    test('與其他業務錯誤同格式：success/errorCode/errorName/message 四個核心欄位齊全，另帶機器可辨識的 reloginRequired 旗標', () => {
+        const payload = parsePayload(asReloginRequiredResult());
+        expect(payload).toEqual({
+            reloginRequired: true,
+            success: false,
+            errorCode: AgrabahErrorCodeEnum.loginRequired,
+            errorName: 'loginRequired',
+            message: HOSTED_RELOGIN_REQUIRED_MESSAGE,
+        });
     });
 });
