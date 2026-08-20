@@ -844,7 +844,7 @@
         "風險清單逐項對照 plan.md §6 與 logical-jumping-cook.md 已知風險節，無遺漏，且每項標註緩解狀態（已緩解/部分緩解/已知未緩解）；description (4) 額外列出的四項 review 新增風險全部在列",
         "文件中不含任何真實 token 值"
       ],
-      "risk_notes": "【H18 實作階段發現，2026-08-19 追加】telegram-dispatcher proxy 對 /mcp-admin-*、/mcp-platform 路由的 body size 上限是 H31 設定的 1MB（DoS/記憶體防護考量），但 agrabah-admin/src/files.ts 的 POST /files 端點自己允許單檔最多 3MB（外層 bodyLimit 4MB，留 multipart overhead 餘裕）。1MB~3MB 的合法圖片會在 proxy 這一層就被攔下，且回應是空 body 401（proxy 的均一防線把非 401 以外的大 body 拒絕行為也套用了類似效果，實際回應需以 H18 實測為準），對企劃端呈現的是誤導性的『登入態失效』訊號而非『檔案太大』——這是一個真實會擋住合法上傳的功能性落差，不是單純的殘留風險。建議 H28 定案運維參數時，把 /mcp-admin-*、/mcp-platform 路由的 proxy body limit 從 1MB 提高到至少 4MB（對齊 files.ts 實際允許的上限），同時評估這個調整對 H31 原本 DoS 防護目標的影響是否可接受（body limit 放寬不影響 rate limit 這條防線，兩者是獨立機制）。",
+      "risk_notes": "【H18 實作階段發現，2026-08-19 追加】telegram-dispatcher proxy 對 /mcp-admin-*、/mcp-platform 路由的 body size 上限是 H31 設定的 1MB（DoS/記憶體防護考量），但 agrabah-admin/src/files.ts 的 POST /files 端點自己允許單檔最多 3MB（外層 bodyLimit 4MB，留 multipart overhead 餘裕）。1MB~3MB 的合法圖片會在 proxy 這一層就被攔下，且回應是空 body 401（proxy 的均一防線把非 401 以外的大 body 拒絕行為也套用了類似效果，實際回應需以 H18 實測為準），對企劃端呈現的是誤導性的『登入態失效』訊號而非『檔案太大』——這是一個真實會擋住合法上傳的功能性落差，不是單純的殘留風險。建議 H28 定案運維參數時，把 /mcp-admin-*、/mcp-platform 路由的 proxy body limit 從 1MB 提高到至少 4MB（對齊 files.ts 實際允許的上限），同時評估這個調整對 H31 原本 DoS 防護目標的影響是否可接受（body limit 放寬不影響 rate limit 這條防線，兩者是獨立機制）。\n\n【H15 對外啟用後追加，2026-08-20——來自兩份 fresh-context 審查（安全 + 部署韌性），使用者已裁定「磁碟相關兩項先做，其餘進 H28」】\n以下為進 H28 統一定案的運維項目：\n(1) **服務存活耦合在 stdio 設定區塊**：`launchd/run-server.sh` 用 jq 讀 `.mcpServers[\"agrabah-admin\"].env.AGRABAH_ADMIN_API_URL`，而該條目是給工程師本機 stdio 模式用的；有人順手清掉它，常駐服務會在「下次重啟時」才死（當下無徵兆），時間差讓回溯極難。失敗本身是 fail-loud（空字串被 `if [ -z ]` 攔下 exit 1），問題在耦合對象選錯。建議 hosted 用獨立設定來源。\n(2) **無任何健康監控與告警**：ngrok → 8787 → 8789/8790 三段鏈，中間任一段掛掉只回無日誌的 502（proxy 的 catch 刻意不 log，hosted server 沒起來也不會有 log），故障在整台機器上不留痕跡。crontab 空、無 health check。**注意**：H15 修 M1 之後，原本「帶假 token 打對外 /health 可當外部健康檢查」這條路已被關掉（刻意），外部監控要另尋方案，本機探測（`curl http://127.0.0.1:8789/health`）仍可用。\n(3) **重開機後不會自動啟動**：兩個 job 是 LaunchAgent（`gui/` domain），要等使用者登入桌面 session 才拉起（機器未開 FileVault、未設自動登入，已用 `fdesetup status` 與 `defaults read autoLoginUser` 查證）。tg-dispatch 既有 job 是相同結構，屬同級行為、非 H15 引入的退步；但任何系統更新自動重啟或斷電後，三個服務會一起停擺到有人回座登入為止，期間企劃端拿到連線失敗。需在運維文件明講此限制與應對。\n(4) **稽核 log 的 auth_failure 無節流**：每個未認證請求寫一行（auth.ts → audit_log.ts），只留一份 `.1` 輪替，持續掃描可在幾小時內把真實稽核紀錄輪替掉。建議 auth_failure 採樣或分流到另一個檔。\n(5) **`tokens.json` / `.mcp.json` 權限為 644**，同機任何使用者可讀（內含 dev 後台帳密與 MySQL 密碼）。建議改 600。\n(6) **`expected_agrabah_identifier` 是死欄位**：型別與註解都在（auth.ts:28,59 與 platform 對應處），全專案零消費點。要嘛實作綁定（登入時比對，防 A 的 token 拿去登 B 的 agrabah 帳號），要嘛移除以免誤以為有這層防護。\n(7) **稽核 log 的 identity 用 `display_name` 而非唯一 id**（http.ts:126、audit_log.ts:8），而 auth.ts:11-14 自己就警告 display_name 不保證唯一——兩人同名時「操作歸屬到人」（D2 的核心動機）會失效。建議改記唯一 id 或兩個欄位都寫。\n(8) **token 名冊無到期機制**：唯一失效方式是人工刪條目。H28/H29 正式發放時應加 `expires_at` 並在 loadRegistry 強制檢查。\n(9) **登入態 sessions 無閒置逾時**（session.ts:171）：token 洩漏的有效窗口等於 agrabah JWT 的自然壽命。建議加閒置逾時。\n(10) **測試 token 治理**：H15 當下線上名冊 admin 11 / platform 9 把全是開發期測試 token（永不過期），且 `h32-test-a` 的值已明文落在本機一份舊 review 報告、另有 7 份完整名冊拷貝散在 toolsmith 的 scratch 工作區（皆本機、未進 git、未上公網）。使用者裁定留到 H28/H29 正式分發前一併清空重發（一人一把、display_name 用真名）。另建議 toolsmith 建 verify-workspace 時排除 `tokens*.json`。\n(11) **proxy body limit 1MB vs files.ts 3-4MB 落差**：H18 已在 kit 端做本機預檢緩解（超過 1MB 直接擋並給準確文案），proxy 端數值仍未對齊，H28 定案時決定是否把 proxy 上限提到 4MB+。\n(12) **ngrok free 的結構性風險**：TLS 在 ngrok 邊緣終止（dev 後台帳密、Bearer token、tool 參數在 ngrok 伺服器上都是明文）；且任何回應（含未認證的 401）都帶 `ngrok-agent-ips` header 洩漏本機出口公網 IP，我方無法移除。使用者已裁定「現在就評估 Cloudflare Tunnel」，評估報告另行產出，遷移與否的結論應回寫本 task。",
       "suggested_agent": "general-purpose"
     },
     {
@@ -1028,6 +1028,28 @@
         "修改的 bun.lock / package.json 等變更已 commit，commit message 說明根因與修法"
       ],
       "risk_notes": "這是 H9 review 意外揭露、非任何既有 task 引入的既有缺口，但影響 admin 端全部 tool 的可用性（企劃看不到任何操作說明），優先級高。修依賴容易牽一髮動全身（zod v3/v4 破壞性改動、SDK 對 zod 的 peer 需求），改後務必兩台 server + 兩種模式都回歸，不可只驗 admin 而弄壞 platform。查證階段嚴守 source-first，不憑 review 的診斷當既定事實。",
+      "suggested_agent": "general-purpose"
+    },
+    {
+      "id": "H38",
+      "module": "multi-env-admin",
+      "title": "prod 寫入閘門補強：IS_PROD 與 API URL 交叉檢查 + platform 端補上閘門",
+      "status": "pending",
+      "depends_on": [
+        "H36",
+        "H15"
+      ],
+      "description": "H15 安全審查（2026-08-20）發現 H36 的 prod 寫入閘門有兩個缺口，使用者已拍板另開 task 修正，並要求排在任何「把 hosted 服務接上 pre/evi/prod」的 task 之前。\n\n缺口一：admin 的 `IS_PROD` 只來自環境變數 `AGRABAH_ADMIN_IS_PROD`（session.ts:81-90），與實際的 `AGRABAH_ADMIN_API_URL` 之間沒有任何一致性檢查，而 `launchd/run-server.sh` 從未設定這個變數（已用 `ps eww` 實測確認線上行程環境只有 API_URL 與 HTTP_PORT）。目前 URL 指向 dev、閘門顯示「停用（非 prod 實例）」是正確行為；但只要有人把 `.mcp.json` 的 API URL 改成 prod 並重啟，`IS_PROD` 仍是 false，`assertProdConfirmed()`（session.ts:113-122）整條變成 no-op——**閘門靜默失效，開機 log 還是印「停用（非 prod 實例）」，肉眼看不出異常**。H36 為了 fail-loud 特地讓拼錯的旗標值直接 throw，卻沒防住「根本沒設」這個最可能發生的情況。\n\n缺口二：`mcps/agrabah-platform` **完全沒有 prod 閘門**——全專案 grep `IS_PROD|assertProdConfirmed` 在 platform 的 `src/*.ts` 與 `src/tools/*.ts` 零命中，僅 `instructions.ts:6` 有一句註解說明「沒有 admin 那份 isProd 分支」。而 platform 曝露的 `onboard_vendor_game`（tools/onboard_vendor_game.ts:136,203）是寫入型 tool（UpdateGameVendorGame）。\n\n建議修法：把 prod 判定改成從 API URL 推導，或至少在啟動時交叉檢查（URL 不含 alddev/測試網域卻 IS_PROD=false → 拒絕啟動，fail-loud 而非靜默放行），並把同一套閘門補到 platform。注意 H36 changelog 已記錄「只能用『isProd 開、URL 仍指向 dev』驗證邏輯，無法驗證真實 prod（沒有 prod 網址）」，本 task 同樣受此限制。",
+      "acceptance_criteria": [
+        "admin：啟動時對 `AGRABAH_ADMIN_IS_PROD` 與 `AGRABAH_ADMIN_API_URL` 做一致性交叉檢查，不一致時 fail-loud（拒絕啟動或明確告警），不得靜默放行",
+        "「URL 指向 prod 但旗標沒設」這個情境必須被擋下（這是本 task 的核心情境，要有測試釘住）",
+        "platform 端補上與 admin 同構的 prod 閘門，涵蓋其寫入型 tool（至少 onboard_vendor_game）",
+        "platform 的 instructions.ts 同步更新（移除「沒有 isProd 分支」的說明，改為與 admin 一致的動態 prod 事實句，比照 H12 作法）",
+        "既有 dev/pre/evi 行為完全不受影響（三個環境的既有寫入流程實測不被誤擋）",
+        "開機 log 對 prod 閘門狀態的陳述在所有情境下都與實際行為一致（不得出現「顯示停用但實際指向 prod」）",
+        "兩個 server 的既有測試全綠，新增情境有測試覆蓋"
+      ],
+      "risk_notes": "【來源】H15 安全審查 M5（fresh-context opus 審查，2026-08-20）。【重要限制】沒有 prod 網址可測，只能用「旗標與 URL 的組合矛盾」來驗證邏輯，這與 H36 的限制相同。【排程】使用者明確要求排在任何「接上 pre/evi/prod」的 task 之前——目前 pre(8791)/evi(8792) 的 launchd 腳本已存在但未 bootstrap，若後續有 task 要把它們上線，必須先完成本 task。【注意】改動 session.ts 的 IS_PROD 判定會影響 stdio 與 hosted 兩種模式，且 H12 的 instructions 動態組字依賴 IS_PROD，改前先讀 H12/H36 的 changelog 條目。",
       "suggested_agent": "general-purpose"
     }
   ]
