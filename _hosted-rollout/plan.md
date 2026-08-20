@@ -80,7 +80,7 @@ agrabah Gate（dev）HTTP /api/:group/:service/:method（protobuf+XOR，經 geni
 ### 4.5 Starter kit（重要交付物）
 
 ```
-starter-kit/                      # 零公司原始碼；make-starter-kit 腳本按企劃逐人產生（預填個人 token）
+aladdin-ai-assistant-kit/                      # 零公司原始碼；make-starter-kit 腳本按企劃逐人產生（預填個人 token）
 ├── README.md                     # 安裝手冊，Mac / Windows 分節（Win：首啟依提示裝 Git for Windows）
 ├── CLAUDE.md                     # 使用手冊：能做哪些事、怎麼開口、不猜 id、權限不足/母表沒遊戲 → 回報工程師
 ├── .mcp.json                     # remote MCP URL + 個人 Bearer token（預填）

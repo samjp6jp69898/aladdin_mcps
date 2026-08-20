@@ -17,7 +17,7 @@
   常駐工程師機器，經 `telegram-dispatcher` 既有 ngrok domain 分流，給沒有公司
   原始碼的企劃用。詳見本節最後的「Hosted 模式」小節與差異對照表。
 
-給企劃用的零原始碼 starter kit 在 `mcps/starter-kit/`（H16-H18；`README.md`／
+給企劃用的零原始碼 starter kit 在 `mcps/aladdin-ai-assistant-kit/`（H16-H18；`README.md`／
 `CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／`.gitignore`／
 `.claude/skills/{login,upload-image}/`，登入 skill 由 H17 實作、上傳圖片 skill 由
 H18 實作，兩支皆已完整實作完成，非佔位）。hosted 化的完整背景、決策與 task 拆解見
@@ -278,7 +278,7 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部署一個網路服務。
 
 **hosted 模式**（企劃端，零原始碼）不需要做以下任何步驟：直接使用
-`mcps/starter-kit/`（見該目錄 `README.md`），由工程師手動複製整份 kit、依授權
+`mcps/aladdin-ai-assistant-kit/`（見該目錄 `README.md`），由工程師手動複製整份 kit、依授權
 範圍填入該企劃的個人 Bearer token 與對應環境的 URL 後交付（自動化的
 `make-starter-kit` 產生器是 `_hosted-rollout/plan.md` §4.5 提到的後續 task，本文
 撰寫時尚未實作）。企劃端只需要 Claude Code 桌面版，不需要 `bun install`、不需要
