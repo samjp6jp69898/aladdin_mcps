@@ -141,8 +141,10 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
 | **405** | **正常。** `GET /mcp` 本來就該回 405，MCP client 靠它判定「沒有 GET SSE」 |
 | 回應說「登入態失效」 | 正常，照上面 `/login` 重登 |
 
-目前**只有** `/mcp-admin-dev` 與 `/mcp-platform` 兩條路徑有後端在跑。
-`mcp-admin-pre`、`mcp-admin-evi`、`toolsmith` 尚未上線，打了會拿到跟 token 錯誤一模一樣的 401。
+目前 `/mcp-admin-dev`、`/mcp-platform`、`/mcp-admin-pre`、`/mcp-admin-evi` 四條路徑都有後端在跑
+（pre/evi 已於 2026-08-20 launchctl bootstrap 並常駐）。`toolsmith` 的 bootstrap 現況以
+`mcps/aladdin-toolsmith/README.md` 為準，本文未重新驗證。沒後端在跑的路徑打了會拿到跟 token
+錯誤一模一樣的 401。
 
 ### 想確認整條線路通不通
 

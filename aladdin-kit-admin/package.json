@@ -1,0 +1,19 @@
+{
+  "name": "aladdin-kit-admin-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "工程師本機專用 MCP server：包裝 ../aladdin-ai-assistant-kit/make-starter-kit.ts，用自然語言核發/查詢企劃 starter kit，不對外曝露、不掛 hosted。",
+  "scripts": {
+    "start:stdio": "bun src/stdio.ts",
+    "inspect": "bunx @modelcontextprotocol/inspector bun src/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

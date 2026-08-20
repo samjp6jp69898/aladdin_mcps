@@ -3,6 +3,12 @@
 > 這份文件不會被發給企劃（不在 `make-starter-kit.ts` 的 `STATIC_FILES`
 > 白名單裡）。企劃看的是 `README.md`。
 
+> **不想每次手動打 `bun make-starter-kit.ts ...`？** `../aladdin-kit-admin/` 是一支
+> stdio-only、只給工程師自己用的 MCP server，把這支腳本包成 `aladdin_kit_issue` /
+> `aladdin_kit_list` 兩支 tool，效果完全等價（內部就是 spawn 這支腳本，見
+> `aladdin-kit-admin/src/spawn_kit_script.ts`），只是能直接用自然語言呼叫。下面的手動
+> 指令仍然有效、行為完全一致，兩種方式都會寫進同一份名冊。
+
 > **不要對同一個 `--id` 同時跑兩個 instance**（例如兩個工程師手滑同時發
 > 同一個人）。腳本是「先檢查、再寫入」兩階段，沒有做跨行程鎖，同時執行時
 > 兩邊都可能通過檢查、最後名冊以後寫入者為準，兩人可能都以為自己拿到的

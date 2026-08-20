@@ -20,8 +20,10 @@
 給企劃用的零原始碼 starter kit 在 `mcps/aladdin-ai-assistant-kit/`（H16-H18；`README.md`／
 `CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／`.gitignore`／
 `.claude/skills/{login,upload-image}/`，登入 skill 由 H17 實作、上傳圖片 skill 由
-H18 實作，兩支皆已完整實作完成，非佔位）。hosted 化的完整背景、決策與 task 拆解見
-`mcps/_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
+H18 實作，兩支皆已完整實作完成，非佔位）。工程師逐人核發這份 kit 的方式見該目錄
+`GENERATE-KIT.md`；`mcps/aladdin-kit-admin/`（stdio-only，只給工程師自己用，不可
+hosted）把核發腳本包成 MCP tool，效果等價、只是不用手動打指令。hosted 化的完整背景、
+決策與 task 拆解見 `mcps/_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
 
 ---
 
@@ -174,6 +176,7 @@ proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑�
 - 有沒有 `@Type "Select:xxx"` 依賴——代表這個欄位必須是「後端既有清單裡的值」，不是任意字串/數字，要嘛額外加一支查詢 tool、要嘛在 description 裡講清楚限制（不要無聲放過，agent 會亂填）。
 - 對應 agrabah 後端實作邏輯是不是真的等於「建立」語意（`id > 0` 判斷 create/update 是常見寫法，但不是每支都這樣——這次 `GameVendorPlatform.UpdateGameVendorGame` 就不是，見 `aladdin-platform` README）。
 - **跨 server 的假設要實測驗證，不能只憑「看起來是同一張表」下結論**：曾經誤以為 admin 建立的場館 id 在 platform 端「直接可用」，實測才發現場館要先被 admin 呼叫 `UpdatePlatformGameVendorStatus` 啟用給特定 platform，否則 platform 端完全查不到（該 id 全域共用沒錯，但「哪些 platform 看得到」是另一張獨立關聯表）。寫進文件前先跑一次真實呼叫確認，不要只靠程式碼推論就斷言跨模組行為。
+- **判斷這支 method 屬於哪個分類，套用該分類的檢查要求**：對照 `method-category-checklist.md`（同層目錄）——依 method 的回傳型別/參數形狀（不是方法名）分成讀取單筆、讀取清單（含高風險的「只有範圍鍵+分頁、沒有可鎖定目標欄位」B 級）、新增、Upsert/CreateOrUpdate、業務鍵間接定位更新、狀態轉換、刪除、敏感資料/PII、驗證類、Send/Export/Import 等分類，每類有各自的強制檢查項。**這一步不能省略**——2026-08-20 的真實 bug（`aladdin_admin_edit_game` 內部用 `ListGames` 找特定遊戲，寫死只查第一頁 200 筆，廠商遊戲數超過 200 就查不到、更新失敗）就是在「只要求打一次 dev 成功」的舊版流程下漏測出來的。
 
 ### 2. 檔案放哪裡：一個能力一個檔案
 
@@ -235,6 +238,7 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 - 真的登入成功。
 - 真的呼叫到後端、拿到真實資料，不是只看 TypeScript 編譯過。
 - 有寫入行為的話，測完要清理/還原 dev 上的測試資料（用 delete/disable 類 method，沒有的話跟操作者說清楚哪筆資料留在 dev 需要人工處理）。
+- **驗收案例必須覆蓋第 1 步依 `method-category-checklist.md` 判定出的分類要求，不能只驗一次「有資料、剛好成功」的情境。** 尤其是清單類 tool：驗收資料集必須包含「目標記錄不在第一頁」的情境（今天的真實 bug 就是驗收時剛好用了排在前 200 筆內的資料，才會漏測出來）；Upsert/CreateOrUpdate 類要驗證「未帶到的欄位讀回後仍等於呼叫前的值」；狀態轉換類要驗證非法轉換與批量部分失敗的回報方式。
 
 ### 6. 更新該 server 的 README
 

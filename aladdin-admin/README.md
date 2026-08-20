@@ -91,8 +91,8 @@ confirm 閘門不會生效**——這是唯一區分「這是 prod」與其他�
 | 環境 | 後台網址 | port | tokens 名冊 | 狀態 |
 |---|---|---|---|---|
 | dev | `https://admin.alddev.com` | 8789 | `tokens.json` | 已部署（H1 起），**H15 已 launchctl 常駐並對外開放** |
-| pre（企劃口中的 cqa） | `https://abu-admin.ald777.com` | 8791 | `tokens.pre.json` | H35 落實，手動驗證通過，**未** launchctl 常駐 |
-| evi | `https://admin.godev2.com` | 8792 | `tokens.evi.json` | H35 落實，手動驗證通過，**未** launchctl 常駐 |
+| pre（企劃口中的 cqa） | `https://abu-admin.ald777.com` | 8791 | `tokens.pre.json` | H35 落實、手動驗證通過，**2026-08-20 已 launchctl 常駐並對外開放**（H38 完成後解鎖，使用者確認） |
+| evi | `https://admin.godev2.com` | 8792 | `tokens.evi.json` | H35 落實、手動驗證通過，**2026-08-20 已 launchctl 常駐並對外開放**（H38 完成後解鎖，使用者確認） |
 | uat / prod | 待補 | 待補 | 待補 | 網址未知，本輪不部署（見 plan.md D13、§5 非目標） |
 
 三個環境的 tokens 名冊互不相交：dev 名冊被授權者不會自動獲得 pre/evi 存取權，
@@ -105,9 +105,9 @@ port（8789 dev / 8791 pre / 8792 evi，另 aladdin-platform dev 佔 8790）可
 `launchd/` 內含三組 `run-server*.sh` + plist，同一套骨架（比照已上線的
 `telegram-dispatcher/launchd/`），只有 env 值不同：
 
-**現況（H15 實測確認）**：只有 **dev** 已 `launchctl bootstrap` 常駐並對外開放（經 ngrok
-→ telegram-dispatcher proxy(8787) 前綴分流）。**pre / evi 仍未 launchctl 常駐**，
-下表與上方「支援環境清單」表的「未常駐」狀態仍正確，只是手動起停可用。
+**現況（2026-08-20 更新）**：dev（H15）、pre、evi（H38 完成後解鎖，使用者確認）
+三個環境皆已 `launchctl bootstrap` 常駐並對外開放（經 ngrok → telegram-dispatcher
+proxy(8787) 前綴分流）。
 
 | 環境 | 腳本 | plist Label |
 |---|---|---|
@@ -145,11 +145,12 @@ ALADDIN_ADMIN_API_URL=https://admin.alddev.com \
 三支腳本皆刻意不匯出帳密（`ALADDIN_ADMIN_USER`/`ALADDIN_ADMIN_PASSWORD`），
 理由見腳本內註解——hosted 模式一律走 per-token 登入態 + `POST /login`。
 
-**部署到 launchd 常駐（dev 已於 H15 執行並常駐中；步驟保留供換機器/重新部署/
-pre/evi 未來上線參考）**：
+**部署到 launchd 常駐（dev 已於 H15、pre/evi 已於 2026-08-20 執行並常駐中；
+步驟保留供換機器/重新部署參考）**：
 plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd
 只認 `~/Library/LaunchAgents/` 底下的檔案，不會直接讀 repo 裡的路徑
-（比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要：
+（比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要（以 dev 為例，
+pre/evi 把檔名換成對應的 `com.aladdin.mcp-admin-<env>-server.plist` 即可）：
 
 ```bash
 cp /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist \
@@ -158,10 +159,13 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.mcp-admin-se
 # 停止：launchctl bootout gui/$(id -u)/com.aladdin.mcp-admin-server
 ```
 
-H13 只驗證手動執行 `run-server.sh` 能起能停；H15 已完成上面的 `cp` 與
+H13 只驗證手動執行 `run-server.sh` 能起能停；H15 已完成 dev 的 `cp` 與
 `launchctl bootstrap`，dev 現在是 launchd 常駐服務，且已透過
-telegram-dispatcher proxy 對外開放（見 `_hosted-rollout/` H15 記錄）。log 檔位置：
-`mcps/aladdin-admin/logs/launchd-server.{out,err}.log`（已加入 `.gitignore`）。
+telegram-dispatcher proxy 對外開放（見 `_hosted-rollout/` H15 記錄）。pre/evi
+比照同一步驟於 2026-08-20 完成常駐化（H38 完成後解鎖，使用者確認；部署前已
+清除 H35 遺留在 `tokens.pre.json`/`tokens.evi.json` 的測試 token，避免常駐後
+變成沒人追蹤的活憑證）。log 檔位置：`mcps/aladdin-admin/logs/launchd-{server,
+pre-server,evi-server}.{out,err}.log`（已加入 `.gitignore`）。
 
 **維運者必讀（H15）**：
 

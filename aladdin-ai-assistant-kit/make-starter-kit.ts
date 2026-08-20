@@ -10,13 +10,14 @@
  * 是顯示名）、(2) 輸出目錄名 dist/<id>/。建議用企劃的英文/拼音代稱（例如
  * chenmei），不要用中文或空白——名冊 id 與檔案系統路徑共用同一個值。
  *
- * ── 目前只能發哪些環境（v1 刻意限縮，見 tasks.json H38 risk_notes）───────
- * 只有 admin-dev（aladdin-admin-dev，8789）與 platform-dev-pk
- * （aladdin-platform，8790，目前 platform 唯一部署的環境）是真的端到端可用
- * 的環境——8791/8792（admin pre/evi）的 plist 雖然已備妥，但 tasks.json 已
- * 裁定「H38 prod 寫入閘門補強要排在任何接上 pre/evi/prod 的 task 之前」，
- * 這支產生器尊重那個裁定，故意不開放 pre/evi，避免在閘門補齊前就把這兩個
- * 環境的存取權發出去。要求這些環境會被明確拒絕（不是靜默忽略）。
+ * ── 目前只能發哪些環境 ──────────────────────────────────────────────
+ * admin-dev（8789）、platform-dev-pk（8790）、admin-pre（8791）、admin-evi
+ * （8792）是真的端到端可用的環境。pre/evi 原本被 tasks.json 的裁定「H38 prod
+ * 寫入閘門補強要排在任何接上 pre/evi/prod 的 task 之前」擋著；H38 已完成
+ * （狀態 done），2026-08-20 使用者確認後解鎖，並已 launchctl bootstrap 兩個
+ * 環境的常駐服務（見 mcps/aladdin-admin/README.md「支援環境清單」）。
+ * uat/prod 仍未部署——這兩個環境目前連真實後台網址都沒有，要求會被明確拒絕
+ * （不是靜默忽略）。
  *
  * toolsmith（TOOLSMITH_API_TOKEN）也刻意不在這支產生器的範圍內：toolsmith
  * 尚未上線（H25/H26 待做），目前的 kit 範本裡完全沒有任何 toolsmith 欄位。
@@ -84,13 +85,26 @@ interface GrantConfig {
 
 // 只列真的端到端可用的環境。新增一項前，先確認：(1) 對應 launchd job 真的
 // bootstrap 了（launchctl list | grep aladdin）、(2) mcp-proxy.ts 的
-// PROXY_ROUTES 裡有對應前綴、(3) 沒有被 tasks.json 的既有裁定擋著（目前
-// pre/evi 被 H38 擋）。
+// PROXY_ROUTES 裡有對應前綴、(3) 沒有被 tasks.json 的既有裁定擋著。
 const ALLOWED_GRANTS: Record<string, GrantConfig> = {
     'admin-dev': {
         alias: 'aladdin-admin-dev',
         registryPath: join(KIT_DIR, '..', 'aladdin-admin', 'tokens.json'),
         urlPrefix: '/mcp-admin-dev',
+    },
+    // 2026-08-20：H38（prod 寫入閘門補強）已完成，H35 的 pre/evi 手動驗證通過後
+    // 一直未 bootstrap 的擋門理由不再成立，使用者確認後解鎖並已 launchctl
+    // bootstrap 兩個環境的常駐服務（見 mcps/aladdin-admin/README.md「支援環境
+    // 清單」與「launchd 常駐骨架」兩節）。
+    'admin-pre': {
+        alias: 'aladdin-admin-pre',
+        registryPath: join(KIT_DIR, '..', 'aladdin-admin', 'tokens.pre.json'),
+        urlPrefix: '/mcp-admin-pre',
+    },
+    'admin-evi': {
+        alias: 'aladdin-admin-evi',
+        registryPath: join(KIT_DIR, '..', 'aladdin-admin', 'tokens.evi.json'),
+        urlPrefix: '/mcp-admin-evi',
     },
     'platform-dev-pk': {
         // 真人實測發現的 bug（2026-08-20）：alias 曾經是舊版 'aladdin-platform'
@@ -115,13 +129,12 @@ const DEFAULT_GRANTS = ['admin-dev', 'platform-dev-pk'];
 // 已知存在、但目前刻意不開放的環境名字——請求到這些名字時要給「為什麼不行」
 // 的明確理由，跟「打錯字/根本不存在的名字」分開講。
 const BLOCKED_GRANTS: Record<string, string> = {
-    'admin-pre': 'H38（prod 寫入閘門補強）尚未完成，tasks.json 已裁定這必須排在任何接上 pre/evi/prod 的 task 之前。',
-    'admin-evi': 'H38（prod 寫入閘門補強）尚未完成，tasks.json 已裁定這必須排在任何接上 pre/evi/prod 的 task 之前。',
-    'admin-uat': '.env.example 裡雖然預留了 UAT 欄位，但這個環境目前根本沒有部署對應的 hosted server（沒有 plist、沒有名冊檔），不是「被擋」而是「還不存在」。',
+    'admin-uat': '.env.example 裡雖然預留了 UAT 欄位，但這個環境目前根本沒有部署對應的 hosted server（沒有 plist、沒有名冊檔、也沒有真實後台網址），不是「被擋」而是「還不存在」。',
+    'admin-prod': '目前沒有真實 prod 後台網址，這個環境根本沒有部署對應的 hosted server。即使部署了，寫入類 tool 仍會被 session.ts 的 assertProdConfirmed 要求明確 confirm 參數——那是伺服器端的既有機制，跟這支產生器發不發 kit 是兩件事。',
     'platform-dev-6t': 'platform 目前只部署了 dev×PK 一個實例（沒有對應的名冊檔/launchd job），dev×6T 尚未存在。',
-    'platform-pre-pk': '同上，pre 環境的 platform 尚未部署，且 pre 亦受 H38 閘門限制。',
+    'platform-pre-pk': 'pre 環境的 platform 尚未部署（沒有 plist、沒有名冊檔）。',
     'platform-pre-6t': '同上。',
-    'platform-evi-6t': '同上，evi 環境的 platform 尚未部署，且 evi 亦受 H38 閘門限制。',
+    'platform-evi-6t': 'evi 環境的 platform 尚未部署（沒有 plist、沒有名冊檔）。',
 };
 
 const ID_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;

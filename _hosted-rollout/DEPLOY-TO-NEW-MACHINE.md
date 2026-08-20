@@ -59,8 +59,8 @@
 |---|---|---|
 | `/mcp-admin-dev` | 8789 | 常駐中 |
 | `/mcp-platform` | 8790 | 常駐中 |
-| `/mcp-admin-pre` | 8791 | plist 已備妥，未 bootstrap |
-| `/mcp-admin-evi` | 8792 | plist 已備妥，未 bootstrap |
+| `/mcp-admin-pre` | 8791 | 常駐中（2026-08-20 起，H38 完成後解鎖） |
+| `/mcp-admin-evi` | 8792 | 常駐中（2026-08-20 起，H38 完成後解鎖） |
 | `/toolsmith` | 8788 | 未上線 |
 
 未啟用的前綴打進來會拿到跟「前綴不存在」一模一樣的 401（刻意設計，見 §5 驗收第 5 項）。
@@ -442,7 +442,8 @@ launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel
 
 | 項目 | 狀態 |
 |---|---|
-| pre(8791)/evi(8792)/toolsmith(8788) | 啟動腳本與 plist 已備妥，未 bootstrap |
+| toolsmith(8788) | 啟動腳本與 plist 已備妥，bootstrap 現況以 `mcps/aladdin-toolsmith/README.md` 為準 |
+| ~~pre(8791)/evi(8792) 未 bootstrap~~ | 已於 2026-08-20（H38 完成後解鎖）launchctl bootstrap 並常駐，見上方「四、對外 proxy 路徑」表 |
 | platform 多實例（6T、pre、evi） | `.env.example` 已列欄位，但只有 dev×PK 有實例在跑 |
 | 重開機需登入桌面才拉起 | 未決定是否改 LaunchDaemon |
 | token 無到期機制 | 唯一失效方式是人工刪條目（H28） |
