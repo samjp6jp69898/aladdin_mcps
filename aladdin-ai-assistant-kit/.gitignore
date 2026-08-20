@@ -1,8 +1,15 @@
 # 這兩個檔案一旦被你填上真實內容（帳密／個人 token），就絕對不能進版本控制。
-# .env.example／.mcp.json 本身（範本／預填 token 佔位符）不受影響，
-# 只有你複製出來、填了真值的 .env 會被這條規則擋下。
+# .env.example 本身（範本，全部空白欄位）不受影響。.mcp.json 這個裸檔名
+# 現在只會出現在「已經填好真值」的情境（H19 之後，範本本身改名叫
+# .mcp.json.example，見同層目錄；產生器輸出的每一份 dist/<id>/.mcp.json
+# 一律是真 token，沒有佔位符版本），所以這條規則沒有例外，見到就該擋。
 .env
 .mcp.json
+
+# H19：make-starter-kit.ts 的輸出目錄——每個子目錄都是一份含真實 Bearer
+# token 的完整 kit，絕對不能進版本控制（跟上面 tokens.json 的規則同一個
+# 理由：這是明碼憑證，不是可以事後補救的東西）。
+dist/
 
 # H17：TOTP 驗證碼的單次暫存檔（見 .claude/skills/login/SKILL.md）——login.sh
 # 讀到後立刻刪除，正常情況下這個檔案不該長期存在，但防手滑一併排除。

@@ -1,0 +1,37 @@
+{
+  "_this_file_is_an_engineer_template_not_a_deliverable": [
+    "H19：這份檔案是 make-starter-kit.ts 產生器的參考範本 + 工程師手動加環境",
+    "時的格式說明，本身從來不會原樣發給企劃。產生器輸出的真正 .mcp.json",
+    "（dist/<id>/.mcp.json）只含 mcpServers，不含這個說明區塊——見",
+    "make-starter-kit.ts 的 buildMcpJson() 註解：Claude Code 讀 .mcp.json 時",
+    "是否容忍未知頂層欄位沒有被驗證過，與其冒險不如直接不出現在成品裡。",
+    "",
+    "如果要手動加一個環境（不透過產生器），格式是複製 aladdin-admin-dev 那個",
+    "區塊、改三個地方：",
+    "  1. server 別名（key）：aladdin-admin-<env>，別名一定要能看出環境，",
+    "     不要用同一個名字覆蓋掉別的環境。",
+    "  2. url 裡的路徑前綴：/mcp-admin-dev/ 換成對應環境的前綴（domain 不變，",
+    "     只換路徑前綴；不同環境是不同 port 的後台，經同一個 tg-dispatch",
+    "     proxy 用路徑分流，不是不同 domain）。",
+    "  3. headers.Authorization 換成該環境對應的 Bearer token——各環境是各自",
+    "     獨立的名冊，某環境有權限不代表其他環境也有，token 不能共用。",
+    "",
+    "【H38 閘門】pre（/mcp-admin-pre）、evi（/mcp-admin-evi）雖然 plist 與",
+    "名冊都已備妥，但 tasks.json 已裁定「H38 prod 寫入閘門補強要排在任何接上",
+    "pre/evi/prod 的 task 之前」——make-starter-kit.ts 的 BLOCKED_GRANTS 故意",
+    "擋掉這兩個環境，手動加也請先確認 H38 是否已完成，不要繞過這個裁定。",
+    "",
+    "aladdin-platform（平台後台）目前只部署了一個環境（dev×PK），",
+    "server 別名固定叫 aladdin-platform，url 前綴是 /mcp-platform/，",
+    "不需要環境後綴；其餘平台產品（6T…）與 pre/evi 尚未部署。"
+  ],
+  "mcpServers": {
+    "aladdin-admin-dev": {
+      "type": "http",
+      "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp",
+      "headers": {
+        "Authorization": "Bearer <YOUR_BEARER_TOKEN>"
+      }
+    }
+  }
+}
