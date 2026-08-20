@@ -62,12 +62,14 @@ src/
 - **H9：`onboard_vendor_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**，設計與實測方式與 `agrabah-admin` 的 `edit_game.ts` 逐字相同，完整說明見 `../agrabah-admin/README.md` 同一段（D5/§4.3；`fileId → 本機路徑` 的三層防護：regex 格式白名單 + registry `Map` 精確比對 + realpath 二次確認）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
 
-## launchd 常駐骨架（H13；尚未上線）
+## launchd 常駐骨架（H13；H15 已常駐上線）
 
 `launchd/` 內含 `run-server.sh`（啟動 `src/http.ts`，port 8790）與
 `com.aladdin.agrabah-platform-server.plist`，結構比照已上線的
 `telegram-dispatcher/launchd/`（同一套 run-server.sh + plist 手法），與
-`agrabah-admin/launchd/` 完全對稱。
+`agrabah-admin/launchd/` 完全對稱。**現況（H15 實測確認）**：已
+`launchctl bootstrap` 常駐並對外開放（經 ngrok → telegram-dispatcher
+proxy(8787) 前綴分流）。
 
 **本機手動跑**（開發、除錯用，不透過 launchd；會一直佔用這個 terminal，
 Ctrl-C 停止）：
@@ -82,7 +84,7 @@ curl http://localhost:8790/health
 `run-server.sh` 刻意不匯出帳密（`AGRABAH_PLATFORM_USER`/
 `AGRABAH_PLATFORM_PASSWORD`），理由見腳本內註解。
 
-**部署到 launchd 常駐（尚未執行，記錄步驟供之後的高風險 task 參考）**：
+**部署到 launchd 常駐（已於 H15 執行並常駐中；步驟保留供換機器/重新部署參考）**：
 plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd
 只認 `~/Library/LaunchAgents/` 底下的檔案，不會直接讀 repo 裡的路徑
 （比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要：
@@ -94,7 +96,31 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.agrabah-plat
 # 停止：launchctl bootout gui/$(id -u)/com.aladdin.agrabah-platform-server
 ```
 
-H13 只驗證手動執行 `run-server.sh` 能起能停，**未執行**上面的 `cp` 與
-`launchctl bootstrap/bootout`——正式常駐與對外曝露是後續高風險 task（proxy-exposure
-模組）的範圍，動手前需與使用者確認。log 檔位置：
+H13 只驗證手動執行 `run-server.sh` 能起能停；H15 已完成上面的 `cp` 與
+`launchctl bootstrap`，現在是 launchd 常駐服務，且已透過 telegram-dispatcher
+proxy 對外開放（見 `_hosted-rollout/` H15 記錄）。log 檔位置：
 `mcps/agrabah-platform/logs/launchd-server.{out,err}.log`（已加入 `.gitignore`）。
+
+**維運者必讀（H15）**：
+
+- **改完程式碼要 kickstart，不要手動跑 `bun run src/http.ts`**：常駐行程佔用
+  port 8790，手動再跑一次會撞 `EADDRINUSE`；就算改用別的 port 起來測，launchd
+  底下那個行程仍是舊碼在跑，容易讓人誤判「怎麼改了沒生效」。正確做法是改完
+  程式碼後執行：
+  ```bash
+  launchctl kickstart -k gui/$(id -u)/com.aladdin.agrabah-platform-server
+  ```
+- **重開機後不會自動啟動**：這是 LaunchAgent（`gui/` domain），只有使用者登入
+  桌面 session 後才會被拉起（本機未開 FileVault、未設自動登入），純重開機、
+  未登入桌面前服務是下線的。`telegram-dispatcher` 既有的常駐 job 是同一種結構，
+  屬同級行為、不是本次退步。
+- **緊急止血（撤銷存取）**：
+  - 只下線這一個環境：`launchctl bootout gui/$(id -u)/com.aladdin.agrabah-platform-server`
+  - **整體對外下線最快路徑**（連 admin 一起斷公網入口）：
+    `launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel`（停 ngrok，
+    公網入口立即消失，本機常駐服務不受影響）
+  - 撤銷單一 token：編輯對應 `tokens.json` 移除條目存檔即生效、不需重啟——
+    但存檔後**務必**驗證 JSON 合法（`python3 -m json.tool tokens.json`）並實打
+    一次確認該 token 回 401。目前「整份檔案被刪掉」或「存成壞 JSON」是
+    fail-open（所有既有 token 繼續有效，另有 task 修正中），修好之前緊急止血
+    一律用上面的 `launchctl bootout`，不要用刪檔頂替。

@@ -77,7 +77,7 @@ confirm 閘門不會生效**——這是唯一區分「這是 prod」與其他�
 
 | 環境 | 後台網址 | port | tokens 名冊 | 狀態 |
 |---|---|---|---|---|
-| dev | `https://admin.alddev.com` | 8789 | `tokens.json` | 已部署（H1 起） |
+| dev | `https://admin.alddev.com` | 8789 | `tokens.json` | 已部署（H1 起），**H15 已 launchctl 常駐並對外開放** |
 | pre（企劃口中的 cqa） | `https://abu-admin.ald777.com` | 8791 | `tokens.pre.json` | H35 落實，手動驗證通過，**未** launchctl 常駐 |
 | evi | `https://admin.godev2.com` | 8792 | `tokens.evi.json` | H35 落實，手動驗證通過，**未** launchctl 常駐 |
 | uat / prod | 待補 | 待補 | 待補 | 網址未知，本輪不部署（見 plan.md D13、§5 非目標） |
@@ -87,10 +87,14 @@ confirm 閘門不會生效**——這是唯一區分「這是 prod」與其他�
 port（8789 dev / 8791 pre / 8792 evi，另 agrabah-platform dev 佔 8790）可
 同時啟動、互不衝突，已用 `lsof` 實測驗證。
 
-## launchd 常駐骨架（H13 dev；H35 擴充 pre/evi；尚未上線）
+## launchd 常駐骨架（H13 dev；H35 擴充 pre/evi；H15 dev 已常駐上線）
 
 `launchd/` 內含三組 `run-server*.sh` + plist，同一套骨架（比照已上線的
 `telegram-dispatcher/launchd/`），只有 env 值不同：
+
+**現況（H15 實測確認）**：只有 **dev** 已 `launchctl bootstrap` 常駐並對外開放（經 ngrok
+→ telegram-dispatcher proxy(8787) 前綴分流）。**pre / evi 仍未 launchctl 常駐**，
+下表與上方「支援環境清單」表的「未常駐」狀態仍正確，只是手動起停可用。
 
 | 環境 | 腳本 | plist Label |
 |---|---|---|
@@ -117,7 +121,8 @@ dev 的環境變數來源是根目錄 `.mcp.json` 的 `agrabah-admin` server `en
 三支腳本皆刻意不匯出帳密（`AGRABAH_ADMIN_USER`/`AGRABAH_ADMIN_PASSWORD`），
 理由見腳本內註解——hosted 模式一律走 per-token 登入態 + `POST /login`。
 
-**部署到 launchd 常駐（尚未執行，記錄步驟供之後的高風險 task 參考）**：
+**部署到 launchd 常駐（dev 已於 H15 執行並常駐中；步驟保留供換機器/重新部署/
+pre/evi 未來上線參考）**：
 plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd
 只認 `~/Library/LaunchAgents/` 底下的檔案，不會直接讀 repo 裡的路徑
 （比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要：
@@ -129,7 +134,32 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.agrabah-admi
 # 停止：launchctl bootout gui/$(id -u)/com.aladdin.agrabah-admin-server
 ```
 
-H13 只驗證手動執行 `run-server.sh` 能起能停，**未執行**上面的 `cp` 與
-`launchctl bootstrap/bootout`——正式常駐與對外曝露是後續高風險 task（proxy-exposure
-模組）的範圍，動手前需與使用者確認。log 檔位置：
+H13 只驗證手動執行 `run-server.sh` 能起能停；H15 已完成上面的 `cp` 與
+`launchctl bootstrap`，dev 現在是 launchd 常駐服務，且已透過
+telegram-dispatcher proxy 對外開放（見 `_hosted-rollout/` H15 記錄）。log 檔位置：
 `mcps/agrabah-admin/logs/launchd-server.{out,err}.log`（已加入 `.gitignore`）。
+
+**維運者必讀（H15）**：
+
+- **改完程式碼要 kickstart，不要手動跑 `bun run src/http.ts`**：常駐行程佔用
+  port 8789，手動再跑一次會撞 `EADDRINUSE`；就算改用別的 port 起來測，launchd
+  底下那個行程仍是舊碼在跑，容易讓人誤判「怎麼改了沒生效」。正確做法是改完
+  程式碼後執行：
+  ```bash
+  launchctl kickstart -k gui/$(id -u)/com.aladdin.agrabah-admin-server
+  ```
+- **重開機後不會自動啟動**：這是 LaunchAgent（`gui/` domain），只有使用者登入
+  桌面 session 後才會被拉起（本機未開 FileVault、未設自動登入），純重開機、
+  未登入桌面前服務是下線的。`telegram-dispatcher` 既有的常駐 job 是同一種結構，
+  屬同級行為、不是本次退步。
+- **緊急止血（撤銷存取）**：
+  - 只下線這一個環境：`launchctl bootout gui/$(id -u)/com.aladdin.agrabah-admin-server`
+  - **整體對外下線最快路徑**（連 platform 一起斷公網入口）：
+    `launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel`（停 ngrok，
+    公網入口立即消失，本機常駐服務不受影響）
+  - 撤銷單一 token：編輯對應 `tokens.json`（或 `tokens.pre.json`/`tokens.evi.json`）
+    移除條目存檔即生效、不需重啟——但存檔後**務必**驗證 JSON 合法
+    （`python3 -m json.tool tokens.json`）並實打一次確認該 token 回 401。
+    目前「整份檔案被刪掉」或「存成壞 JSON」是 fail-open（所有既有 token 繼續
+    有效，另有 task 修正中），修好之前緊急止血一律用上面的 `launchctl bootout`，
+    不要用刪檔頂替。

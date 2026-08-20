@@ -1,9 +1,11 @@
 #!/bin/zsh
 # launchd wrapper：啟動 agrabah-admin hosted MCP server（bun run src/http.ts）。
 #
-# H13：只負責把這支腳本寫好、手動驗證能起能停，不執行 launchctl bootstrap，
-# 不讓服務真的常駐上線（見 tasks.json H13 acceptance_criteria；正式常駐與
-# 對外曝露是後續高風險 task 的範圍，需與使用者確認）。
+# H13 寫好、手動驗證能起能停；H15 已 launchctl bootstrap 常駐上線，並經
+# telegram-dispatcher proxy 對外開放。這支腳本現在是常駐服務的實際進入點——
+# 改完程式碼要 `launchctl kickstart -k gui/$(id -u)/com.aladdin.agrabah-admin-server`
+# 讓 launchd 重啟；手動再跑一次本腳本會撞 EADDRINUSE（port 8789 已被常駐行程佔用），
+# 且不會讓 launchd 底下那個行程跑到新碼。
 #
 # 環境變數來源：**不是** /Users/user/aladdin/.env（AGRABAH_* 系列目前不在那
 # 裡）。README.md（../README.md:32-42）明文記載這幾個變數的唯一來源是根目錄

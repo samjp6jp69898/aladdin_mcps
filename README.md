@@ -261,9 +261,12 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
   `mcps/agrabah-admin/src/session.ts` 的 `assertProdConfirmed`），不要漏接；
   `agrabah-platform` 本輪沒有這個機制（D13 非目標）。
 - **重載生效**：改完 tool 程式碼後，stdio 模式下 Claude Code 下次重新 spawn
-  子行程即生效；hosted 模式要重啟對應環境的常駐 http server 行程（尚未
-  `launchctl bootstrap` 前是手動 `run-server*.sh`，之後才是 `launchctl`
-  重啟，見各 server README 的「launchd 常駐骨架」一節）。
+  子行程即生效；hosted 模式要重啟對應環境的常駐 http server 行程——**dev（admin
+  8789 / platform 8790）已 H15 launchctl 常駐**，改用 `launchctl kickstart -k
+  gui/$(id -u)/<label>` 讓 launchd 重啟，**不要**手動再跑 `run-server*.sh`
+  （會撞 `EADDRINUSE`，而且 launchd 底下那個行程仍是舊碼在跑）；pre/evi 仍未
+  launchctl 常駐，重啟方式仍是手動重跑對應的 `run-server-<env>.sh`。詳見各
+  server README 的「launchd 常駐骨架」一節。
 
 ---
 
