@@ -47,32 +47,29 @@ cd /Users/<USER>/aladdin/telegram-dispatcher && bun install
 
 ---
 
-## 2. 兩個不進 git 的檔案（必須手動準備）
+## 2. 兩個不進 git 的檔案（在新機器上「重新產生」，不要從舊機器複製）
+
+> **重點**：這兩個檔案都是**環境專屬**的，新機器當成全新環境建立即可。
+> 不需要、也不建議從舊機器搬——搬過來反而會讓兩台機器共用同一批憑證。
 
 ### 2.1 `/Users/<USER>/aladdin/.mcp.json`
 
 **啟動腳本從這裡讀後台網址**（`run-server.sh` 用 jq 取值），沒有它服務會 fail-loud 退出。
-需要的最小結構：
 
-```json
-{
-  "mcpServers": {
-    "aladdin-admin": {
-      "env": {
-        "ALADDIN_ADMIN_API_URL": "https://admin.alddev.com",
-        "ALADDIN_ADMIN_USER": "<dev 後台帳號>",
-        "ALADDIN_ADMIN_PASSWORD": "<密碼>"
-      }
-    },
-    "aladdin-platform": {
-      "env": {
-        "ALADDIN_PLATFORM_API_URL": "https://pk-platform.alddev.com",
-        "ALADDIN_PLATFORM_USER": "<帳號>",
-        "ALADDIN_PLATFORM_PASSWORD": "<密碼>"
-      }
-    }
-  }
-}
+範本在 repo 裡：**`mcps/_hosted-rollout/root-mcp.json.example`**
+
+```bash
+cp /Users/<USER>/aladdin/obsidian/mcps/_hosted-rollout/root-mcp.json.example \
+   /Users/<USER>/aladdin/.mcp.json
+# 然後編輯它：把 <USER> 換成實際使用者名稱、填入後台帳號密碼
+```
+
+填完驗證：
+
+```bash
+python3 -m json.tool /Users/<USER>/aladdin/.mcp.json > /dev/null && echo "JSON OK"
+/opt/homebrew/bin/jq -r '.mcpServers["aladdin-admin"].env.ALADDIN_ADMIN_API_URL' /Users/<USER>/aladdin/.mcp.json
+# 要印得出網址，印出 null 就是 key 名不對，服務會起不來
 ```
 
 > **已知設計缺口（H28 待處理）**：hosted 服務的存活綁在這個「給 stdio 模式用的」設定區塊上。
@@ -81,6 +78,15 @@ cd /Users/<USER>/aladdin/telegram-dispatcher && bun install
 > 部署後若服務起不來，**第一個要查的就是這裡的 key 名稱與 env 變數名是否對得上 `run-server.sh`**。
 
 ### 2.2 各 server 的 `tokens.json`（Bearer 名冊）
+
+**新機器一律產生全新的 token，不要從舊機器複製。** 理由有三個：
+
+1. token 就是這套系統唯一的對外鑰匙，兩台機器共用同一批＝洩漏面加倍
+2. 舊機器上那批多半是開發期的測試 token（`h6-test`、`h32-test-*` 之類），不該帶進正式環境
+3. 新機器換了 tunnel domain 的話，舊 kit 本來就要重發，token 順便換掉沒有額外成本
+
+**代價**：發過的 kit 會全部失效，要重新發一份給每個企劃（`.mcp.json` 裡的 token 值變了）。
+所以順序是「先在新機器建好名冊 → 再產生 kit 發下去」，不要反過來。
 
 ```
 mcps/aladdin-admin/tokens.json         # dev

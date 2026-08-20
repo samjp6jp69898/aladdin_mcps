@@ -1,0 +1,11 @@
+# 啟動腳本的換行格式必須釘住，否則跨平台會壞掉：
+#   .bat  在 Windows cmd.exe 上需要 CRLF（LF 會讓 label 跳轉與行尾解析出問題）
+#   .command / .sh 在 macOS 與 Git Bash 上需要 LF（CRLF 會讓 shebang 帶著 \r
+#     而出現「bad interpreter」，這是 Windows 使用者最常見的踩雷）
+*.bat      text eol=crlf
+*.command  text eol=lf
+*.sh       text eol=lf
+
+# .env.example 一律 LF：登入 skill 逐行比對欄位名，行尾的 \r 會讓值尾巴多一個
+# 看不見的字元，導致密碼錯誤而且極難察覺（plan.md §4.5 記錄過這個地雷）。
+.env.example text eol=lf
