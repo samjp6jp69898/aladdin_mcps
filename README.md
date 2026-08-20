@@ -94,9 +94,11 @@ https://<既有 ngrok domain>/mcp-admin-dev（或 -pre / -evi / /mcp-platform / 
   ▼
 localhost:<port>  agrabah-admin 或 agrabah-platform 的 http.ts
 （Hono + Streamable HTTP，stateless；每個 request 各自 new 一個 McpServer+transport）
-  │  Bearer 認證 middleware（auth.ts）：token 名冊是獨立 JSON 檔，現讀 + mtime
-  │  快取，撤銷/新增 token 不需重啟行程；驗證通過後解出「這個 request 屬於哪位
-  │  企劃」（名冊唯一 id，不是顯示名）
+  │  Bearer 認證 middleware（auth.ts）：token 名冊是獨立 JSON 檔，**每個 request
+  │  都重讀**（M3 起，無快取，fail-closed——名冊讀不到/解析不了/驗證不過一律
+  │  該 server 全體 401，見各 server README「名冊維護操作規範」），撤銷/新增
+  │  token 不需重啟行程；驗證通過後解出「這個 request 屬於哪位企劃」（名冊唯一
+  │  id，不是顯示名）
   │  → per-token 登入態容器（session.ts：AsyncLocalStorage 把 identity 灌進整個
   │    request 處理範圍 + module-level `sessions: Map<identity, {token}>`；只存
   │    agrabah JWT，絕不存帳密——D3）

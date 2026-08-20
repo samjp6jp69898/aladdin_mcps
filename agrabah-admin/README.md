@@ -158,8 +158,42 @@ telegram-dispatcher proxy 對外開放（見 `_hosted-rollout/` H15 記錄）。
     `launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel`（停 ngrok，
     公網入口立即消失，本機常駐服務不受影響）
   - 撤銷單一 token：編輯對應 `tokens.json`（或 `tokens.pre.json`/`tokens.evi.json`）
-    移除條目存檔即生效、不需重啟——但存檔後**務必**驗證 JSON 合法
-    （`python3 -m json.tool tokens.json`）並實打一次確認該 token 回 401。
-    目前「整份檔案被刪掉」或「存成壞 JSON」是 fail-open（所有既有 token 繼續
-    有效，另有 task 修正中），修好之前緊急止血一律用上面的 `launchctl bootout`，
-    不要用刪檔頂替。
+    移除條目存檔即生效、不需重啟——但**務必用「暫存檔 + `mv`」，不要就地覆寫**，
+    理由與正確/錯誤做法見下方「名冊維護操作規範」。
+
+**名冊維護操作規範（M3：`auth.ts` 拿掉 mtime 快取，改成每個 request 都重讀
+`tokens.json`）**：
+
+- **一律用「暫存檔 + `mv`」修改名冊，不要就地覆寫**。既然每個 request 都重讀
+  檔案，任何就地覆寫的寫法（`vim` 預設 `:w`、`jq '...' tokens.json > tokens.json`
+  這類先 truncate 再寫的重導向）都會在「檔案為空或只寫了一半」的那幾毫秒到數十
+  毫秒空窗內，讓某個 request 讀到殘缺內容而 fail-closed——**該 server 的所有使
+  用者一起收到 401**（自癒：寫完後下一個 request 就恢復，但沒必要承擔這個代價）。
+  - 正確（`mv` 在同一個檔案系統上是原子操作，讀取端永遠看到完整的舊檔或完整的
+    新檔，空窗為 0）：
+    ```bash
+    python3 -c "..." > tokens.json.tmp && mv tokens.json.tmp tokens.json
+    ```
+  - 錯誤（就地覆寫，會製造空窗期）：
+    ```bash
+    vim tokens.json                      # 預設 backupcopy 行為是就地存檔
+    jq '...' tokens.json > tokens.json   # shell 先把目標檔 truncate 成空才執行 jq
+    ```
+- **改完務必驗證**：`python3 -m json.tool tokens.json > /dev/null` 確認 JSON
+  合法；並實打一次確認行為符合預期（撤銷的 token 回 401、保留的仍可用）。
+- **fail-closed 語意要講清楚**（見 `src/auth.ts` 檔頭與 `loadRegistry`）：名冊
+  只要有任何一點問題——檔案不存在、JSON 解析失敗、`tokens` 不是陣列、任一條目
+  缺 `id` 或 `token`、`id` 或 `token` 重複——**該 server 的所有 token 一起失
+  效**，不是只有壞掉那一筆。這是刻意設計（撤銷必須在所有誤操作下都生效），會
+  自癒（改好後下一個 request 即恢復、不必重啟、`session.ts` 的 per-token 登入
+  態容器不受影響、沒有人需要重新登入），但維運者要知道會發生什麼。
+- **緊急止血的正確順序**：要立刻斷掉對外存取，用上面的
+  `launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel`（停 ngrok，
+  公網入口立即消失）比編輯名冊更快更確定；撤銷單一 token 才用編輯名冊（暫存檔
+  + `mv`）的方式。
+- **fail-closed 發生時去哪裡看**：stderr 會印
+  `[auth] 名冊載入失敗，已進入拒絕所有請求狀態（所有 token 一律 401，直到名冊
+  修好）：<原因>（<名冊路徑>）`，`<原因>` 只帶固定字串/條目 index/id，刻意不含
+  token 值；修好後下一次成功載入會印
+  `[auth] 名冊已重新載入成功（N 筆條目），恢復正常認證`。落在
+  `logs/launchd-server.err.log`。
