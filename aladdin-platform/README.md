@@ -30,7 +30,7 @@ src/
   stdio.ts          — MCP entry point（stdio transport）
   http.ts            — MCP entry point（hosted，Streamable HTTP；Bearer 認證、/login、/files、/health、/mcp，見 ../README.md「Hosted 模式」；結構同 aladdin-admin，各自獨立一份，未共用套件）
   auth.ts             — Bearer token 名冊載入與認證 middleware（hosted 專用）
-  session.ts         — 登入態管理（含 uploadFile，per-identity 容器），所有 tool 共用（結構同 aladdin-admin，各自獨立一份，未共用套件；platform 沒有 IS_PROD/confirm 機制，D13 非目標）
+  session.ts         — 登入態管理（含 uploadFile，per-identity 容器），所有 tool 共用（結構同 aladdin-admin，各自獨立一份，未共用套件；H38 已補上與 admin 對稱的 IS_PROD/confirm 閘門，見下方環境變數表）
   const.ts            — 所有 tool 共用的 rajah enum 對照表與錯誤碼（ACTIVE_STATUS_MAP、IMAGE_SHAPE_MAP...），集中管理避免各 tool 各自重複一份
   files.ts            — POST /files 暫存目錄管理（型別白名單、身分綁定、配額、週期清理），hosted 專用
   instructions.ts     — hosted `/mcp` 的 McpServer instructions
