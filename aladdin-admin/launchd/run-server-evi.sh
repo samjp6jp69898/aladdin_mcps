@@ -7,17 +7,17 @@
 # 落實方式。只負責把這支腳本寫好、手動驗證能起能停，不執行 launchctl
 # bootstrap（見 tasks.json H35 acceptance_criteria）。
 #
-# API URL：evi 後台網址（https://admin.godev2.com）由 tasks.json H35 明文
-# 給定，/Users/user/aladdin/.env 目前沒有對應的 EVI_ADMIN_URL 變數（只有
-# EVI_ADMIN_USER/PASS），故此處直接寫定字面值——不是偷懶跳過「現讀 .env」
-# 慣例，是該變數確實不存在，寫死一個目前唯一已知的網址不構成之後新增
-# uat/prod 時要改程式碼（那兩個環境會各自比照這支腳本再複製一份，見 D13）。
+# 後台網址來源：**plist 的 EnvironmentVariables**（同目錄
+# com.aladdin.mcp-admin-evi-server.plist，launchd 實際讀的是 ~/Library/LaunchAgents/
+# 底下那份拷貝）。本腳本不再讀任何設定檔，也不再把網址寫死在腳本裡。
+#
+# 原本是在本檔直接寫定字面值（.env 沒有 EVI_ADMIN_URL 可讀）。三個環境現已統
+# 一由 plist 供值：每個 launchd job 的設定就放在它自己的 plist 裡，不散在別人
+# 的設定檔、也不埋在腳本中段，換站台時只要改 plist 再 kickstart。
 set -u
 ALADDIN="/Users/user/aladdin"
 SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-admin"
 BUN="/Users/user/.bun/bin/bun"
-
-export ALADDIN_ADMIN_API_URL="https://admin.godev2.com"
 
 # 監聽 port：evi=8792（避開 toolsmith 8788 / admin-dev 8789 / platform-dev
 # 8790 / pre 8791），明講掉不依賴 http.ts 的預設值，理由同 dev 版 run-server.sh。
@@ -36,6 +36,11 @@ export ALADDIN_ADMIN_AUDIT_LOG_PATH="$SERVER_DIR/logs/audit.evi.jsonl"
 # 刻意不匯出 ALADDIN_ADMIN_USER / ALADDIN_ADMIN_PASSWORD：理由同 dev 版
 # run-server.sh——hosted 模式一律走 per-token 登入態 + POST /login，不在常駐
 # 行程環境裡預先塞測試帳密。
+
+if [ -z "${ALADDIN_ADMIN_API_URL:-}" ]; then
+  echo "ERROR: 環境變數 ALADDIN_ADMIN_API_URL 未設定或為空。請檢查 plist 的 EnvironmentVariables 是否有 ALADDIN_ADMIN_API_URL：正本在 $SERVER_DIR/launchd/com.aladdin.mcp-admin-evi-server.plist，但 launchd 讀的是 ~/Library/LaunchAgents/com.aladdin.mcp-admin-evi-server.plist——改完正本要重新 cp 過去再 kickstart 才會生效。" >&2
+  exit 1
+fi
 
 cd "$SERVER_DIR" || exit 1
 

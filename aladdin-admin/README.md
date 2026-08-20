@@ -45,7 +45,10 @@ src/
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
 
-## 環境變數（根目錄 `.mcp.json` 的 `env`）
+## 環境變數（stdio 模式：根目錄 `.mcp.json` 的 `env`）
+
+> hosted（launchd 常駐）模式**不讀 `.mcp.json`**：`ALADDIN_ADMIN_API_URL` 由各環境自己的
+> plist `EnvironmentVariables` 提供，帳密則完全不給常駐行程。詳見下方「launchd 常駐骨架」。
 
 | 變數 | 說明 |
 |---|---|
@@ -114,12 +117,23 @@ zsh /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server-evi.sh  #
 curl http://localhost:8789/health
 ```
 
-dev 的環境變數來源是根目錄 `.mcp.json` 的 `aladdin-admin` server `env`（用
-`jq` 現讀，見 `run-server.sh` 檔頭註解），**不是** `/Users/user/aladdin/.env`——
-跟 `telegram-dispatcher` 的 `TG_*` 系列變數不同源，沿用本檔上面「環境變數」
-一節已記載的既有慣例，避免另開一份會漂移的拷貝。pre 的 `ALADDIN_ADMIN_API_URL`
-現讀 `/Users/user/aladdin/.env` 的 `CQA_ADMIN_URL`；evi 沒有對應的
-`EVI_ADMIN_URL` 可讀，`run-server-evi.sh` 直接寫定字面值（見腳本內註解）。
+上面三行手動跑法要**自己帶 `ALADDIN_ADMIN_API_URL`**（見下），launchd 常駐時
+則由 plist 提供，例如：
+
+```bash
+ALADDIN_ADMIN_API_URL=https://admin.alddev.com \
+  zsh /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server.sh
+```
+
+**三個環境的 `ALADDIN_ADMIN_API_URL` 一律由各自 plist 的 `EnvironmentVariables`
+提供**（dev `https://admin.alddev.com`、pre `https://abu-admin.ald777.com`、evi
+`https://admin.godev2.com`），啟動腳本**不讀任何設定檔**：不讀根目錄 `.mcp.json`
+（那是 stdio 模式的設定來源，見本檔上面「環境變數」一節）、也不讀
+`/Users/user/aladdin/.env`。原本 dev 用 `jq` 從 `.mcp.json` 現讀、pre 現讀 `.env`
+的 `CQA_ADMIN_URL`、evi 寫死在腳本裡，已全部統一到 plist——常駐服務的存活不該
+綁在「給 stdio 用的」設定區塊上（有人清掉那個 key，服務會在下次重啟時才死、當下
+毫無徵兆），且部署到新機器時不必為了起服務而先備妥一份含帳密的 `.mcp.json`。
+換站台＝改 plist，改完要重新 `cp` 到 `~/Library/LaunchAgents/` 再 kickstart。
 三支腳本皆刻意不匯出帳密（`ALADDIN_ADMIN_USER`/`ALADDIN_ADMIN_PASSWORD`），
 理由見腳本內註解——hosted 模式一律走 per-token 登入態 + `POST /login`。
 

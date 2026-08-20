@@ -47,7 +47,11 @@ src/
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
 
-## 環境變數（根目錄 `.mcp.json` 的 `env`）
+## 環境變數（stdio 模式：根目錄 `.mcp.json` 的 `env`）
+
+> hosted（launchd 常駐）模式**不讀 `.mcp.json`**：`ALADDIN_PLATFORM_API_URL` 由
+> `com.aladdin.mcp-platform-server.plist` 的 `EnvironmentVariables` 提供，帳密則完全不給
+> 常駐行程。詳見下方「launchd 常駐骨架」。
 
 | 變數 | 說明 |
 |---|---|
@@ -79,10 +83,18 @@ zsh /Users/user/aladdin/obsidian/mcps/aladdin-platform/launchd/run-server.sh
 curl http://localhost:8790/health
 ```
 
-環境變數來源是根目錄 `.mcp.json` 的 `aladdin-platform` server `env`（用
-`jq` 現讀，見 `run-server.sh` 檔頭註解），**不是** `/Users/user/aladdin/.env`。
-`run-server.sh` 刻意不匯出帳密（`ALADDIN_PLATFORM_USER`/
-`ALADDIN_PLATFORM_PASSWORD`），理由見腳本內註解。
+上面的手動跑法要**自己帶 `ALADDIN_PLATFORM_API_URL`**（例如
+`ALADDIN_PLATFORM_API_URL=https://pk-platform.alddev.com zsh .../run-server.sh`）。
+
+**`ALADDIN_PLATFORM_API_URL` 由 plist 的 `EnvironmentVariables` 提供**
+（`com.aladdin.mcp-platform-server.plist`，現值 `https://pk-platform.alddev.com`），
+`run-server.sh` **不讀任何設定檔**：不讀根目錄 `.mcp.json`（那是 stdio 模式的設定
+來源，見本檔上面「環境變數」一節）、也不讀 `/Users/user/aladdin/.env`。原本是用
+`jq` 從 `.mcp.json` 現讀，已改掉——常駐服務的存活不該綁在「給 stdio 用的」設定區塊
+上，且部署到新機器時不必為了起服務而先備妥一份含帳密的 `.mcp.json`。換站台＝改
+plist，改完要重新 `cp` 到 `~/Library/LaunchAgents/` 再 kickstart。`run-server.sh`
+刻意不匯出帳密（`ALADDIN_PLATFORM_USER`/`ALADDIN_PLATFORM_PASSWORD`），理由見腳本
+內註解。
 
 **部署到 launchd 常駐（已於 H15 執行並常駐中；步驟保留供換機器/重新部署參考）**：
 plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 launchd

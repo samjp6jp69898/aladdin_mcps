@@ -7,18 +7,19 @@
 # 落實方式。只負責把這支腳本寫好、手動驗證能起能停，不執行 launchctl
 # bootstrap（見 tasks.json H35 acceptance_criteria）。
 #
-# API URL 來源：/Users/user/aladdin/.env 的 CQA_ADMIN_URL（現讀，不寫死、
-# 不另開一份會漂移的拷貝），比照 dev 版 run-server.sh 從 .mcp.json 現讀的
-# 手法。pre 環境即企劃口中的 cqa（https://abu-admin.ald777.com），共用 CQA
-# 測試站，非本 repo 專屬環境，本腳本不落地任何帳密。
+# 後台網址來源：**plist 的 EnvironmentVariables**（同目錄
+# com.aladdin.mcp-admin-pre-server.plist，launchd 實際讀的是 ~/Library/LaunchAgents/
+# 底下那份拷貝）。本腳本不再讀任何設定檔。
+#
+# 原本是現讀 /Users/user/aladdin/.env 的 CQA_ADMIN_URL（比照當時 dev 版從
+# .mcp.json 現讀的手法）。三個環境現已統一由 plist 供值：每個 launchd job 的設
+# 定就放在它自己的 plist 裡，不散在別人的設定檔（改動時不必猜還有誰在讀），部
+# 署到新機器也不必為了起服務而先備妥 .env / .mcp.json。pre 環境即企劃口中的
+# cqa，共用 CQA 測試站，本腳本不落地任何帳密。
 set -u
 ALADDIN="/Users/user/aladdin"
-ENV_FILE="$ALADDIN/.env"
 SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-admin"
 BUN="/Users/user/.bun/bin/bun"
-
-ALADDIN_ADMIN_API_URL=$(grep '^CQA_ADMIN_URL=' "$ENV_FILE" | head -1 | cut -d= -f2-)
-export ALADDIN_ADMIN_API_URL
 
 # 監聽 port：pre=8791（避開 toolsmith 8788 / admin-dev 8789 / platform-dev
 # 8790），明講掉不依賴 http.ts 的預設值，理由同 dev 版 run-server.sh。
@@ -38,8 +39,8 @@ export ALADDIN_ADMIN_AUDIT_LOG_PATH="$SERVER_DIR/logs/audit.pre.jsonl"
 # run-server.sh——hosted 模式一律走 per-token 登入態 + POST /login，不在常駐
 # 行程環境裡預先塞測試帳密。
 
-if [ -z "$ALADDIN_ADMIN_API_URL" ]; then
-  echo "ERROR: 無法從 $ENV_FILE 讀取 CQA_ADMIN_URL" >&2
+if [ -z "${ALADDIN_ADMIN_API_URL:-}" ]; then
+  echo "ERROR: 環境變數 ALADDIN_ADMIN_API_URL 未設定或為空。請檢查 plist 的 EnvironmentVariables 是否有 ALADDIN_ADMIN_API_URL：正本在 $SERVER_DIR/launchd/com.aladdin.mcp-admin-pre-server.plist，但 launchd 讀的是 ~/Library/LaunchAgents/com.aladdin.mcp-admin-pre-server.plist——改完正本要重新 cp 過去再 kickstart 才會生效。" >&2
   exit 1
 fi
 

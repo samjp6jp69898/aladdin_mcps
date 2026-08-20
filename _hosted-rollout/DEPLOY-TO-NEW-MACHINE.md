@@ -28,56 +28,58 @@
 # 1. bun（啟動腳本寫死這個路徑，沒有就先裝）
 ls -l /Users/<USER>/.bun/bin/bun
 
-# 2. jq（啟動腳本用它讀設定；Homebrew 路徑寫死在腳本裡）
-ls -l /opt/homebrew/bin/jq
-
-# 3. 兩個 repo
+# 2. 兩個 repo
 ls -d /Users/<USER>/aladdin/obsidian/mcps
 ls -d /Users/<USER>/aladdin/telegram-dispatcher
 
-# 4. node_modules（每個 server 目錄各自需要）
+# 3. node_modules（每個 server 目錄各自需要）
 cd /Users/<USER>/aladdin/obsidian/mcps/aladdin-admin && bun install
 cd ../aladdin-platform && bun install
 cd /Users/<USER>/aladdin/telegram-dispatcher && bun install
 ```
 
-> **注意**：啟動腳本裡的 `/Users/user/...`、`/opt/homebrew/bin/jq`、`/Users/user/.bun/bin/bun`
-> 都是**寫死的絕對路徑**。換使用者名稱或用非 Homebrew 安裝，必須先改
-> `launchd/run-server*.sh` 與 `launchd/*.plist`，否則服務起不來。
+> **`jq` 已不再是前置條件**：啟動腳本原本用它從 `.mcp.json` 讀後台網址，現在網址由
+> plist 的 `EnvironmentVariables` 提供，四支 `run-server*.sh` 都不再讀任何設定檔
+> （`telegram-dispatcher` 的兩支腳本本來就沒用 jq）。
+
+> **注意**：啟動腳本裡的 `/Users/user/...`、`/Users/user/.bun/bin/bun` 都是**寫死的
+> 絕對路徑**。換使用者名稱必須先改 `launchd/run-server*.sh` 與 `launchd/*.plist`，
+> 否則服務起不來。
 
 ---
 
-## 2. 兩個不進 git 的檔案（在新機器上「重新產生」，不要從舊機器複製）
+## 2. 兩份要設定的東西：後台網址（在 plist 裡）與 Bearer 名冊（不進 git）
 
-> **重點**：這兩個檔案都是**環境專屬**的，新機器當成全新環境建立即可。
+### 2.1 後台網址：確認 plist 的 `EnvironmentVariables`
+
+**新機器「不需要」`/Users/<USER>/aladdin/.mcp.json`。** 啟動腳本唯一必需的設定值就是
+後台網址，它由各服務**自己的 plist** 提供，四支 `run-server*.sh` 不再讀任何設定檔。
+（唯一還會用到根目錄 `.mcp.json` 的情境是：工程師自己想在這台機器上用 **stdio 模式**
+跑 MCP。那是個人開發需求，與 hosted 服務無關，範本見 `root-mcp.json.example`。）
+
+新機器上要做的只是**確認 plist 裡的網址是這台機器要服務的環境**：
+
+| plist（repo 正本） | 變數 | 現值 |
+|---|---|---|
+| `aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist` | `ALADDIN_ADMIN_API_URL` | `https://admin.alddev.com`（dev） |
+| `aladdin-admin/launchd/com.aladdin.mcp-admin-pre-server.plist` | `ALADDIN_ADMIN_API_URL` | `https://abu-admin.ald777.com`（pre／cqa） |
+| `aladdin-admin/launchd/com.aladdin.mcp-admin-evi-server.plist` | `ALADDIN_ADMIN_API_URL` | `https://admin.godev2.com`（evi） |
+| `aladdin-platform/launchd/com.aladdin.mcp-platform-server.plist` | `ALADDIN_PLATFORM_API_URL` | `https://pk-platform.alddev.com`（dev × PK） |
+
+```bash
+M=/Users/<USER>/aladdin/obsidian/mcps
+plutil -extract EnvironmentVariables json -o - "$M/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist"
+```
+
+> 改網址就是改 plist：**改完 repo 正本要重新 `cp` 到 `~/Library/LaunchAgents/` 再
+> `launchctl kickstart -k`**，否則 launchd 仍在用舊值（它只讀 `~/Library/LaunchAgents/`
+> 底下那份）。網址沒設或設成空字串時，服務會 fail-loud 退出（exit 1），err log 直接
+> 指名要去看哪一份 plist。
+
+### 2.2 各 server 的 `tokens.json`（Bearer 名冊，不進 git）
+
+> **重點**：名冊是**環境專屬**的，新機器當成全新環境建立即可。
 > 不需要、也不建議從舊機器搬——搬過來反而會讓兩台機器共用同一批憑證。
-
-### 2.1 `/Users/<USER>/aladdin/.mcp.json`
-
-**啟動腳本從這裡讀後台網址**（`run-server.sh` 用 jq 取值），沒有它服務會 fail-loud 退出。
-
-範本在 repo 裡：**`mcps/_hosted-rollout/root-mcp.json.example`**
-
-```bash
-cp /Users/<USER>/aladdin/obsidian/mcps/_hosted-rollout/root-mcp.json.example \
-   /Users/<USER>/aladdin/.mcp.json
-# 然後編輯它：把 <USER> 換成實際使用者名稱、填入後台帳號密碼
-```
-
-填完驗證：
-
-```bash
-python3 -m json.tool /Users/<USER>/aladdin/.mcp.json > /dev/null && echo "JSON OK"
-/opt/homebrew/bin/jq -r '.mcpServers["aladdin-admin"].env.ALADDIN_ADMIN_API_URL' /Users/<USER>/aladdin/.mcp.json
-# 要印得出網址，印出 null 就是 key 名不對，服務會起不來
-```
-
-> **已知設計缺口（H28 待處理）**：hosted 服務的存活綁在這個「給 stdio 模式用的」設定區塊上。
-> 有人清掉 `mcpServers.aladdin-admin` 這個 key，服務會在**下次重啟時**才死，當下沒有徵兆。
-> 2026-08-20 的改名就踩過這個雷（key 還是舊的 `agrabah-admin`，服務起不來）。
-> 部署後若服務起不來，**第一個要查的就是這裡的 key 名稱與 env 變數名是否對得上 `run-server.sh`**。
-
-### 2.2 各 server 的 `tokens.json`（Bearer 名冊）
 
 **新機器一律產生全新的 token，不要從舊機器複製。** 理由有三個：
 
@@ -178,7 +180,7 @@ launchctl print gui/$(id -u)/com.aladdin.mcp-admin-server | grep -E 'state|last 
 
 | 症狀 | 原因 |
 |---|---|
-| `ERROR: 無法從 .../.mcp.json 讀取 mcpServers.aladdin-admin.env.ALADDIN_ADMIN_API_URL` | §2.1 的 key 名或 env 變數名不符 |
+| `ERROR: 環境變數 ALADDIN_ADMIN_API_URL 未設定或為空` | §2.1：`~/Library/LaunchAgents/` 那份 plist 的 `EnvironmentVariables` 沒有這個 key（常見於改了 repo 正本卻忘記重新 `cp`） |
 | `名冊載入失敗，已進入拒絕所有請求狀態` | §2.2 的 tokens.json 不存在或格式錯 |
 | 行程反覆重啟（`runs` 快速增加） | `KeepAlive=true` + 啟動即崩潰；看 err log 找真因 |
 | port 被佔用 | `lsof -nP -i :8789` 找出佔用者 |

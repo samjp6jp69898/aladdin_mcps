@@ -10,6 +10,20 @@
 # 否則 Finder 會說「沒有執行權限」。這一步無法由腳本自己完成（雞生蛋問題），
 # 已寫進 README 的安裝步驟。
 
+# ╔══════════════════════════════════════════════════════════╗
+# ║  如果這支腳本說「找不到 Claude」，在這裡填你電腦上的實際位置    ║
+# ╚══════════════════════════════════════════════════════════╝
+#
+# 大部分人不需要改這裡——腳本會自動去找常見的安裝位置。
+# 只有在你把 Claude 裝到非預設位置、而腳本又找不到時，才需要動它。
+#
+# 怎麼查自己的位置：打開「終端機」貼上這行按 Enter
+#     which claude
+# 把印出來的那一整行路徑，填進下面的引號中間，例如：
+#     CLAUDE_PATH="/Users/你的名字/.local/bin/claude"
+#
+CLAUDE_PATH=""
+
 # 切換到這支腳本所在的資料夾——雙擊執行時的工作目錄是使用者家目錄，
 # 不是 kit 目錄，不切過去的話 Claude 會讀不到 .mcp.json 與 .claude/。
 cd "$(dirname "$0")" || exit 1
@@ -20,12 +34,54 @@ echo "  │   Aladdin AI 助理 — 啟動中                │"
 echo "  └─────────────────────────────────────────┘"
 echo ""
 
-# ── 檢查 1：Claude Code 是否已安裝 ──────────────────────────
-if ! command -v claude > /dev/null 2>&1; then
-    echo "  ❌ 找不到 Claude Code"
+# ── 檢查 1：找出 Claude 在這台電腦上的位置 ───────────────────
+# 順序：使用者在檔案開頭填的路徑 → PATH 裡的 claude → 幾個常見安裝位置。
+# 每台電腦的安裝位置可能不同（官方安裝、Homebrew、手動放置各有去處），
+# 所以不寫死單一路徑。
+CLAUDE_BIN=""
+
+if [ -n "$CLAUDE_PATH" ]; then
+    if [ -x "$CLAUDE_PATH" ]; then
+        CLAUDE_BIN="$CLAUDE_PATH"
+    else
+        echo "  ⚠️  你在檔案開頭填的 Claude 路徑不存在或不能執行："
+        echo "      ${CLAUDE_PATH}"
+        echo ""
+        echo "  請在終端機執行 which claude 查出正確路徑，再填一次。"
+        echo ""
+        echo "  按 Enter 關閉這個視窗。"
+        read -r _
+        exit 1
+    fi
+elif command -v claude > /dev/null 2>&1; then
+    CLAUDE_BIN="$(command -v claude)"
+else
+    for candidate in \
+        "$HOME/.local/bin/claude" \
+        "$HOME/.claude/local/claude" \
+        "/opt/homebrew/bin/claude" \
+        "/usr/local/bin/claude"
+    do
+        if [ -x "$candidate" ]; then
+            CLAUDE_BIN="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$CLAUDE_BIN" ]; then
+    echo "  ❌ 找不到 Claude"
     echo ""
-    echo "  請先安裝 Claude Code，安裝方式見這個資料夾裡的 README.md。"
-    echo "  如果你已經安裝過但仍看到這個訊息，請聯絡工程師。"
+    echo "  可能是還沒安裝，或裝在這支腳本沒找過的位置。"
+    echo ""
+    echo "  【如果你還沒安裝】安裝方式見這個資料夾裡的 README.md。"
+    echo ""
+    echo "  【如果你已經裝好了】請照這兩步告訴這支腳本它在哪："
+    echo "     1. 打開「終端機」，貼上這行按 Enter：  which claude"
+    echo "     2. 把印出來的路徑，填進這個檔案開頭的 CLAUDE_PATH=\"\" 引號中間"
+    echo ""
+    echo "  （用文字編輯器打開「開始使用-Mac.command」就能看到那一行，"
+    echo "    它在檔案最上方、有一個框起來的說明。）"
     echo ""
     echo "  按 Enter 關閉這個視窗。"
     read -r _
@@ -92,4 +148,4 @@ echo "  結束時輸入 /exit 或直接關閉視窗。"
 echo "  ─────────────────────────────────────────"
 echo ""
 
-exec claude
+exec "$CLAUDE_BIN"

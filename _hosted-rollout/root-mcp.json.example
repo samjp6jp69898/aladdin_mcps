@@ -3,18 +3,18 @@
     "這是「工程師機器」根目錄 /Users/<USER>/aladdin/.mcp.json 的範本，",
     "不是給企劃的那份（企劃那份在 mcps/aladdin-ai-assistant-kit/.mcp.json）。",
     "",
-    "用途有兩個，都很關鍵：",
-    "  1. hosted server 的 launchd 啟動腳本（launchd/run-server*.sh）用 jq 從這裡",
-    "     讀後台網址。讀不到會 fail-loud 退出，服務起不來。",
-    "  2. 工程師自己在這台機器上用 stdio 模式跑 MCP 時的設定來源。",
+    "【這份只有「工程師要在自己機器上用 stdio 模式跑 MCP」時才需要】",
+    "hosted 服務（launchd/run-server*.sh）**不再讀這個檔案**——後台網址改由各服務",
+    "自己的 plist EnvironmentVariables 提供。部署一台只跑 hosted 服務的機器（打包機）",
+    "完全不必準備這個檔案，也就不必在那台機器上放後台帳密。",
     "",
-    "部署到新機器時：複製這份範本成 .mcp.json，填入真實帳密，不要進 git。",
+    "要用 stdio 模式時：複製這份範本成 /Users/<USER>/aladdin/.mcp.json，填入真實帳密，",
+    "不要進 git。改這裡的 key 名或 env 變數名不會影響 hosted 服務。",
     "",
-    "【已知設計缺口，H28 待處理】hosted 服務的存活綁在這個「本來給 stdio 用的」",
-    "設定區塊上。有人清掉 mcpServers.aladdin-admin 這個 key，服務會在下次重啟時",
-    "才死、當下毫無徵兆。2026-08-20 的改名就踩過：key 還是舊的 agrabah-admin，",
-    "服務 bootstrap 後起不來，log 顯示「無法從 .mcp.json 讀取 ...ALADDIN_ADMIN_API_URL」。",
-    "所以改動這個檔案的 key 名或 env 變數名時，務必同步檢查 run-server*.sh。"
+    "【為什麼解耦】原本啟動腳本用 jq 從這裡取值，等於把常駐服務的存活綁在一個",
+    "「給 stdio 用的」設定區塊上：有人清掉 mcpServers.aladdin-admin 這個 key，服務會",
+    "在下次重啟時才死、當下毫無徵兆（2026-08-20 改名時真的踩過）。已改為 plist 供值，",
+    "不要改回來。"
   ],
 
   "mcpServers": {
@@ -22,7 +22,7 @@
       "command": "bun",
       "args": [ "/Users/<USER>/aladdin/obsidian/mcps/aladdin-admin/src/stdio.ts" ],
       "env": {
-        "_註": "ALADDIN_ADMIN_API_URL 是 launchd 啟動腳本唯一必需的值；USER/PASSWORD 只有 stdio 模式會用到（hosted 模式刻意不匯出帳密給常駐行程）",
+        "_註": "這三個值都只有 stdio 模式會用到；hosted 服務的網址來自 plist、帳密則刻意不給常駐行程（走 per-token 登入態 + POST /login）",
         "ALADDIN_ADMIN_API_URL": "https://admin.alddev.com",
         "ALADDIN_ADMIN_USER": "<dev 系統管理後台帳號>",
         "ALADDIN_ADMIN_PASSWORD": "<密碼>"

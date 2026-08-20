@@ -9,6 +9,20 @@ REM
 REM 這支腳本刻意不用 PowerShell(.ps1)：Windows 預設的執行原則會擋下未簽署
 REM 的 .ps1，企劃雙擊只會看到一段紅字錯誤。.bat 沒有這個限制。
 
+REM ╔══════════════════════════════════════════════════════════╗
+REM ║  如果這支腳本說「找不到 Claude」，在這裡填你電腦上的實際位置    ║
+REM ╚══════════════════════════════════════════════════════════╝
+REM
+REM 大部分人不需要改這裡——腳本會自動去找常見的安裝位置。
+REM 只有在你把 Claude 裝到非預設位置、而腳本又找不到時，才需要動它。
+REM
+REM 怎麼查自己的位置：按 Win+R 打 cmd 按 Enter，貼上這行按 Enter
+REM     where claude
+REM 把印出來的那一整行路徑，填進下面等號後面（不要加引號），例如：
+REM     set "CLAUDE_PATH=C:\Users\你的名字\AppData\Local\Programs\claude\claude.exe"
+REM
+set "CLAUDE_PATH="
+
 cd /d "%~dp0"
 
 echo.
@@ -17,13 +31,44 @@ echo   ^|   Aladdin AI 助理 — 啟動中                ^|
 echo   +-----------------------------------------+
 echo.
 
-REM ── 檢查 1：Claude Code 是否已安裝 ──────────────────────────
-where claude > nul 2>&1
-if errorlevel 1 (
-    echo   [X] 找不到 Claude Code
+REM ── 檢查 1：找出 Claude 在這台電腦上的位置 ───────────────────
+set "CLAUDE_BIN="
+
+if defined CLAUDE_PATH (
+    if exist "%CLAUDE_PATH%" (
+        set "CLAUDE_BIN=%CLAUDE_PATH%"
+    ) else (
+        echo   [!] 你在檔案開頭填的 Claude 路徑不存在：
+        echo       %CLAUDE_PATH%
+        echo.
+        echo   請開 cmd 執行 where claude 查出正確路徑，再填一次。
+        echo.
+        pause
+        exit /b 1
+    )
+) else (
+    for /f "delims=" %%i in ('where claude 2^>nul') do (
+        if not defined CLAUDE_BIN set "CLAUDE_BIN=%%i"
+    )
+)
+
+if not defined CLAUDE_BIN (
+    if exist "%LOCALAPPDATA%\Programs\claude\claude.exe" set "CLAUDE_BIN=%LOCALAPPDATA%\Programs\claude\claude.exe"
+)
+
+if not defined CLAUDE_BIN (
+    echo   [X] 找不到 Claude
     echo.
-    echo   請先安裝 Claude Code，安裝方式見這個資料夾裡的 README.md。
-    echo   如果你已經安裝過但仍看到這個訊息，請聯絡工程師。
+    echo   可能是還沒安裝，或裝在這支腳本沒找過的位置。
+    echo.
+    echo   【如果你還沒安裝】安裝方式見這個資料夾裡的 README.md。
+    echo.
+    echo   【如果你已經裝好了】請照這兩步告訴這支腳本它在哪：
+    echo      1. 按 Win+R 打 cmd 按 Enter，貼上這行：  where claude
+    echo      2. 把印出來的路徑，填進這個檔案開頭的 set "CLAUDE_PATH=" 等號後面
+    echo.
+    echo   （用記事本打開「開始使用-Windows.bat」就能看到那一行，
+    echo     它在檔案最上方、有一個框起來的說明。）
     echo.
     pause
     exit /b 1
@@ -80,7 +125,7 @@ echo   結束時輸入 /exit 或直接關閉視窗。
 echo   -----------------------------------------
 echo.
 
-claude
+"%CLAUDE_BIN%"
 
 REM Claude 結束後不要立刻關視窗，讓企劃看得到最後的訊息或錯誤
 echo.

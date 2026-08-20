@@ -20,6 +20,8 @@
         <string>/Users/user/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>LANG</key>
         <string>en_US.UTF-8</string>
+        <key>ALADDIN_ADMIN_API_URL</key>
+        <string>https://abu-admin.ald777.com</string>
     </dict>
 
     <key>RunAtLoad</key>
