@@ -73,9 +73,10 @@
 # 1. bun（啟動腳本寫死這個路徑，沒有就先裝）
 ls -l /Users/<USER>/.bun/bin/bun
 
-# 2. 兩個 repo
+# 2. 一個 repo（obsidian）——telegram-dispatcher 已併入 obsidian repo，
+#    打包機只需要 clone/pull 這一個 repo，不再需要獨立的 telegram-dispatcher repo
 ls -d /Users/<USER>/aladdin/obsidian/mcps
-ls -d /Users/<USER>/aladdin/telegram-dispatcher
+ls -d /Users/<USER>/aladdin/obsidian/telegram-dispatcher
 
 # 3. ngrok（對外 tunnel 用，需 3.x）
 ngrok version
@@ -83,7 +84,8 @@ ngrok version
 # 4. node_modules（每個 server 目錄各自需要）
 cd /Users/<USER>/aladdin/obsidian/mcps/aladdin-admin && bun install
 cd ../aladdin-platform && bun install
-cd /Users/<USER>/aladdin/telegram-dispatcher && bun install
+cd /Users/<USER>/aladdin/obsidian/telegram-dispatcher && bun install
+mkdir -p /Users/<USER>/aladdin/obsidian/telegram-dispatcher/logs   # 不進 git，換機器要手動補
 ```
 
 > **`jq` 已不再是前置條件**：啟動腳本原本用它從 `.mcp.json` 讀後台網址，現在網址由
@@ -253,7 +255,7 @@ launchctl print gui/$(id -u)/com.aladdin.mcp-admin-server | grep -E 'state|last 
 **這一節不能跳過**：兩個 MCP server 只綁 `127.0.0.1`，沒有 dispatcher 就沒有任何
 對外入口，企劃會完全連不上（見 §0 的架構圖）。
 
-dispatcher 有自己的兩個 launchd job，都在 `/Users/<USER>/aladdin/telegram-dispatcher/launchd/`：
+dispatcher 有自己的兩個 launchd job，都在 `/Users/<USER>/aladdin/obsidian/telegram-dispatcher/launchd/`：
 
 | plist | 做什麼 |
 |---|---|
@@ -276,15 +278,16 @@ ls -l ~/Library/Application\ Support/ngrok/ngrok.yml
 
 ### 4.2 dispatcher 自己的環境設定
 
-`telegram-dispatcher/.env`（gitignored，需手動建立）——裡面是 Telegram bot token
-等既有設定。**如果新機器不需要 Telegram bot 功能、只要 MCP proxy**，仍然要讓
-dispatcher 起得來；請先讀 `telegram-dispatcher/README.md` 確認哪些 key 是必要的，
-缺少時 server 會在啟動時報錯。
+`run-server.sh` 讀的其實是**根目錄的 `/Users/<USER>/aladdin/.env`**（不是
+`telegram-dispatcher/.env`），裡面要有 Telegram bot token 等既有設定。**如果新機器
+不需要 Telegram bot 功能、只要 MCP proxy**，仍然要讓 dispatcher 起得來；請先讀
+`obsidian/telegram-dispatcher/README.md` 確認哪些 key 是必要的，缺少時 server 會在
+啟動時報錯。
 
 ### 4.3 部署與啟動
 
 ```bash
-T=/Users/<USER>/aladdin/telegram-dispatcher
+T=/Users/<USER>/aladdin/obsidian/telegram-dispatcher
 cp "$T/launchd/com.aladdin.tg-dispatch-server.plist" ~/Library/LaunchAgents/
 cp "$T/launchd/com.aladdin.tg-dispatch-tunnel.plist" ~/Library/LaunchAgents/
 plutil -lint ~/Library/LaunchAgents/com.aladdin.tg-dispatch-*.plist
@@ -319,7 +322,7 @@ launchctl list | grep -i aladdin
 **ngrok domain 是寫死的**，出現在三個位置，改一個漏兩個服務就會壞：
 
 ```
-telegram-dispatcher/launchd/run-tunnel.sh:37        （TUNNEL_URL 常數）
+obsidian/telegram-dispatcher/launchd/run-tunnel.sh:37   （TUNNEL_URL 常數）
 mcps/aladdin-ai-assistant-kit/.claude/settings.json （allow 規則，逐字比對，改錯會讓企劃每次都跳權限確認）
 mcps/aladdin-ai-assistant-kit/.mcp.json            （企劃連線的 URL）
 ```
@@ -329,7 +332,7 @@ mcps/aladdin-ai-assistant-kit/.mcp.json            （企劃連線的 URL）
 
 > **Telegram bot 的 webhook 也綁在 domain 上**。如果新機器要繼續提供 bot 功能，
 > 換 domain 後必須重新 `setWebhook`，否則 Telegram 會繼續往舊 domain 送。
-> 做法見 `telegram-dispatcher/README.md`。
+> 做法見 `obsidian/telegram-dispatcher/README.md`。
 
 > **已知風險（H28）**：ngrok 官方文件現在寫免費方案不提供 static domain，但現有 reserved domain
 > 仍在運作——代表這個 domain 隨時可能被政策收回。Cloudflare Tunnel 的遷移評估報告見
