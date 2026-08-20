@@ -188,17 +188,17 @@ const STATIC_FILES = [
     '.claude/skills/login/login.sh',
     '.claude/skills/upload-image/SKILL.md',
     '.claude/skills/upload-image/upload.sh',
-    '開始使用-Mac.command',
-    '開始使用-Windows.bat',
-    '開始使用-Mac-圖形介面.command',
-    '開始使用-Windows-圖形介面.bat',
+    'MAC-啟動腳本.command',
+    'Windows-啟動腳本.bat',
+    'MAC-GUI-啟動腳本.command',
+    'Windows-GUI-啟動腳本.bat',
 ];
 
 const EXECUTABLE_FILES = new Set([
     '.claude/skills/login/login.sh',
     '.claude/skills/upload-image/upload.sh',
-    '開始使用-Mac.command',
-    '開始使用-Mac-圖形介面.command',
+    'MAC-啟動腳本.command',
+    'MAC-GUI-啟動腳本.command',
 ]);
 
 function copyStaticFiles(destDir: string): void {

@@ -58,8 +58,8 @@ Claude 裡點「選擇資料夾」貼上即可——全程不會看到終端機�
 
 | 你的電腦 | 雙擊這個檔案 |
 |---|---|
-| Mac | `開始使用-Mac-圖形介面.command` |
-| Windows | `開始使用-Windows-圖形介面.bat` |
+| Mac | `MAC-GUI-啟動腳本.command` |
+| Windows | `Windows-GUI-啟動腳本.bat` |
 
 > Claude 桌面應用程式目前沒有提供「開啟後自動選定某個資料夾」的功能（官方
 > 限制，不是這支腳本沒做好），所以打開後仍需要你自己點一次「選擇資料夾」，
@@ -81,15 +81,15 @@ Claude 裡點「選擇資料夾」貼上即可——全程不會看到終端機�
 
 | 你的電腦 | 雙擊這個檔案 |
 |---|---|
-| Mac | `開始使用-Mac.command` |
-| Windows | `開始使用-Windows.bat` |
+| Mac | `MAC-啟動腳本.command` |
+| Windows | `Windows-啟動腳本.bat` |
 
 > **Mac 雙擊啟動器（方式一或方式三）首次使用都要多做一步**：Mac 預設不
 > 允許雙擊執行腳本，請在終端機對你要用的那個 `.command` 檔執行一次
 > （只需這一次）：
 > ```bash
-> chmod +x ~/aladdin-kit/開始使用-Mac-圖形介面.command
-> chmod +x ~/aladdin-kit/開始使用-Mac.command
+> chmod +x ~/aladdin-kit/MAC-GUI-啟動腳本.command
+> chmod +x ~/aladdin-kit/MAC-啟動腳本.command
 > ```
 > 如果雙擊時 Mac 說「無法打開，因為來自未識別的開發者」，
 > 在該檔案上按右鍵 → 開啟 → 再點一次「開啟」。
@@ -121,11 +121,11 @@ Claude 裡點「選擇資料夾」貼上即可——全程不會看到終端機�
    `chmod 600 .env .mcp.json`。
 5. 讓啟動器可以雙擊執行（只需做這一次，兩個啟動器都做一次）：
    ```bash
-   chmod +x "開始使用-Mac-圖形介面.command"
-   chmod +x "開始使用-Mac.command"
+   chmod +x "MAC-GUI-啟動腳本.command"
+   chmod +x "MAC-啟動腳本.command"
    ```
 6. 之後每次要用，照上面「日常怎麼開始」挑一種方式即可（推薦雙擊
-   `開始使用-Mac-圖形介面.command`）。
+   `MAC-GUI-啟動腳本.command`）。
 7. 跟 Claude 說你想做什麼即可，第一次操作前先說「**幫我登入**」，
    它會透過登入 skill 幫你完成所有環境的登入。
 
@@ -150,7 +150,7 @@ Claude 裡點「選擇資料夾」貼上即可——全程不會看到終端機�
    對應處理），你不需要自己額外做什麼，但如果登入一直失敗，可以請工程師
    協助確認 `.env` 的存檔格式。
 5. 之後每次要用，照上面「日常怎麼開始」挑一種方式即可（推薦雙擊
-   `開始使用-Windows-圖形介面.bat`）——它們都會自動切到正確的資料夾。
+   `Windows-GUI-啟動腳本.bat`）——它們都會自動切到正確的資料夾。
 6. 跟 Claude 說你想做什麼即可，第一次操作前先說「**幫我登入**」，
    它會透過登入 skill 幫你完成所有環境的登入。
 
