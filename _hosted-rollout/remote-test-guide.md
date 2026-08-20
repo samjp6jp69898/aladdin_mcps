@@ -28,10 +28,10 @@
 
 ```bash
 # admin 用
-python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/agrabah-admin/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
+python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/aladdin-admin/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
 
 # platform 用
-python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/agrabah-platform/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
+python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/aladdin-platform/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
 ```
 
 兩把都是 43 字元。稽核 log 裡會顯示成「Landon 遠端測試」。
@@ -56,7 +56,7 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"manual-test","version":"1.0"}}}'
 ```
 
-**預期**：一段 JSON，含 `"name":"agrabah-admin"`、`protocolVersion`，以及一段中文 `instructions`。
+**預期**：一段 JSON，含 `"name":"aladdin-admin"`、`protocolVersion`，以及一段中文 `instructions`。
 看到就代表「公網 → ngrok → proxy → hosted server」整條鏈路通了。
 
 ### A-2 列出可用工具
@@ -74,25 +74,25 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
 ### A-3 platform 端同樣測一次
 
 把網址換成 `/mcp-platform/mcp`、token 換成 platform 那把，重跑 A-1 與 A-2。
-**預期**：`"name":"agrabah-platform"`，3 支 tool。
+**預期**：`"name":"aladdin-platform"`，3 支 tool。
 
 ---
 
 ## 方式 B：在 Claude Code 裡真的用起來（模擬企劃視角）
 
-1. 建一個**空資料夾**，例如 `~/agrabah-test`。裡面不需要任何公司原始碼。
+1. 建一個**空資料夾**，例如 `~/aladdin-test`。裡面不需要任何公司原始碼。
 
 2. 在資料夾裡建 `.mcp.json`：
 
 ```json
 {
   "mcpServers": {
-    "agrabah-admin-dev": {
+    "aladdin-admin-dev": {
       "type": "http",
       "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp",
       "headers": { "Authorization": "Bearer <ADMIN_TOKEN>" }
     },
-    "agrabah-platform": {
+    "aladdin-platform": {
       "type": "http",
       "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-platform/mcp",
       "headers": { "Authorization": "Bearer <PLATFORM_TOKEN>" }
@@ -160,7 +160,7 @@ curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/health
 ## 這次測試的獨特價值：稽核 log
 
 從另一台電腦打進來的每一次請求都會記進
-`mcps/agrabah-admin/logs/audit.jsonl`（platform 同理），內容包含：
+`mcps/aladdin-admin/logs/audit.jsonl`（platform 同理），內容包含：
 
 - 身分（`identity`，會顯示為「Landon 遠端測試」）
 - 時間、呼叫哪支 tool、成功或失敗、來源 IP
@@ -175,8 +175,8 @@ curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/health
 
 ```bash
 # 停單一服務
-launchctl bootout gui/$(id -u)/com.aladdin.agrabah-admin-server
-launchctl bootout gui/$(id -u)/com.aladdin.agrabah-platform-server
+launchctl bootout gui/$(id -u)/com.aladdin.mcp-admin-server
+launchctl bootout gui/$(id -u)/com.aladdin.mcp-platform-server
 
 # 最快、最確定的整體對外下線：停掉 ngrok，公網入口立即消失
 launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel

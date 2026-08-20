@@ -1,15 +1,15 @@
 ---
 name: upload-image
-description: 把一張本機圖片上傳到 agrabah hosted server，換取 fileId，供需要圖片的 MCP tool（agrabah_admin_edit_game、agrabah_platform_onboard_vendor_game）使用。Use when 使用者要幫某款遊戲換圖／設定圖片，而 MCP tool 的圖片參數要求 fileId（不是本機檔案路徑）的時候。
+description: 把一張本機圖片上傳到 agrabah hosted server，換取 fileId，供需要圖片的 MCP tool（aladdin_admin_edit_game、aladdin_platform_onboard_vendor_game）使用。Use when 使用者要幫某款遊戲換圖／設定圖片，而 MCP tool 的圖片參數要求 fileId（不是本機檔案路徑）的時候。
 ---
 
-# agrabah-upload-image — 上傳圖片換取 fileId（token 不進對話紀錄）
+# aladdin-upload-image — 上傳圖片換取 fileId（token 不進對話紀錄）
 
 ## 何時使用
 
-- 使用者要更新遊戲的方形圖／直方圖／橫幅圖（`agrabah_admin_edit_game` 的
+- 使用者要更新遊戲的方形圖／直方圖／橫幅圖（`aladdin_admin_edit_game` 的
   `squareImages`／`rectangleImages`／`bannerImages`，或
-  `agrabah_platform_onboard_vendor_game` 的對應圖片參數），且這個 MCP
+  `aladdin_platform_onboard_vendor_game` 的對應圖片參數），且這個 MCP
   server 是 hosted 模式（tool 的圖片欄位描述裡看得到 `fileId` 這個選項）。
 - hosted 模式下這些 tool 吃的是 `{code, fileId}`，**不是**
   `{code, filePath}`——你必須先用這支 skill 把本機圖片換成 `fileId`，才能
@@ -29,8 +29,8 @@ zero-args：兩個動態資訊（要上傳到哪個環境、本機圖片檔案�
 
 1. `.claude/skills/upload-image/.upload-env.tmp`
    純文字，只放一行：`.mcp.json` 裡對應目標環境的 server 別名，例如
-   `agrabah-admin-dev`、`agrabah-admin-pre`、`agrabah-admin-evi`、
-   `agrabah-platform`。**這個別名要跟使用者當下正在操作的環境完全一致**
+   `aladdin-admin-dev`、`aladdin-admin-pre`、`aladdin-admin-evi`、
+   `aladdin-platform`。**這個別名要跟使用者當下正在操作的環境完全一致**
    （見下方「怎麼決定要上傳到哪個環境」）。
 2. `.claude/skills/upload-image/.upload-filepath.tmp`
    純文字，只放一行：本機圖片檔案的路徑（絕對路徑或相對於目前工作目錄的
@@ -50,7 +50,7 @@ upload.sh，殘留的舊暫存檔會被這一輪誤用，導致靜默上傳到�
 ## 怎麼決定要上傳到哪個環境
 
 `fileId` 綁定「上傳當下用的是哪一把 Bearer token」——上傳到 dev 環境拿到的
-`fileId`，只能餵給 dev 環境的 `agrabah_admin_edit_game` 等 tool，不能拿去
+`fileId`，只能餵給 dev 環境的 `aladdin_admin_edit_game` 等 tool，不能拿去
 餵 pre／evi 環境的同一支 tool（會被拒絕）。所以：
 
 - 先確認使用者接下來要對哪個環境呼叫圖片類 tool（跟操作其他 admin/platform

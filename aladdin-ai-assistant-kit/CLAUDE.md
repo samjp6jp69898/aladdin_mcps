@@ -1,19 +1,19 @@
 # 使用手冊：你（Claude）在這份 kit 裡能做什麼、不能做什麼
 
 這台電腦上的你，只裝了這一份 agrabah 後台操作工具，**沒有任何公司原始碼**。
-你能做的事全部來自 `.mcp.json` 裡註冊的 MCP server（agrabah-admin／
-agrabah-platform，依環境各自獨立）提供的 tool，以及 `.claude/skills/` 底下
+你能做的事全部來自 `.mcp.json` 裡註冊的 MCP server（aladdin-admin／
+aladdin-platform，依環境各自獨立）提供的 tool，以及 `.claude/skills/` 底下
 的登入／上傳圖片 skill。這份文件是你（不是使用你的企劃）要遵守的規則。
 
 ## 你能做哪些事
 
-透過 `agrabah-admin` 系列 MCP server（系統管理後台）：
+透過 `aladdin-admin` 系列 MCP server（系統管理後台）：
 
 - 查場館清單、平台清單、某平台底下的場館狀態（唯讀）。
 - 建立三方遊戲場館、建立/編輯全新廠商遊戲（含圖片、多語系名稱）、
   把某場館在某平台底下的狀態改成啟用/停用（寫入）。
 
-透過 `agrabah-platform` 系列 MCP server（平台管理後台，若你的 kit 有拿到）：
+透過 `aladdin-platform` 系列 MCP server（平台管理後台，若你的 kit 有拿到）：
 
 - 查本平台的廠商清單、某廠商在本平台已上架的遊戲清單（唯讀）。
 - 把母表已存在的遊戲上架到本平台、或更新既有上架設定（寫入）。
@@ -68,8 +68,8 @@ Agrabah 後台裡遊戲名稱、場館名稱、備註欄位、多語系名稱這
 
 ## 多環境提醒：同一份 kit 可能同時連著好幾個環境
 
-`.mcp.json` 裡每個 `agrabah-admin-<env>`（例如 `agrabah-admin-dev`、
-`agrabah-admin-pre`、`agrabah-admin-evi`）都是**完全獨立**的環境——不同的
+`.mcp.json` 裡每個 `aladdin-admin-<env>`（例如 `aladdin-admin-dev`、
+`aladdin-admin-pre`、`aladdin-admin-evi`）都是**完全獨立**的環境——不同的
 後台網址、不同的資料、不同的 Bearer token。這份 kit 沒有「session 內切換
 環境」這種機制，你要對哪個環境下指令，完全由**你呼叫的是哪一個 server
 別名的 tool** 決定。

@@ -14,7 +14,7 @@
 # 指令列，所以比照 login.sh 處理 TOTP 驗證碼的手法：Claude 呼叫這支腳本前，
 # 先用 **Write 工具**把這兩個值分別寫進本目錄下兩個固定檔名的暫存檔：
 #   .upload-env.tmp       — 純文字，只放 .mcp.json 裡的 server 別名
-#                            （例如 agrabah-admin-dev），不含其他內容
+#                            （例如 aladdin-admin-dev），不含其他內容
 #   .upload-filepath.tmp  — 純文字，只放本機圖片檔案的路徑，不含其他內容
 # 本腳本一啟動就讀取＋立刻刪除這兩個檔案（單次使用，不留存，跟 login.sh 的
 # .totp-code.tmp 同一種生命週期設計）。
@@ -24,7 +24,7 @@
 # 「這張圖要換到哪一款遊戲」，fileId 綁定「上傳當下用的那把 Bearer token
 # 對應的 identity」（見 files.ts resolveFileIdForIdentity），如果自動廣播到
 # 好幾個環境，使用者事後很難判斷該把哪一個環境回傳的 fileId 交給
-# agrabah_admin_edit_game——而且 edit_game 呼叫的又是「使用者當下正在操作
+# aladdin_admin_edit_game——而且 edit_game 呼叫的又是「使用者當下正在操作
 # 的那個環境」的 MCP tool，兩者對不上就會白跑。因此上傳圖片刻意設計成
 # 「一次操作、一個目標環境」，環境由呼叫端（Claude／使用者）明確指定，不用
 # login.sh 那種「不需要你告訴它」的廣播設計。
@@ -251,7 +251,7 @@ try {
     } else if (httpStatus === '413') {
         // 正式路徑一律經 tg-dispatcher proxy，proxy 對超限一律回 401 空 body
         // （見上面 401 分支），不會產生 413——這個分支在正式路徑上不會被
-        // 觸發。保留它是因為 hosted server 自己（agrabah-admin/src/http.ts）
+        // 觸發。保留它是因為 hosted server 自己（aladdin-admin/src/http.ts）
         // 也有一道 bodyLimit 會回 413，只是正式路徑目前一定先卡在 proxy 那
         // 一層；未來若有不經 proxy、直連 hosted server 的路徑，這裡才會用到。
         console.log(`失敗：檔案大小超過上限（HTTP 413）。請換一張更小的圖片再試一次，不要重複嘗試同一張圖。`);
@@ -272,12 +272,12 @@ if (json && json.success === true && typeof json.fileId === 'string' && json.fil
     // 順帶印出來源檔案路徑（H18 review M3）：讓 Claude／企劃在把這個 fileId
     // 交給 edit_game 之前，有機會發現上傳的其實是殘留在暫存檔裡的上一張圖。
     console.log(`[${envAlias}] 上傳成功，fileId=${json.fileId}（來源：${filePath}）`);
-    console.log(`請把這個 fileId 原樣交給需要圖片的 MCP tool（例如 agrabah_admin_edit_game 的 fileId 參數），不要用本機檔案路徑。這個 fileId 只能用在「${envAlias}」這個環境，且僅供這一張圖片使用一次，不要拿去給不同的圖片重複用。`);
+    console.log(`請把這個 fileId 原樣交給需要圖片的 MCP tool（例如 aladdin_admin_edit_game 的 fileId 參數），不要用本機檔案路徑。這個 fileId 只能用在「${envAlias}」這個環境，且僅供這一張圖片使用一次，不要拿去給不同的圖片重複用。`);
     process.exit(0);
 }
 
 // 400（型別/大小/缺欄位等驗證失敗）：files.ts 回的 errorMessage 是我們自己
-// 產生的固定文案，不含使用者輸入原文（見 agrabah-admin/src/files.ts），
+// 產生的固定文案，不含使用者輸入原文（見 aladdin-admin/src/files.ts），
 // 印出來安全、且對非技術使用者有診斷價值，不像 login.sh 的帳密錯誤訊息
 // 需要收斂。
 // 這裡仍對 json 做防禦性檢查（json 若不是物件就不存取 .errorMessage，

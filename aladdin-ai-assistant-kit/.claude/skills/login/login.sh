@@ -9,8 +9,8 @@
 # TOTP 驗證碼）一律由本腳本自己從 .env／.mcp.json 讀，或從下面說明的固定
 # 暫存檔讀，絕不出現在呼叫這支腳本的指令列上。
 #
-# 多環境設計：一份 kit 的 .mcp.json 可能同時掛好幾個 agrabah-admin-<env> /
-# agrabah-platform entry。本腳本不需要事先知道「這次要登入哪一個」——直接
+# 多環境設計：一份 kit 的 .mcp.json 可能同時掛好幾個 aladdin-admin-<env> /
+# aladdin-platform entry。本腳本不需要事先知道「這次要登入哪一個」——直接
 # 對 .mcp.json 裡「type 是 http、Authorization 已填入真實 Bearer token」的
 # 每一筆 entry 各自呼叫一次對應的 POST .../login，逐筆回報成功/失敗/需要
 # TOTP。這樣完全不需要額外的「環境選擇」channel，也不需要 Claude 在呼叫前
@@ -177,9 +177,9 @@ const envValue = name => envFields.get(name) || '';
 
 // 欄位名一律由 .mcp.json 的 server 別名「機械轉換」而來：非英數字元換成底線、
 // 轉大寫，再加 _USER／_PASSWORD。
-//   agrabah-admin-dev        → AGRABAH_ADMIN_DEV_USER／..._PASSWORD
-//   agrabah-platform-dev-pk  → AGRABAH_PLATFORM_DEV_PK_USER／..._PASSWORD
-//   agrabah-platform-dev-6t  → AGRABAH_PLATFORM_DEV_6T_USER／..._PASSWORD
+//   aladdin-admin-dev        → ALADDIN_ADMIN_DEV_USER／..._PASSWORD
+//   aladdin-platform-dev-pk  → ALADDIN_PLATFORM_DEV_PK_USER／..._PASSWORD
+//   aladdin-platform-dev-6t  → ALADDIN_PLATFORM_DEV_6T_USER／..._PASSWORD
 //
 // 這裡刻意**不維護任何「有哪些環境／哪些平台」的清單**。後台實際上是「環境 ×
 // 平台產品」兩個維度（光 dev 一個環境底下就有 MAIN／TEST／FF／PK／NY／6T…
@@ -427,7 +427,7 @@ for (const { target, cred } of resolutions) {
         json = JSON.parse(httpBody);
     } catch {
         // H17 review 收尾（F1/F2/F4）：「需要 TOTP」這個情境已經改成 HTTP 200
-        // 回應（見 agrabah-admin/agrabah-platform 的 http.ts），所以走到這裡、
+        // 回應（見 aladdin-admin/aladdin-platform 的 http.ts），所以走到這裡、
         // body 解析不出來的狀況，不會再是 TOTP，只會是下面列的幾種基礎設施
         // 層級狀況——依 httpStatus 給對應的明確訊息，不要籠統地說「不是合法
         // JSON」：

@@ -1,0 +1,24 @@
+{
+  "name": "aladdin-platform-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server：登入 agrabah platform 後台並呼叫其 RPC method——拿廠商列表、拿某廠商遊戲列表、把廠商既有遊戲上架到本平台。",
+  "bin": {
+    "aladdin-platform-mcp-stdio": "src/stdio.ts"
+  },
+  "scripts": {
+    "start:stdio": "bun src/stdio.ts",
+    "start:http": "bun src/http.ts",
+    "inspect": "bunx @modelcontextprotocol/inspector bun src/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "hono": "^4.13.2",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

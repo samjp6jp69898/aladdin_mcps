@@ -1,13 +1,13 @@
 # agrabah MCP servers — 架構、新增 tool 公版、安裝與連線
 
-這份文件是所有 `mcps/agrabah-*` server 共用的規範。個別 server 的 README 只放專屬資訊（env 變數、tool 清單、已知限制），設計原則跟怎麼加新 tool 一律看這裡，避免每個 server 各寫一份會漂移。
+這份文件是所有 `mcps/aladdin-*` server 共用的規範。個別 server 的 README 只放專屬資訊（env 變數、tool 清單、已知限制），設計原則跟怎麼加新 tool 一律看這裡，避免每個 server 各寫一份會漂移。
 
 目前有：
 
 | Server | 對應後台 | 目錄 |
 |---|---|---|
-| `agrabah-admin` | admin（系統管理後台） | `mcps/agrabah-admin` |
-| `agrabah-platform` | platform（平台管理後台） | `mcps/agrabah-platform` |
+| `aladdin-admin` | admin（系統管理後台） | `mcps/aladdin-admin` |
+| `aladdin-platform` | platform（平台管理後台） | `mcps/aladdin-platform` |
 
 以上兩個 server 現在**同時支援兩種 transport**：
 
@@ -92,7 +92,7 @@ https://<既有 ngrok domain>/mcp-admin-dev（或 -pre / -evi / /mcp-platform / 
   │  token 真假，真正的身分認證仍在下一跳的 hosted server 才發生；四層之一未過
   │  一律回與「路徑不存在」相同的 401 空 body（均一回應防線，不洩漏路徑存在與否）
   ▼
-localhost:<port>  agrabah-admin 或 agrabah-platform 的 http.ts
+localhost:<port>  aladdin-admin 或 aladdin-platform 的 http.ts
 （Hono + Streamable HTTP，stateless；每個 request 各自 new 一個 McpServer+transport）
   │  Bearer 認證 middleware（auth.ts）：token 名冊是獨立 JSON 檔，**每個 request
   │  都重讀**（M3 起，無快取，fail-closed——名冊讀不到/解析不了/驗證不過一律
@@ -125,15 +125,15 @@ proxy 前綴與本機 port 對照（`telegram-dispatcher/server.ts` 的 `PROXY_R
 
 | Proxy 前綴 | 本機 port | 服務 |
 |---|---|---|
-| `/mcp-admin-dev` | 8789 | agrabah-admin，dev 環境 |
-| `/mcp-admin-pre` | 8791 | agrabah-admin，pre（企劃口中的 cqa）環境（H35） |
-| `/mcp-admin-evi` | 8792 | agrabah-admin，evi 環境（H35） |
-| `/mcp-platform` | 8790 | agrabah-platform（本輪僅 dev，D13 明訂不擴充） |
-| `/toolsmith` | 8788 | agrabah-toolsmith，見 `mcps/agrabah-toolsmith/README.md` |
+| `/mcp-admin-dev` | 8789 | aladdin-admin，dev 環境 |
+| `/mcp-admin-pre` | 8791 | aladdin-admin，pre（企劃口中的 cqa）環境（H35） |
+| `/mcp-admin-evi` | 8792 | aladdin-admin，evi 環境（H35） |
+| `/mcp-platform` | 8790 | aladdin-platform（本輪僅 dev，D13 明訂不擴充） |
+| `/toolsmith` | 8788 | aladdin-toolsmith，見 `mcps/aladdin-toolsmith/README.md` |
 
-`agrabah-admin` 支援多環境（每個 Bearer token 綁定單一環境，token 名冊互不相交）；
-`agrabah-platform` 本輪只有 dev 一組實例。詳細環境清單與網址見
-`mcps/agrabah-admin/README.md` 的「支援環境清單」一節。
+`aladdin-admin` 支援多環境（每個 Bearer token 綁定單一環境，token 名冊互不相交）；
+`aladdin-platform` 本輪只有 dev 一組實例。詳細環境清單與網址見
+`mcps/aladdin-admin/README.md` 的「支援環境清單」一節。
 
 **已知限制**：proxy 這一跳（`telegram-dispatcher/server.ts` 的 `MAX_PROXY_BODY_SIZE`）
 的 body 上限是 **1MB**，比 `POST /files` 自己（`files.ts`）允許的單檔 3MB（外層
@@ -149,7 +149,7 @@ proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑�
 |---|---|---|
 | 使用者 | 工程師本機，有公司原始碼 | 企劃，零原始碼（starter kit） |
 | transport | host 直接 spawn 子行程（stdin/stdout） | Streamable HTTP，經 tg-dispatcher proxy 轉發 |
-| 登入方式 | `agrabah_admin_login`/`agrabah_platform_login` tool，或 env 帳密自動登入 | `POST /login`（REST，非 tool），帳密不進對話紀錄（D4） |
+| 登入方式 | `aladdin_admin_login`/`aladdin_platform_login` tool，或 env 帳密自動登入 | `POST /login`（REST，非 tool），帳密不進對話紀錄（D4） |
 | login tool 是否註冊 | 有（`registerAdminTools(server, 'stdio')`，見 `tools/index.ts`） | 停用（`mode === 'hosted'` 時不掛，H7） |
 | 登入態存放 | process 記憶體單一隱含身分（`STDIO_IDENTITY` Symbol） | per-token 容器（`sessions: Map<identity, {token}>`），identity 來自 Bearer token（H5） |
 | JWT 過期行為 | `withAutoRelogin` 用 env 帳密自動重登，行為不變 | 回 `HOSTED_RELOGIN_REQUIRED_MESSAGE` 明確信號，不嘗試自動重登（server 不留帳密），交由企劃端登入 skill 重跑 `/login`（H7） |
@@ -158,7 +158,7 @@ proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑�
 | 誰能用 | 有原始碼與 `.mcp.json` 存取權的工程師 | 名冊裡有 token 的企劃（各 server 各自一份 `tokens.json`，互不相交） |
 | 部署方式 | 無需部署，host 每次重啟自行 spawn 子行程 | launchd 常駐（`launchd/run-server*.sh` + plist）+ tg-dispatcher proxy 分流常駐 |
 | 多人共用同一常駐服務 | 天生不支援（各自獨立子行程，見下方「環境限制」） | 支援，同一常駐服務、per-token 隔離登入態，多企劃可併發（D2） |
-| 多環境/多平台 | 一份 `.mcp.json` 對應固定的一組 env 值 | `agrabah-admin` 角色 dev/pre/evi 三組獨立實例+獨立 token 名冊；`agrabah-platform` 本輪僅 dev（D13） |
+| 多環境/多平台 | 一份 `.mcp.json` 對應固定的一組 env 值 | `aladdin-admin` 角色 dev/pre/evi 三組獨立實例+獨立 token 名冊；`aladdin-platform` 本輪僅 dev（D13） |
 
 ---
 
@@ -172,7 +172,7 @@ proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑�
 - 完整簽名（參數/回傳型別）與 file:line。
 - 掛在哪個 gate（admin 用 `GameVendorAdmin` 這類 `*Admin` service；platform 用 `*Platform` service）——**兩邊常常同名概念但是完全不同的 model**（例如 `GameVendorEssential` vs `PlatformGameVendorEssential`），不要假設共用。
 - 有沒有 `@Type "Select:xxx"` 依賴——代表這個欄位必須是「後端既有清單裡的值」，不是任意字串/數字，要嘛額外加一支查詢 tool、要嘛在 description 裡講清楚限制（不要無聲放過，agent 會亂填）。
-- 對應 agrabah 後端實作邏輯是不是真的等於「建立」語意（`id > 0` 判斷 create/update 是常見寫法，但不是每支都這樣——這次 `GameVendorPlatform.UpdateGameVendorGame` 就不是，見 `agrabah-platform` README）。
+- 對應 agrabah 後端實作邏輯是不是真的等於「建立」語意（`id > 0` 判斷 create/update 是常見寫法，但不是每支都這樣——這次 `GameVendorPlatform.UpdateGameVendorGame` 就不是，見 `aladdin-platform` README）。
 - **跨 server 的假設要實測驗證，不能只憑「看起來是同一張表」下結論**：曾經誤以為 admin 建立的場館 id 在 platform 端「直接可用」，實測才發現場館要先被 admin 呼叫 `UpdatePlatformGameVendorStatus` 啟用給特定 platform，否則 platform 端完全查不到（該 id 全域共用沒錯，但「哪些 platform 看得到」是另一張獨立關聯表）。寫進文件前先跑一次真實呼叫確認，不要只靠程式碼推論就斷言跨模組行為。
 
 ### 2. 檔案放哪裡：一個能力一個檔案
@@ -197,7 +197,7 @@ import { <NeededEnumMap> } from '../const.ts'; // enum 對照表/錯誤碼放這
 
 export function register<CapabilityName>Tool(server: McpServer): void {
     server.registerTool(
-        '<mcp_tool_name>',                // 命名慣例：agrabah_<admin|platform>_<動詞>_<名詞>
+        '<mcp_tool_name>',                // 命名慣例：aladdin_<admin|platform>_<動詞>_<名詞>
         {
             title: '...',
             description:
@@ -258,10 +258,10 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 - **圖片類參數**：比照 `edit_game.ts`/`onboard_vendor_game.ts` 的
   `{code, filePath}`/`{code, fileId}` 二選一設計（H9），不要只做 stdio 的
   `filePath` 就視為完成。
-- **寫入類 tool 若未來要在 `agrabah-admin` 的 prod 實例啟用**：要接上
+- **寫入類 tool 若未來要在 `aladdin-admin` 的 prod 實例啟用**：要接上
   `assertProdConfirmed`/`confirm` 參數（H36 的伺服器端強制閘門，見
-  `mcps/agrabah-admin/src/session.ts` 的 `assertProdConfirmed`），不要漏接；
-  `agrabah-platform` 本輪沒有這個機制（D13 非目標）。
+  `mcps/aladdin-admin/src/session.ts` 的 `assertProdConfirmed`），不要漏接；
+  `aladdin-platform` 本輪沒有這個機制（D13 非目標）。
 - **重載生效**：改完 tool 程式碼後，stdio 模式下 Claude Code 下次重新 spawn
   子行程即生效；hosted 模式要重啟對應環境的常駐 http server 行程——**dev（admin
   8789 / platform 8790）已 H15 launchctl 常駐**，改用 `launchctl kickstart -k
@@ -315,7 +315,7 @@ transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部�
 
 ### 除錯
 
-- MCP server 啟動失敗最常見原因：`AGRABAH_*_API_URL`/`AGRABAH_*_USER`/`AGRABAH_*_PASSWORD` 沒設（`session.ts` 會直接 throw，訊息很明確）。
+- MCP server 啟動失敗最常見原因：`ALADDIN_*_API_URL`/`ALADDIN_*_USER`/`ALADDIN_*_PASSWORD` 沒設（`session.ts` 會直接 throw，訊息很明確）。
 - 想在不透過 Claude Code 的情況下手動驗證 server 正常，可以用 SDK 內建的 inspector：
   ```bash
   cd /Users/user/aladdin/obsidian/mcps/<server-name>

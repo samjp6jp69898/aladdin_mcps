@@ -20,9 +20,9 @@
 
 **把整個 kit 資料夾放在「不會被雲端硬碟同步」的路徑**，例如：
 
-- Mac：`~/agrabah-kit`（你的家目錄底下，不要放進 `~/Library/CloudStorage/`
+- Mac：`~/aladdin-kit`（你的家目錄底下，不要放進 `~/Library/CloudStorage/`
   下面任何一個雲端硬碟資料夾）
-- Windows：`C:\agrabah-kit`（不要放進 `Documents`、`桌面`，也不要放進
+- Windows：`C:\aladdin-kit`（不要放進 `Documents`、`桌面`，也不要放進
   任何 `OneDrive`／`iCloud`／`Dropbox`／`Google 雲端硬碟` 開頭的資料夾）
 
 **明講不要放的地方，點名**：OneDrive、iCloud Drive、Dropbox、Google Drive。
@@ -45,10 +45,10 @@ Slack/Teams 頻道、還是任何形式的雲端共用連結）。你的操作�
 1. 確認已安裝 Claude Code（終端機打 `claude --version` 有版本號就是裝好了；
    沒有的話依 Claude Code 官方安裝說明先裝好）。
 2. 把工程師給你的 kit 資料夾整個複製到上面說的**非雲端同步路徑**，例如
-   `~/agrabah-kit`。
+   `~/aladdin-kit`。
 3. 打開「終端機」App，執行：
    ```bash
-   cd ~/agrabah-kit
+   cd ~/aladdin-kit
    chmod 600 .env .mcp.json
    ```
    `chmod 600` 的意思是：這兩個檔案只有你自己的作業系統帳號能讀寫，
@@ -58,14 +58,14 @@ Slack/Teams 頻道、還是任何形式的雲端共用連結）。你的操作�
    ```bash
    cp .env.example .env
    ```
-   打開 `.env`，把 `AGRABAH_ADMIN_USER`／`AGRABAH_ADMIN_PASSWORD` 填成你
+   打開 `.env`，把 `ALADDIN_ADMIN_USER`／`ALADDIN_ADMIN_PASSWORD` 填成你
    自己登入 agrabah 後台的帳號密碼，存檔。存完再執行一次上一步的
    `chmod 600 .env .mcp.json`。
 5. 在終端機裡繼續執行：
    ```bash
    claude
    ```
-   在 `~/agrabah-kit` 這個資料夾底下啟動 Claude Code（它會自動讀這個
+   在 `~/aladdin-kit` 這個資料夾底下啟動 Claude Code（它會自動讀這個
    資料夾裡的 `.mcp.json`／`CLAUDE.md`／`.claude/settings.json`）。
 6. 跟 Claude 說你想做什麼即可，第一次操作前它通常會先透過登入 skill
    幫你完成登入。
@@ -77,7 +77,7 @@ Slack/Teams 頻道、還是任何形式的雲端共用連結）。你的操作�
    執行指令一律透過 Git Bash，這份 kit 的登入／上傳流程都是靠這個機制
    運作的，沒裝的話會沒辦法用。
 2. 把工程師給你的 kit 資料夾整個複製到上面說的**非雲端同步路徑**，例如
-   `C:\agrabah-kit`（不要放 `Documents`、桌面，也不要放任何
+   `C:\aladdin-kit`（不要放 `Documents`、桌面，也不要放任何
    OneDrive/iCloud/Dropbox/Google Drive 資料夾底下）。
 3. 設定 `.env` 與 `.mcp.json` 只有你自己看得到：在檔案總管裡分別對這兩個
    檔案：右鍵 → 內容 → 安全性頁籤 → 編輯，確認「使用者」清單裡只有你自己
@@ -90,7 +90,7 @@ Slack/Teams 頻道、還是任何形式的雲端共用連結）。你的操作�
    登入 skill 會自動處理這件事（這是已知的地雷，H17 的登入 skill 有做
    對應處理），你不需要自己額外做什麼，但如果登入一直失敗，可以請工程師
    協助確認 `.env` 的存檔格式。
-5. 開啟 Claude Code，確認目前所在資料夾是 `C:\agrabah-kit`（或你放置的
+5. 開啟 Claude Code，確認目前所在資料夾是 `C:\aladdin-kit`（或你放置的
    路徑），開始跟 Claude 對話即可。
 
 ---
@@ -101,7 +101,7 @@ Slack/Teams 頻道、還是任何形式的雲端共用連結）。你的操作�
   任何事，但可以看看它被要求遵守哪些規則）。
 - `.mcp.json`：你能連上的後台環境清單與對應 token，工程師已經幫你預填好。
   如果你同時被授權多個環境（例如 dev 跟 pre），裡面會有好幾筆
-  `agrabah-admin-<環境>` 的設定，跟 Claude 對話時明確講清楚你要操作哪個
+  `aladdin-admin-<環境>` 的設定，跟 Claude 對話時明確講清楚你要操作哪個
   環境即可，不需要自己編輯這個檔案。
 - `.env.example` → 複製成 `.env`：你自己的 agrabah 帳號密碼，只填一次。
 - `.claude/settings.json`：允許 Claude 免確認執行哪些指令的清單（僅限本

@@ -3,7 +3,7 @@ name: login
 description: 登入 agrabah 後台（dev/pre/evi 等環境），讓 .mcp.json 裡的 MCP tool 能正常呼叫。Use when 第一次要操作 agrabah 後台工具之前、或任何 MCP tool 回傳「需要重新登入」（HOSTED_RELOGIN_REQUIRED）之類的訊號時；也用在使用者提供 TOTP 動態驗證碼、要求你重新完成登入的時候。
 ---
 
-# agrabah-login — 登入 agrabah 後台（密碼不進對話紀錄）
+# aladdin-login — 登入 agrabah 後台（密碼不進對話紀錄）
 
 ## 何時使用
 
@@ -35,15 +35,15 @@ Bearer token／密碼一起送出去的風險開了一個口）。
 1. 從 kit 根目錄的 `.env` 讀出你的 agrabah 帳號密碼（純文字逐行解析，不會
    被印出來、不會出現在跟你的對話紀錄裡）。帳密是**一個後台一組、依環境分別
    讀**的：欄位名由 `.mcp.json` 的 server 別名機械推導——轉大寫、`-` 換成 `_`，
-   加上 `_USER`／`_PASSWORD`。例如 `agrabah-admin-dev` 對應
-   `AGRABAH_ADMIN_DEV_USER`／`AGRABAH_ADMIN_DEV_PASSWORD`，
-   `agrabah-platform-dev-6t` 對應
-   `AGRABAH_PLATFORM_DEV_6T_USER`／`AGRABAH_PLATFORM_DEV_6T_PASSWORD`。
+   加上 `_USER`／`_PASSWORD`。例如 `aladdin-admin-dev` 對應
+   `ALADDIN_ADMIN_DEV_USER`／`ALADDIN_ADMIN_DEV_PASSWORD`，
+   `aladdin-platform-dev-6t` 對應
+   `ALADDIN_PLATFORM_DEV_6T_USER`／`ALADDIN_PLATFORM_DEV_6T_PASSWORD`。
    **沒有「填一組就通用」的共用欄位**：後台是「環境 × 平台產品」兩個維度
    （dev 的 PK 平台跟 dev 的 6T 平台是兩個不同站台、不同帳號），各自是互不
    相通的帳號名冊。某個環境沒填，就只有那個環境登不了，不影響其他環境。
-2. 掃過 `.mcp.json` 裡每一筆已經填好真實 Bearer token 的環境（`agrabah-admin-dev`／
-   `agrabah-admin-pre`／`agrabah-admin-evi`／`agrabah-platform`……你的 kit
+2. 掃過 `.mcp.json` 裡每一筆已經填好真實 Bearer token 的環境（`aladdin-admin-dev`／
+   `aladdin-admin-pre`／`aladdin-admin-evi`／`aladdin-platform`……你的 kit
    裡實際有哪幾筆，取決於工程師授權給你的範圍），對每一筆各自打一次該環境
    的 `POST /login`。**不需要你告訴它要登入哪個環境**——它會把 kit 裡每個
    已授權的環境都登入一輪，一次搞定；平常你只要在看到「需要重新登入」的
