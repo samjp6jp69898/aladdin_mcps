@@ -19,7 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { PlatformGameVendorGameEdit } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
-import { remote, withAutoRelogin, uploadFile, currentIdentityForFiles } from '../session.ts';
+import { remote, withAutoRelogin, uploadFile, currentIdentityForFiles, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { resolveFileIdForIdentity } from '../files.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { IMAGE_SHAPE_MAP, UPLOAD_TYPE_GAME } from '../const.ts';
@@ -152,7 +152,10 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
                 '兩者二選一，每筆項目只能帶其中一個，同時帶或都不帶都會回錯誤。若有任何一張圖上傳失敗，整支呼叫會直接中止、不會送出更新（避免部分寫入），' +
                 '並在 errors 裡列出哪個語言失敗。' +
                 'localizedNames 是遊戲名稱的多語系版本（跟 name 不是同一個欄位，name 是單一顯示名稱），' +
-                '格式同樣是每個語言各帶一組 {code, value}，帶到的語言覆蓋既有值、沒帶到的語言維持原值。',
+                '格式同樣是每個語言各帶一組 {code, value}，帶到的語言覆蓋既有值、沒帶到的語言維持原值。' +
+                'prod 執行前確認（H38）：當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion' +
+                '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
+                '絕不能自行假設使用者同意。非 prod 環境不需要、也會忽略 confirm 欄位。',
             inputSchema: {
                 gameVendorId: z.number().int().describe('遊戲廠商 id，來自 aladdin_platform_list_game_vendors'),
                 gameId: z.string().min(1).describe('廠商遊戲 id（廠商系統裡的原始遊戲代碼，不是本平台的流水號）'),
@@ -167,10 +170,15 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
                 squareImages: imageUploadSchema.describe('方形圖，每個要更新的語言各帶一組 {code, filePath} 或 {code, fileId}（二選一），不帶則沿用既有值'),
                 rectangleImages: imageUploadSchema.describe('直方圖，格式同 squareImages'),
                 bannerImages: imageUploadSchema.describe('橫幅圖，格式同 squareImages'),
+                confirm: z.string().optional().describe(
+                    `正式環境（prod）專用的強制確認欄位；非 prod 環境會被忽略、不需提供。當這個 server 是正式環境時，` +
+                    `必須先取得使用者明確同意，再帶上精確字串 "${ PROD_CONFIRM_TOKEN }" 才會執行，否則本工具會拒絕執行並回錯誤。`,
+                ),
             },
         },
         async (input) => {
-            const { gameVendorId, gameId, squareImages, rectangleImages, bannerImages, localizedNames, ...overrides } = input;
+            const { gameVendorId, gameId, squareImages, rectangleImages, bannerImages, localizedNames, confirm, ...overrides } = input;
+            assertProdConfirmed(confirm);
 
             const getR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.GetGameVendorGameForEdit(gameVendorId, gameId));
             if (getR.failed) {

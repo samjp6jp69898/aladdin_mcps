@@ -58,6 +58,7 @@ src/
 | `ALADDIN_PLATFORM_API_URL` | platform 後台 dev 站台，例如 `https://pk-platform.alddev.com` |
 | `ALADDIN_PLATFORM_USER` | 預設測試帳號 |
 | `ALADDIN_PLATFORM_PASSWORD` | 預設測試密碼 |
+| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，`aladdin_platform_onboard_vendor_game`（目前唯一的寫入型 tool）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 ## 已知限制
 

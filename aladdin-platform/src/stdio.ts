@@ -16,10 +16,14 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { registerPlatformTools } from './tools/index.ts';
 import { buildPlatformInstructions } from './instructions.ts';
+import { IS_PROD } from './session.ts';
 
+// H38：prod confirm 閘門（assertProdConfirmed）只看環境變數 IS_PROD，跟 transport
+// 類型無關——比照 admin 端 H12 review 收尾的教訓（stdio.ts 一度寫死 false，讓 instructions
+// 與 hosted 路徑的閘門判斷基準不一致），這裡從一開始就傳真正的 IS_PROD，不重蹈覆轍。
 const server = new McpServer(
     { name: 'aladdin-platform', version: '0.1.0' },
-    { capabilities: { tools: {} }, instructions: buildPlatformInstructions() },
+    { capabilities: { tools: {} }, instructions: buildPlatformInstructions(IS_PROD) },
 );
 
 registerPlatformTools(server, 'stdio');

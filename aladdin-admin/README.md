@@ -80,6 +80,14 @@ confirm 閘門不會生效**——這是唯一區分「這是 prod」與其他�
 時最容易漏掉，起 server 後可從 stdout/`logs/launchd-server.out.log` 看
 `prod 寫入閘門：啟用/停用` 這一行確認有沒有生效。
 
+**H38（安全補強）**：光靠人工記得設旗標不夠可靠，`session.ts` 現在會在啟動時
+交叉檢查 `ALADDIN_ADMIN_API_URL` 與 `ALADDIN_ADMIN_IS_PROD`——URL 不符合任何
+已知的非 prod 網域特徵（`alddev.com`/`ald777.com`/`godev2.com`/`jxpre.com`/
+`127.0.0.1`/`localhost`）卻沒有明確設 `IS_PROD=true`，行程會直接啟動失敗並
+給出清楚的錯誤訊息，不會像過去那樣「URL 已經指向 prod、旗標卻忘了設」時
+悄悄啟動成一個閘門完全關閉的實例。新增一個非 prod 的新環境時，若它的網域
+不在上面清單裡，記得把網域加進 `session.ts` 的 `KNOWN_NON_PROD_URL_MARKERS`。
+
 | 環境 | 後台網址 | port | tokens 名冊 | 狀態 |
 |---|---|---|---|---|
 | dev | `https://admin.alddev.com` | 8789 | `tokens.json` | 已部署（H1 起），**H15 已 launchctl 常駐並對外開放** |

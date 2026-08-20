@@ -33,6 +33,67 @@ if (!BASE_URL) {
     throw new Error('缺少環境變數 ALADDIN_PLATFORM_API_URL，請確認 .mcp.json 的 aladdin-platform server env 是否已設定');
 }
 
+/**
+ * H38（缺口二）：platform 端補上與 admin 端同構的 prod 寫入閘門。設計理由與判定邏輯
+ * 逐字比照 obsidian/mcps/aladdin-admin/src/session.ts 同一段（`IS_PROD_RAW`/
+ * `IS_PROD_NORMALIZED`/交叉檢查/`assertProdConfirmed`），這裡不重複展開全部理由，只列
+ * platform 端特有的差異：
+ *   - 環境變數名稱是 `ALADDIN_PLATFORM_IS_PROD`（跟 `ALADDIN_PLATFORM_API_URL` 同一組前綴）。
+ *   - platform 目前只部署了一個環境（dev×PK，`pk-platform.alddev.com`），沒有 pre/evi，
+ *     KNOWN_NON_PROD_URL_MARKERS 沿用 admin 那份完整清單（含尚未在 platform 部署的
+ *     ald777.com/godev2.com/jxpre.com）不會造成任何實際差異，但保留完整清單能在未來
+ *     platform 真的擴到那些環境時不必再改一次；也涵蓋 platform 自己 http.test.ts/
+ *     session.test.ts 慣用的 127.0.0.1 佔位 URL。
+ *   - 在 H36 完成之前，D13/plan.md 的既有裁定是「本輪不擴充 platform 的 prod 機制」；
+ *     H15 安全審查發現這個缺口後，使用者拍板另開本 task 補上，不再視為非目標。
+ */
+const IS_PROD_RAW = process.env.ALADDIN_PLATFORM_IS_PROD;
+const IS_PROD_NORMALIZED = IS_PROD_RAW?.trim().toLowerCase();
+if (IS_PROD_NORMALIZED !== undefined && IS_PROD_NORMALIZED !== '' && IS_PROD_NORMALIZED !== 'true' && IS_PROD_NORMALIZED !== 'false') {
+    throw new Error(
+        `環境變數 ALADDIN_PLATFORM_IS_PROD 的值不合法："${ IS_PROD_RAW }"，只接受 true 或 false（大小寫、前後空白不拘）。` +
+        '請修正部署設定——這個旗標控制 prod confirm 閘門是否生效，拼字錯誤不應該被靜默當成非 prod。',
+    );
+}
+/** 暴露給 http.ts 開機時印一行閘門啟用狀態 log，比照 admin 端。 */
+export const IS_PROD = IS_PROD_NORMALIZED === 'true';
+
+const KNOWN_NON_PROD_URL_MARKERS = [ 'alddev.com', 'ald777.com', 'godev2.com', 'jxpre.com', '127.0.0.1', 'localhost' ];
+if (!IS_PROD && !KNOWN_NON_PROD_URL_MARKERS.some(marker => BASE_URL.includes(marker))) {
+    throw new Error(
+        `環境變數 ALADDIN_PLATFORM_API_URL（"${ BASE_URL }"）不符合任何已知的非 prod 網域特徵` +
+        `（${ KNOWN_NON_PROD_URL_MARKERS.join('、') }），但 ALADDIN_PLATFORM_IS_PROD 不是明確的 true。` +
+        '這個組合被視為「可能是正式環境卻忘了開啟 prod confirm 閘門」，拒絕啟動。' +
+        '若這真的是正式環境，請明確設定 ALADDIN_PLATFORM_IS_PROD=true；' +
+        '若這是一個新的非 prod 環境，請把它的網域加進 session.ts 的 KNOWN_NON_PROD_URL_MARKERS 清單。',
+    );
+}
+
+/** prod 寫入操作要求的明確確認字串，比照 admin 端，寫入型 tool（onboard_vendor_game）共用。 */
+export const PROD_CONFIRM_TOKEN = 'CONFIRM_PROD_WRITE';
+
+/**
+ * `assertProdConfirmed` 攔截時拋的專屬 Error 子類，讓 http.ts 的稽核包裝層能用
+ * `instanceof` 把「被 confirm 閘門擋下」跟其他未預期例外區分開，比照 admin 端。
+ */
+export class ProdConfirmRequiredError extends Error {}
+
+/**
+ * prod 執行前的伺服器端強制 confirm 閘門，設計理由與 admin 端逐字相同（見
+ * obsidian/mcps/aladdin-admin/src/session.ts 同一段註解）：只有 IS_PROD===true 才檢查，
+ * 非 prod 完全略過；必須在 tool handler 呼叫任何 remote.* 或 withAutoRelogin 之前呼叫。
+ */
+export function assertProdConfirmed(confirm: string | undefined): void {
+    if (!IS_PROD) return;
+    if (confirm !== PROD_CONFIRM_TOKEN) {
+        throw new ProdConfirmRequiredError(
+            '這是正式環境（prod），需要明確確認才能執行這個寫入操作：請先用 AskUserQuestion（或功能相同的方式）' +
+            '向使用者明確詢問是否要在正式環境執行，取得明確同意後帶上 confirm="' + PROD_CONFIRM_TOKEN + '" 重新呼叫；' +
+            '絕不能自行假設使用者同意。',
+        );
+    }
+}
+
 Client.encoded = true; // request/response bytes 走 XOR，client 內部自動處理，見 genie/src/client/index.ts
 
 /** stdio 模式的固定隱含身分（單一 Symbol，不可能與任何名冊 id 字串撞號）。 */

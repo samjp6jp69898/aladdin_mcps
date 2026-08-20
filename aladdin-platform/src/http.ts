@@ -61,7 +61,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { registerPlatformTools } from './tools/index.ts';
 import { buildPlatformInstructions } from './instructions.ts';
 import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
-import { login, runWithIdentity, ReloginRequiredError } from './session.ts';
+import { login, runWithIdentity, IS_PROD, ProdConfirmRequiredError, ReloginRequiredError } from './session.ts';
 import { asReloginRequiredResult } from './mcp_result.ts';
 import { checkThrottle, recordFailure, recordSuccess } from './login_throttle.ts';
 import { AgrabahErrorCodeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
@@ -303,8 +303,13 @@ export function withStderrStackLogging(server: McpServer): void {
                     console.error(`[aladdin-platform http] tool "${ name }" 因登入態失效中止：${ err.message }`);
                     return asReloginRequiredResult();
                 }
-                setAuditTool(name, 'error:exception');
-                console.error(`[aladdin-platform http] tool "${ name }" 拋出未預期例外：${ err instanceof Error ? (err.stack ?? err.message) : String(err) }`);
+                // H38：confirm 閘門攔截是預期中的業務行為，不是「未預期例外」——比照 admin 端，
+                // 稽核 log 記成專屬的 error:prod_confirm_required，見
+                // obsidian/mcps/aladdin-admin/src/http.ts 同一段註解。
+                const isProdConfirmGate = err instanceof ProdConfirmRequiredError;
+                setAuditTool(name, isProdConfirmGate ? 'error:prod_confirm_required' : 'error:exception');
+                const label = isProdConfirmGate ? '被 prod confirm 閘門擋下' : '拋出未預期例外';
+                console.error(`[aladdin-platform http] tool "${ name }" ${ label }：${ err instanceof Error ? (err.stack ?? err.message) : String(err) }`);
                 throw err;
             }
         };
@@ -327,9 +332,11 @@ app.all('/mcp', async c => {
     // 整段 McpServer 建立、tool 註冊、handleRequest、close 都包在同一個
     // identity context 內，確保沒有任何一步漏在外面。
     return runWithIdentity(getIdentity(c), async () => {
+        // H38：instructions 依這個行程的 IS_PROD 動態組字，比照 admin 端（H12），見
+        // instructions.ts。
         const server = new McpServer(
             { name: 'aladdin-platform', version: '0.1.0' },
-            { capabilities: { tools: {} }, instructions: buildPlatformInstructions() },
+            { capabilities: { tools: {} }, instructions: buildPlatformInstructions(IS_PROD) },
         );
         withStderrStackLogging(server);
         registerPlatformTools(server, 'hosted');
@@ -352,6 +359,9 @@ app.onError((err, c) => {
     return c.text('Internal Server Error', 500);
 });
 
+// H38：讓「這個實例的 prod confirm 閘門是否生效」成為開機即可肉眼確認的事實，比照
+// admin 端（H36 review 收尾），見 obsidian/mcps/aladdin-admin/src/http.ts 同一段註解。
+console.error(`[aladdin-platform MCP] prod 寫入閘門：${ IS_PROD ? '啟用（ALADDIN_PLATFORM_IS_PROD=true）' : '停用（非 prod 實例）' }`);
 console.error(`[aladdin-platform MCP] http server ready on 127.0.0.1:${ PORT }`);
 
 export default {

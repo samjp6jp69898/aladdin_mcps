@@ -89,6 +89,43 @@ if (IS_PROD_NORMALIZED !== undefined && IS_PROD_NORMALIZED !== '' && IS_PROD_NOR
 /** H36 review 收尾：暴露給 http.ts 開機時印一行閘門啟用狀態 log（見 http.ts 檔頭附近）。 */
 export const IS_PROD = IS_PROD_NORMALIZED === 'true';
 
+/**
+ * H38（缺口一）：只驗證「有沒有設定合法值」還不夠。H15 安全審查用 `ps eww` 實測確認
+ * 所有已部署的 launchd 腳本都沒有設定 `ALADDIN_ADMIN_IS_PROD`——目前這個旗標「未設定」
+ * 就是正常部署現況，不是異常。問題在於：若有人把 `ALADDIN_ADMIN_API_URL` 改指向真正的
+ * prod 後端、卻忘了同時明確設這個旗標，`IS_PROD` 會照舊靜默判成 false，整條
+ * `assertProdConfirmed()` 閘門變成 no-op——而且開機 log 還是印「停用（非 prod 實例）」，
+ * 肉眼完全看不出異常，這正是這個機制存在的唯一理由被繞過的方式。
+ *
+ * 修法：交叉檢查——BASE_URL 不符合任何已知的非 prod 網域特徵，且 IS_PROD 不是明確的
+ * true，一律 fail-loud 拒絕啟動（比照同檔 IS_PROD 值不合法即 throw 的既有慣例）。
+ *
+ * 已知非 prod 網域清單涵蓋：目前實際部署過的 dev（alddev.com）/pre（ald777.com）/
+ * evi（godev2.com），加上 `.env.example` 已預留、尚未部署的 uat（jxpre.com）——這四個
+ * 網域就是 DEPLOY-TO-NEW-MACHINE.md §2.1 表列的全部已知環境；以及本機測試慣用的
+ * localhost/127.0.0.1（session.test.ts / http.test.ts / list_game_vendors.test.ts
+ * 等多個既有測試檔把 BASE_URL 設成 `http://127.0.0.1:.../...` 當作不會真的發網路請求的
+ * 佔位值，且完全不設這個旗標——若這裡誤判會讓所有既有測試連帶炸掉，見同一批 test 檔）。
+ *
+ * 這個檢查只在 `!IS_PROD` 時生效：`IS_PROD===true` 時（不論 URL 是什麼）完全略過，
+ * 保留 H36 既有的測試手法——`ALADDIN_ADMIN_IS_PROD=true` + URL 仍指向 dev 的臨時實例，
+ * 因為目前沒有真實 prod 網址可測，只能用這種組合矛盾驗證閘門邏輯本身。
+ *
+ * 新增一個真正的 prod 部署時，唯一合法路徑是明確設定 `ALADDIN_ADMIN_IS_PROD=true`；
+ * 新增一個「不是 prod、但網域剛好不在清單裡」的新測試/開發環境時，把該網域加進
+ * KNOWN_NON_PROD_URL_MARKERS——這兩種情境不能都不做，否則新環境會直接啟動失敗。
+ */
+const KNOWN_NON_PROD_URL_MARKERS = [ 'alddev.com', 'ald777.com', 'godev2.com', 'jxpre.com', '127.0.0.1', 'localhost' ];
+if (!IS_PROD && !KNOWN_NON_PROD_URL_MARKERS.some(marker => BASE_URL.includes(marker))) {
+    throw new Error(
+        `環境變數 ALADDIN_ADMIN_API_URL（"${ BASE_URL }"）不符合任何已知的非 prod 網域特徵` +
+        `（${ KNOWN_NON_PROD_URL_MARKERS.join('、') }），但 ALADDIN_ADMIN_IS_PROD 不是明確的 true。` +
+        '這個組合被視為「可能是正式環境卻忘了開啟 prod confirm 閘門」，拒絕啟動。' +
+        '若這真的是正式環境，請明確設定 ALADDIN_ADMIN_IS_PROD=true；' +
+        '若這是一個新的非 prod 環境，請把它的網域加進 session.ts 的 KNOWN_NON_PROD_URL_MARKERS 清單。',
+    );
+}
+
 /** H36：prod 寫入操作要求的明確確認字串。四支寫入 tool 共用同一個值與同一支檢查函式。 */
 export const PROD_CONFIRM_TOKEN = 'CONFIRM_PROD_WRITE';
 
