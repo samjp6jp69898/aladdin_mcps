@@ -30,7 +30,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync, unlinkSync, existsSync, realpathSync } from 'node:fs';
+import { mkdirSync, writeFileSync, unlinkSync, existsSync, realpathSync, readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
 
 export const TMP_DIR = process.env.AGRABAH_ADMIN_FILES_TMP_DIR
@@ -264,5 +264,85 @@ export function cleanupExpiredFiles(ttlMs: number = RETENTION_MS, nowMs: number 
     return removed;
 }
 
+const DISK_FILENAME_PATTERN = /^([A-Za-z0-9_-]{43})\.(png|jpg|webp)$/; // <fileId>.<ext>，比對 saveUploadedFile() 實際落地的檔名格式
+
+/**
+ * 掃描 TMP_DIR 磁碟上實際存在的檔案，刪除超過保留期、且不在 registry 追蹤
+ * 範圍內的殘檔。
+ *
+ * 存在理由：registry 只存在記憶體（見檔頭「fileId -> 元資料」註解），行程
+ * 重啟就清空；但重啟前已經落地的磁碟檔案不會跟著消失。cleanupExpiredFiles()
+ * 只走 registry 迭代，永遠掃不到這些「registry 說沒有、磁碟上卻還在」的
+ * 孤兒檔——重啟後它們就再也不會被任何路徑清掉，同時也不會計入配額，
+ * 讓「全域 500MB 上限」這個防磁碟塞爆的機制在跨重啟情境下失去實際效力。
+ * 這支函式補上「不透過 registry、直接看磁碟」這條路徑。
+ *
+ * 安全邊界（刪檔操作，寧可保守漏刪也不可能多刪）：
+ *   - 只列舉 TMP_DIR 直接底下的項目（readdirSync 不遞迴），不觸碰子目錄。
+ *   - 檔名必須完全符合 DISK_FILENAME_PATTERN（43 字元 base64url fileId +
+ *     saveUploadedFile() 實際會產生的副檔名之一）；任何不符合格式的項目
+ *     一律略過，不做任何動作。
+ *   - 仍在 registry 裡的 fileId 一律跳過，交給 cleanupExpiredFiles() 處理，
+ *     避免兩支函式對同一筆記錄互踩（例如 registry 剛好還沒過期但這支函式
+ *     誤判磁碟 mtime 已過期）。
+ *   - 組出路徑後用 realpathSync 驗證真的落在 TMP_DIR 底下才會刪除，比照
+ *     resolveFileIdForIdentity() 既有的邊界檢查手法。
+ *   - 過期判定用檔案本身的 mtime（不是 registry 的 uploadedAtMs——這支函式
+ *     的存在意義正是處理 registry 裡沒有記錄的檔案，沒有 uploadedAtMs 可用）。
+ */
+export function cleanupOrphanedDiskFiles(ttlMs: number = RETENTION_MS, nowMs: number = Date.now()): number {
+    let removed = 0;
+    let entries: string[];
+    try {
+        entries = readdirSync(TMP_DIR);
+    } catch {
+        return removed; // 目錄不存在或無法讀取：視為沒有殘檔要清，不當作錯誤。
+    }
+
+    let realTmpDir: string;
+    try {
+        realTmpDir = realpathSync(TMP_DIR);
+    } catch {
+        return removed;
+    }
+
+    for (const name of entries) {
+        const match = DISK_FILENAME_PATTERN.exec(name);
+        if (!match) continue; // 畸形/非本模組產生的檔名：略過，絕不因此刪到目錄外或非預期的東西。
+
+        const fileId = match[1] as string;
+        if (registry.has(fileId)) continue; // 仍被追蹤中，交給 cleanupExpiredFiles()。
+
+        const path = join(TMP_DIR, name);
+        let realTarget: string;
+        let mtimeMs: number;
+        try {
+            realTarget = realpathSync(path);
+            mtimeMs = statSync(path).mtimeMs;
+        } catch {
+            continue; // 掃描與刪除之間檔案自然消失/無法讀取：略過，非錯誤。
+        }
+        if (realTarget !== realTmpDir && !realTarget.startsWith(realTmpDir + sep)) continue;
+        if (nowMs - mtimeMs <= ttlMs) continue;
+
+        try {
+            unlinkSync(realTarget);
+            removed++;
+        } catch (err) {
+            console.error(`[agrabah-admin files] 清理孤兒暫存檔失敗 ${ path }：${ err instanceof Error ? err.message : String(err) }`);
+        }
+    }
+    return removed;
+}
+
+function runScheduledCleanup(): void {
+    cleanupExpiredFiles();
+    cleanupOrphanedDiskFiles();
+}
+
+// 服務啟動時先掃一次（含磁碟殘檔，見 cleanupOrphanedDiskFiles() 檔頭），
+// 不必等到第一個 CLEANUP_INTERVAL_MS 週期才處理重啟前留下的孤兒檔。
+runScheduledCleanup();
+
 // 週期性排程：不論有沒有新上傳都定期回收，見檔頭「清理策略」。
-setInterval(() => cleanupExpiredFiles(), CLEANUP_INTERVAL_MS);
+setInterval(runScheduledCleanup, CLEANUP_INTERVAL_MS);

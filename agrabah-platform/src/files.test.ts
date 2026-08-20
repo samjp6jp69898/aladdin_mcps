@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach } from 'bun:test';
-import { mkdtempSync, existsSync, rmSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, existsSync, rmSync, readdirSync, writeFileSync, unlinkSync, utimesSync, symlinkSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,7 +11,7 @@ import { join } from 'node:path';
 const testTmpDir = mkdtempSync(join(tmpdir(), 'agrabah-platform-files-test-'));
 process.env.AGRABAH_PLATFORM_FILES_TMP_DIR = testTmpDir;
 
-const { detectImageType, saveUploadedFile, resolveFileForIdentity, cleanupExpiredFiles } = await import('./files.ts');
+const { detectImageType, saveUploadedFile, resolveFileForIdentity, cleanupExpiredFiles, cleanupOrphanedDiskFiles } = await import('./files.ts');
 
 /** 建一個開頭是合法 PNG 簽章、其餘填 0 的 buffer，用來精確控制測試檔案大小。 */
 function pngBytes(size: number): Uint8Array {
@@ -238,6 +239,95 @@ describe('cleanupExpiredFiles — 清理策略（ttlMs/nowMs 可注入，不需�
         expect(afterFresh.found).toBe(true);
         if (!afterFresh.found) throw new Error('unreachable');
         expect(existsSync(afterFresh.path)).toBe(true);
+    });
+});
+
+describe('cleanupOrphanedDiskFiles — 補「不在 registry 裡的磁碟殘檔」清理路徑（重啟後遺留，H28 磁碟韌性）', () => {
+    // 依 generateFileId() 的實際輸出格式手動組一個「看起來像合法 fileId」的
+    // 43 字元 base64url 字串。故意不透過 saveUploadedFile()：那樣會同時寫進
+    // registry，測不到「registry 沒有這筆記錄」這個前提（模擬行程重啟後
+    // registry 清空、但磁碟上還留著上次的檔案）。
+    function fakeFileId(): string {
+        return randomBytes(32).toString('base64url');
+    }
+
+    test('過期殘檔（不在 registry）會被刪', () => {
+        const path = join(testTmpDir, `${ fakeFileId() }.png`);
+        writeFileSync(path, pngBytes(16));
+        const past = new Date(Date.now() - 1000 * 1000);
+        utimesSync(path, past, past);
+
+        const removed = cleanupOrphanedDiskFiles(100, Date.now());
+        expect(removed).toBe(1);
+        expect(existsSync(path)).toBe(false);
+    });
+
+    test('未過期殘檔（不在 registry）不會被刪', () => {
+        const path = join(testTmpDir, `${ fakeFileId() }.jpg`);
+        writeFileSync(path, pngBytes(16));
+
+        const removed = cleanupOrphanedDiskFiles(60_000, Date.now());
+        expect(removed).toBe(0);
+        expect(existsSync(path)).toBe(true);
+
+        unlinkSync(path);
+    });
+
+    test('仍在 registry 裡的檔案，即使磁碟 mtime 已過期，也不會被這支函式動到（交給 cleanupExpiredFiles 處理，避免兩支函式互踩）', () => {
+        const result = saveUploadedFile('still-tracked-identity', pngBytes(16));
+        expect(result.success).toBe(true);
+        if (!result.success) throw new Error('unreachable');
+        const path = join(testTmpDir, `${ result.fileId }.png`);
+        const past = new Date(Date.now() - 1000 * 1000);
+        utimesSync(path, past, past);
+
+        const removed = cleanupOrphanedDiskFiles(100, Date.now());
+        expect(removed).toBe(0);
+        expect(existsSync(path)).toBe(true);
+
+        cleanupExpiredFiles(0, Date.now() + 60_000); // 收尾釋放配額，不影響後續測試
+    });
+
+    test('畸形檔名（不符合 <43字元base64url>.<ext> 格式）一律略過，即使檔案很舊也不刪', () => {
+        const badNames = [ 'not-a-valid-fileid.png', `${ fakeFileId() }.txt`, `${ fakeFileId() }.PNG`, 'a.png' ];
+        for (const name of badNames) {
+            const path = join(testTmpDir, name);
+            writeFileSync(path, pngBytes(16));
+            const past = new Date(Date.now() - 1000 * 1000);
+            utimesSync(path, past, past);
+        }
+
+        const removed = cleanupOrphanedDiskFiles(100, Date.now());
+        expect(removed).toBe(0);
+        for (const name of badNames) {
+            expect(existsSync(join(testTmpDir, name))).toBe(true);
+            unlinkSync(join(testTmpDir, name));
+        }
+    });
+
+    test('檔名符合格式但實際是指向目錄外的 symlink：realpath 邊界檢查擋下，不刪除目錄外的目標', () => {
+        const outsideDir = mkdtempSync(join(tmpdir(), 'agrabah-platform-files-outside-'));
+        const outsideTarget = join(outsideDir, 'sensitive.png');
+        writeFileSync(outsideTarget, pngBytes(16));
+        const past = new Date(Date.now() - 1000 * 1000);
+        utimesSync(outsideTarget, past, past);
+
+        const linkPath = join(testTmpDir, `${ fakeFileId() }.png`);
+        symlinkSync(outsideTarget, linkPath);
+
+        const removed = cleanupOrphanedDiskFiles(100, Date.now());
+        expect(removed).toBe(0);
+        expect(existsSync(outsideTarget)).toBe(true);
+
+        unlinkSync(linkPath);
+        rmSync(outsideDir, { recursive: true, force: true });
+    });
+
+    test('TMP_DIR 目錄不存在時不會崩潰，回傳 0', () => {
+        rmSync(testTmpDir, { recursive: true, force: true });
+        expect(() => cleanupOrphanedDiskFiles()).not.toThrow();
+        expect(cleanupOrphanedDiskFiles()).toBe(0);
+        mkdirSync(testTmpDir, { recursive: true }); // 還原，避免影響後續測試與 process.on('exit') 清理
     });
 });
 
