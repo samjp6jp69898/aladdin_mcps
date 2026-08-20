@@ -10,6 +10,8 @@
 | `aladdin_platform_list_game_vendors` | `GameVendorPlatform.ListGameVendors` / `ListAllGameVendors` | 查本平台的廠商清單；不帶篩選條件時自動改用一次拿全部的版本 |
 | `aladdin_platform_list_vendor_games` | `GameVendorPlatform.ListGames` | 查某廠商在本平台**已上架**的遊戲清單 |
 | `aladdin_platform_onboard_vendor_game` | `GameVendorPlatform.GetGameVendorGameForEdit` + `UpdateGameVendorGame` | 把廠商遊戲母表已存在、但本平台還沒設定過的遊戲上架到本平台（或更新既有設定），**含方形圖/直方圖/橫幅圖上傳、`localizedNames` 多語系名稱**——不是建立全新遊戲 |
+| `aladdin_platform_get_message_board_setting` | `MessageBoardPlatform.GetMessageBoardPostSetting` | 讀取「大舞台中心」→「大舞台設定」頁籤「基本設置」分頁目前的設定內容（單例設定，無參數，不吃 platformId） |
+| `aladdin_platform_update_message_board_setting` | `MessageBoardPlatform.GetMessageBoardPostSetting` + `SetMessageBoardPostSetting` | 修改「大舞台中心」→「大舞台設定」頁籤「基本設置」分頁的設定並儲存，所有欄位皆 optional，只覆蓋有帶到的欄位，其餘先讀現值原樣帶回 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -43,6 +45,8 @@ src/
     list_game_vendors.ts
     list_vendor_games.ts
     onboard_vendor_game.ts  — 含圖片上傳邏輯（uploadLocalizedImages）
+    get_message_board_setting.ts     — 另外 export formatMessageBoardSetting()，update 工具的回傳共用同一支格式化函式
+    update_message_board_setting.ts  — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，比照 onboard_vendor_game.ts 的模式
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
@@ -58,7 +62,7 @@ src/
 | `ALADDIN_PLATFORM_API_URL` | platform 後台 dev 站台，例如 `https://pk-platform.alddev.com` |
 | `ALADDIN_PLATFORM_USER` | 預設測試帳號 |
 | `ALADDIN_PLATFORM_PASSWORD` | 預設測試密碼 |
-| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，`aladdin_platform_onboard_vendor_game`（目前唯一的寫入型 tool）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
+| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，所有寫入型 tool（`aladdin_platform_onboard_vendor_game`、`aladdin_platform_update_message_board_setting`）都會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 ## 已知限制
 
@@ -66,6 +70,8 @@ src/
 - `aladdin_platform_onboard_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，先呼叫 `POST /files` 上傳取得，見 `../README.md`「Hosted 模式」）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **H9：`onboard_vendor_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**，設計與實測方式與 `aladdin-admin` 的 `edit_game.ts` 逐字相同，完整說明見 `../aladdin-admin/README.md` 同一段（D5/§4.3；`fileId → 本機路徑` 的三層防護：regex 格式白名單 + registry `Map` 精確比對 + realpath 二次確認）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
+- **i64 欄位經 protobufjs decode 後是 Long 物件，不是一般數字**（2026-08-20 實測發現）：`MessageBoardPostSetting` 的 `postsChangeUserDetailMinChargeTotal`/`postsGiftReceiveTotalAmount` 是 rajah `i64`，直接把 decode 出來的物件塞進 `JSON.stringify` 會印出 `{low, high, unsigned}`（且依呼叫路徑不同，有時反而印成十進位字串，形狀不一致）。`genie/src/common/index.ts` 其實有 `fixObjectInteger()` 專門處理這個問題，但 `genie/client` 目前沒有自動套用（呼叫處被註解掉）。`get_message_board_setting.ts`/`update_message_board_setting.ts` 已用 `const.ts` 的 `toPlainNumber()` 手動轉成一般數字再回傳；**未來任何新 tool 若回傳的 rajah model 含 `i64` 欄位，都要留意同樣的問題**，不能假設 decode 出來就是可以直接塞進 JSON 的數字。
+- `aladdin_platform_update_message_board_setting` 的 `postsGiftWageringMultiplier` 是後端實際儲存值（顯示倍率 × 10000 的整數），比照 admin 端 `exchangeRate` 的既有慣例（見 `../aladdin-admin/README.md`），工具本身不做單位換算，由呼叫端自行乘/除 10000。
 
 ## launchd 常駐骨架（H13；H15 已常駐上線）
 
