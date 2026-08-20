@@ -170,14 +170,28 @@ export function registerEditGameTool(server: McpServer): void {
             assertProdConfirmed(confirm);
 
             // GetGameVendorGameForEdit 只吃內部流水號，先用 ListGames 把 gameId 換成 id。
-            const listR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(gameVendorId, 1, 200));
-            if (listR.failed) return asErrorResult(listR);
-
-            const matchedRow = listR.data?.rows?.find((row) => row.gameId === gameId);
+            // ListGames 沒有 gameId 篩選參數，只能逐頁掃描比對——廠商遊戲數可能超過一頁
+            // （例如 PP電子-XO 有 518 款），只查第一頁會漏掉排在後面的遊戲，故逐頁掃到找到或掃完為止。
+            const LIST_PAGE_SIZE = 200;
+            const findResult = await (async () => {
+                let totalPage = 1;
+                let scannedPages = 0;
+                for (let page = 1; page <= totalPage; page++) {
+                    const listR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(gameVendorId, page, LIST_PAGE_SIZE));
+                    if (listR.failed) return { listR, matchedRow: undefined, scannedPages } as const;
+                    scannedPages++;
+                    totalPage = listR.data?.totalPage ?? 1;
+                    const matchedRow = listR.data?.rows?.find((row) => row.gameId === gameId);
+                    if (matchedRow) return { listR: undefined, matchedRow, scannedPages } as const;
+                }
+                return { listR: undefined, matchedRow: undefined, scannedPages } as const;
+            })();
+            if (findResult.listR?.failed) return asErrorResult(findResult.listR);
+            const matchedRow = findResult.matchedRow;
             if (!matchedRow) {
                 return asTextResult({
                     success: false,
-                    message: `在廠商 ${ gameVendorId } 底下找不到 gameId=${ gameId } 的遊戲（已檢查前 200 筆）。若這是全新遊戲請改用 aladdin_admin_create_game；若該廠商遊戲數超過 200 筆導致查不到，需回報。`,
+                    message: `在廠商 ${ gameVendorId } 底下找不到 gameId=${ gameId } 的遊戲（已掃描全部 ${ findResult.scannedPages } 頁）。若這是全新遊戲請改用 aladdin_admin_create_game。`,
                 });
             }
 
