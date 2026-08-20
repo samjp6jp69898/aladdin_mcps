@@ -26,13 +26,13 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, chmodSync, appendFileSync } from 'node:fs';
+import { mkdirSync, chmodSync, rmSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { AGENT_TIMEOUT_SECONDS, SCRATCH_DIR, LOGS_DIR } from '../const.ts';
+import { AGENT_TIMEOUT_SECONDS, LOGS_DIR, REAL_DIR } from '../const.ts';
 import { buildPrompt } from './prompt-builder.ts';
+import { formatTranscript, type ConversationState } from './conversation.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -43,15 +43,13 @@ const CLAUDE_BIN = '/Users/user/.local/bin/claude';
 
 const WRITE_FALLBACK_MANIFEST_TS = fileURLToPath(new URL('./write-fallback-manifest.ts', import.meta.url));
 
-const REAL_DIR: Record<'admin' | 'platform', string> = {
-    admin: '/Users/user/aladdin/obsidian/mcps/aladdin-admin',
-    platform: '/Users/user/aladdin/obsidian/mcps/aladdin-platform',
-};
-
 export interface RunAgentInput {
-    target: 'admin' | 'platform';
-    request: string;
-    notes?: string;
+    /** 由呼叫端（generate_tool.ts）決定並事先建立好 conversation.json，這裡不再
+     * 自己 randomUUID()——多輪澄清需要呼叫端跨多次 runAgent() 呼叫沿用同一個
+     * requestId/scratchDir，這個決定權不能留在 run-agent.ts 內部。 */
+    requestId: string;
+    scratchDir: string;
+    state: ConversationState;
 }
 
 export interface RunAgentOutput {
@@ -79,19 +77,18 @@ function appendLog(logPath: string, msg: string): void {
 }
 
 export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
-    const requestId = randomUUID();
-    const scratchDir = join(SCRATCH_DIR, requestId);
+    const { requestId, scratchDir, state } = input;
     const verifyWorkspaceParent = join(scratchDir, 'verify-workspace');
-    const verifyWorkspaceDir = join(verifyWorkspaceParent, `aladdin-${ input.target }`);
+    const verifyWorkspaceDir = join(verifyWorkspaceParent, `aladdin-${ state.target }`);
     const outputParent = join(scratchDir, 'output');
-    const outputDir = join(outputParent, `aladdin-${ input.target }`);
+    const outputDir = join(outputParent, `aladdin-${ state.target }`);
     const manifestPath = join(scratchDir, 'manifest.json');
     const logPath = join(LOGS_DIR, `${ requestId }.log`);
 
-    // 頂層 SCRATCH_DIR/LOGS_DIR 也要各自明確 chmod 700，不能只靠 mkdirSync
-    // recursive 建立時「順便」建出來的中繼目錄——recursive:true 只保證目錄
-    // 存在，中繼目錄的權限仍是預設值（受 umask 影響，實測會是 755）。
-    ensureDirChmod700(SCRATCH_DIR);
+    // 頂層 LOGS_DIR 也要明確 chmod 700，不能只靠 mkdirSync recursive 建立時
+    // 「順便」建出來的中繼目錄——recursive:true 只保證目錄存在，中繼目錄的權限
+    // 仍是預設值（受 umask 影響，實測會是 755）。scratchDir 由呼叫端
+    // （conversation.ts 的 saveConversation）先建立好，這裡只補確認權限。
     ensureDirChmod700(LOGS_DIR);
     ensureDirChmod700(scratchDir);
     ensureDirChmod700(verifyWorkspaceParent);
@@ -99,27 +96,32 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
 
     appendLog(
         logPath,
-        `requestId=${ requestId } target=${ input.target } requestLength=${ input.request.length } ` +
-        `notesLength=${ input.notes?.length ?? 0 } — 開始準備 verify-workspace`,
+        `requestId=${ requestId } requestedBy=${ state.requestedBy } target=${ state.target } round=${ state.rounds.length + 1 } ` +
+        `requestLength=${ state.request.length } notesLength=${ state.notes?.length ?? 0 } — 開始準備 verify-workspace`,
     );
 
-    // cp -R src dest：dest 事先不能存在，否則會變成 dest/aladdin-{target}/...
-    // 的巢狀結構，所以只 mkdir 到 verify-workspace/ 這一層（上面已做），不要
-    // 先建立 verifyWorkspaceDir（aladdin-{target}）本身。
-    //
+    // 多輪澄清會讓同一個 requestId 觸發不只一次 runAgent()——每次都用「先整個
+    // 刪掉再 cp -R」保證乾淨重新複製一份最新的正式目錄（避免澄清輪次之間正式
+    // 目錄被別的請求動過而讀到舊副本；反正澄清階段本來就還沒寫任何代碼，重刪
+    // 重複製沒有任何東西會遺失）。cp -R src dest 要求 dest 事先不存在，否則會
+    // 變成 dest/aladdin-{target}/... 的巢狀結構。
+    rmSync(verifyWorkspaceDir, { recursive: true, force: true });
+
     // 這一步發生在下面雙層 timeout 的保護範圍之外（bash wrapper 這時還沒
     // spawn，內層/外層 timeout 都還沒開始計時）——review 抓到的真實問題：
     // 若 cp -R 本身卡住（磁碟/檔案系統異常），runAgent() 的 Promise 永遠不會
     // resolve/reject，generate_tool.ts 的 finally { limiter.release() } 也
-    // 永遠不會執行，N=1 的併發名額會被永久卡死。這裡明確給 cp -R 自己一個
+    // 永遠不會執行，這個名額會被永久卡死（N=3 情境下等於少一個可用名額，累積
+    // 三次卡住會讓後續所有請求永久排隊）。這裡明確給 cp -R 自己一個
     // 上限（120 秒，對含 node_modules 的目錄綽綽有餘），逾時視為這次請求
     // 失敗、往上拋例外讓 finally 正常 release。
-    await execFileAsync('cp', [ '-R', REAL_DIR[ input.target ], verifyWorkspaceDir ], { timeout: 120_000 });
+    await execFileAsync('cp', [ '-R', REAL_DIR[ state.target ], verifyWorkspaceDir ], { timeout: 120_000 });
 
     const prompt = buildPrompt({
-        target: input.target,
-        request: input.request,
-        notes: input.notes,
+        target: state.target,
+        request: state.request,
+        notes: state.notes,
+        transcript: formatTranscript(state),
         scratchDir,
         verifyWorkspaceDir,
         outputDir,

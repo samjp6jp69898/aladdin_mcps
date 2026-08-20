@@ -16,18 +16,36 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const OBSIDIAN_ROOT = '/Users/user/aladdin/obsidian';
-// 只關注這兩個正式目錄（logical-jumping-cook.md 明講「絕對不要修改
-// obsidian/mcps/aladdin-admin 與 aladdin-platform 正式目錄」），不是整個
-// obsidian repo——避免同時並行的其他 task（H6/H8 等）改動 obsidian 其他
-// 目錄時被誤判成這次請求碰了正式目錄。
-const REAL_DIR_PATHSPECS = [ 'mcps/aladdin-admin', 'mcps/aladdin-platform' ];
 
-/** spawn 前/後個別呼叫一次；回傳的字串直接拿去跟另一次的結果比對，字串不同即視為有變化。 */
-export function snapshotRealDirs(): string | null {
+/**
+ * 2026-08-20（對抗性 session review 抓到的真實 bug）：這裡原本不分 target、
+ * 兩個正式目錄一起比對，理由是「避免同時並行的其他 task（H6/H8 等）改動
+ * obsidian 其他目錄時被誤判」——這在 N=1 時代（同一時間只有一個 toolsmith
+ * 操作在跑）永遠安全。但 generate_tool.ts 改成非阻塞＋N=3 併發後，同一時間
+ * 可能有請求 A 正處於研究階段（`snapshotRealDirs` 前後各拍一次，中間跨
+ * `runAgent()` 整段、可能長達 1800 秒）、同時請求 B 合法地在跑
+ * deploy-pipeline，對**另一個** target 的正式目錄做 copy/commit——A 的
+ * after 快照如果剛好落在 B 的 commit 窗口內，兩份快照字串就會不同，A 會被
+ * 誤判成「正式目錄被意外異動」而白跑一次，即使 A 自己的 sub-agent 完全沒
+ * 碰正式目錄。
+ *
+ * 修法：只比對這次請求自己的 target pathspec，不要兩個都比——消除跨
+ * target 的假陽性（最常見情況）。**殘留風險**：同一個 target 有兩個並發
+ * 請求（一個在研究、一個同時在跑該 target 的部署）時，這個誤判仍然可能
+ * 發生，因為 deploy-pipeline.ts 的 `deployLock` 只序列化「部署跟部署」，
+ * 沒有跟研究階段的快照窗口互斥。已知、可接受的殘留風險，未來若同 target
+ * 高併發成為常態需要重新處理，不在這次範圍內解決。
+ */
+function realDirPathspec(target: 'admin' | 'platform'): string {
+    return `mcps/aladdin-${ target }`;
+}
+
+/** spawn 前/後個別呼叫一次（同一個 target）；回傳的字串直接拿去跟另一次的結果比對，字串不同即視為有變化。 */
+export function snapshotRealDirs(target: 'admin' | 'platform'): string | null {
     try {
         return execFileSync(
             'git',
-            [ '-C', OBSIDIAN_ROOT, 'status', '--short', '--', ...REAL_DIR_PATHSPECS ],
+            [ '-C', OBSIDIAN_ROOT, 'status', '--short', '--', realDirPathspec(target) ],
             { encoding: 'utf8', timeout: 15_000 },
         );
     } catch {

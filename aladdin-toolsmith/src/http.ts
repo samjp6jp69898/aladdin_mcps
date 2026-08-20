@@ -35,11 +35,32 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerToolsmithTools } from './tools/index.ts';
-import { createBearerAuthGuard } from './auth.ts';
+import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
+import { runWithIdentity } from './identity.ts';
+import { cleanupOrphanedRequestsOnStartup } from './agent/conversation.ts';
+import { SCRATCH_DIR } from './const.ts';
 
 const PORT = Number(process.env.TOOLSMITH_HTTP_PORT ?? 8788);
 
-const app = new Hono();
+// 2026-08-20（對抗性 session review）：generate_tool.ts 非阻塞化後，「正在
+// 處理中」完全靠記憶體狀態，行程重啟會讓 scratch/ 底下殘留卡在非終局 status
+// 的孤兒請求（見 conversation.ts 檔頭說明）。每次啟動先清一次，這樣即使是
+// 這次為了套用新程式碼而做的 `launchctl kickstart` 重啟，也不會留下永遠
+// 卡住的請求。
+{
+    const { cleaned } = cleanupOrphanedRequestsOnStartup(SCRATCH_DIR);
+    if (cleaned > 0) {
+        console.error(`[aladdin-toolsmith http] 啟動清理：${ cleaned } 筆孤兒請求已標記為 failed。`);
+    }
+}
+
+// 2026-08-20：從單一共用 token 改成比照 aladdin-admin 的 per-user 名冊（見
+// auth.ts 檔頭說明），預設落在本 package 根目錄、已被 obsidian repo
+// .gitignore 排除，可用環境變數覆蓋。
+const TOKENS_PATH = process.env.TOOLSMITH_TOKENS_PATH
+    ?? new URL('../tokens.json', import.meta.url).pathname;
+
+const app = new Hono<{ Variables: AuthVariables }>();
 
 // 帶 Origin header 的請求一律拒絕：我們的合法用戶端是 Claude Code，不是瀏覽器，
 // 不會送 Origin；MCP streamable HTTP 規範要求驗證 Origin 防 DNS rebinding。
@@ -56,7 +77,7 @@ app.use('*', async (c, next) => {
 // 後面才註冊的 app.use('*', ...) 完全不會被執行到，放最前面則不論未來新
 // route 寫在檔案裡的哪個位置都一定會先經過這裡。/health 例外邏輯在
 // middleware 內部依路徑判斷，不依賴任何 route 的註冊順序。
-const bearerAuthGuard = createBearerAuthGuard(process.env.TOOLSMITH_API_TOKEN);
+const bearerAuthGuard = createBearerAuthGuard(TOKENS_PATH);
 app.use('*', async (c, next) => {
     if (c.req.path === '/health') {
         return next();
@@ -95,20 +116,29 @@ app.all('/mcp', async c => {
         return c.text('Method Not Allowed', 405, { Allow: 'POST, DELETE' });
     }
 
-    const server = new McpServer(
-        { name: 'aladdin-toolsmith', version: '0.1.0' },
-        { capabilities: { tools: {} } },
-    );
-    withStderrStackLogging(server);
-    registerToolsmithTools(server);
+    // 把這個 request 通過 Bearer middleware 解出的身分（tokens.json 唯一 id）
+    // 灌進 identity.ts 的 AsyncLocalStorage，讓這次 request 觸發的
+    // aladdin_toolsmith_generate_tool handler 能透過 getCurrentIdentity() 讀到
+    // 「這是誰發起的」，寫進 conversation.json / commit message / Telegram
+    // 通知——見 identity.ts 檔頭說明，整段 McpServer 建立/處理/關閉都包在同一個
+    // identity context 內，確保沒有任何一步漏在外面（比照 aladdin-admin/
+    // src/http.ts 的 runWithIdentity 用法）。
+    return runWithIdentity(getIdentity(c), async () => {
+        const server = new McpServer(
+            { name: 'aladdin-toolsmith', version: '0.1.0' },
+            { capabilities: { tools: {} } },
+        );
+        withStderrStackLogging(server);
+        registerToolsmithTools(server);
 
-    const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-    await server.connect(transport);
-    try {
-        return await transport.handleRequest(c.req.raw);
-    } finally {
-        await server.close();
-    }
+        const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
+        await server.connect(transport);
+        try {
+            return await transport.handleRequest(c.req.raw);
+        } finally {
+            await server.close();
+        }
+    });
 });
 
 // 完整例外只寫 stderr、回應只給通用訊息（比照 telegram-dispatcher/server.ts:51-57

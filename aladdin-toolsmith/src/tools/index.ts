@@ -6,7 +6,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { registerGenerateToolTool } from './generate_tool.ts';
+import { registerQueryLogTool } from './query_log.ts';
 
 export function registerToolsmithTools(server: McpServer): void {
     registerGenerateToolTool(server);
+    registerQueryLogTool(server);
 }

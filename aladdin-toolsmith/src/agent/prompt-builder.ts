@@ -22,6 +22,8 @@ export interface BuildPromptInput {
     target: 'admin' | 'platform';
     request: string;
     notes?: string;
+    /** conversation.ts 的 formatTranscript() 產出，第一輪是空字串。 */
+    transcript: string;
     scratchDir: string;
     verifyWorkspaceDir: string;
     outputDir: string;
@@ -29,7 +31,7 @@ export interface BuildPromptInput {
 }
 
 export function buildPrompt(input: BuildPromptInput): string {
-    const { target, request, notes, scratchDir, verifyWorkspaceDir, outputDir, manifestPath } = input;
+    const { target, request, notes, transcript, scratchDir, verifyWorkspaceDir, outputDir, manifestPath } = input;
     const otherTarget = target === 'admin' ? 'platform' : 'admin';
     const realDir = `/Users/user/aladdin/obsidian/mcps/aladdin-${ target }`;
     const otherRealDir = `/Users/user/aladdin/obsidian/mcps/aladdin-${ otherTarget }`;
@@ -71,8 +73,10 @@ export function buildPrompt(input: BuildPromptInput): string {
   問題，內容一律另外複製到 output/ 底下對應路徑）。格式：
   {
     "success": true 或 false,
-    "summary": "一段簡短說明你做了什麼／為什麼沒做完",
-    "files": [ { "path": "src/tools/xxx.ts", "action": "create" 或 "modify" } ],
+    "errorKind": "needs_clarification"（只有選擇「先問清楚」時才有這個欄位，見下方第 0 步），
+    "questions": [ "問題1", "問題2" ]（只有 errorKind 是 needs_clarification 時才需要，其餘情況省略此欄位）,
+    "summary": "一段簡短說明你做了什麼／為什麼沒做完／為什麼需要澄清",
+    "files": [ { "path": "src/tools/xxx.ts", "action": "create" 或 "modify" } ]（needs_clarification 時這裡是空陣列，因為還沒開始寫代碼）,
     "verification": { "ran": true 或 false, "notes": "你怎麼驗證的、驗證結果" },
     "warnings": [ "任何你想提醒使用者的事，例如已知限制、未覆蓋的邊界情況" ]
   }
@@ -80,11 +84,65 @@ export function buildPrompt(input: BuildPromptInput): string {
   summary/warnings 誠實說明卡在哪裡、卡在哪一步）——manifest.json 是呼叫端判斷這次
   任務結果的唯一交接訊號，沒寫會被視為失敗。
 
+## 第 0 步（在六步驟流程之前）：判斷資訊夠不夠，不夠就先問，不要邊猜邊寫
+
+**這次跟以往不同：你完成後產出的代碼會被呼叫端自動複製進正式目錄、跑 tsc、
+交給獨立的第二個 agent 對抗性覆核，全部通過後直接 commit + push 到 main + 重載
+正式服務——中間沒有工程師人工看過一遍。也就是說你寫錯的代碼會直接上線，不是
+「先給人看過再說」。所以「資訊不夠就先問」比以前重要得多，寧可多問一輪，不要
+猜測需求後生出一支語意錯誤但語法正確、能通過驗證的 tool。**
+
+**重要順序：先研究、再判斷要不要問，不是先判斷要不要問、再研究。** 「這個功能有沒有
+對應的 API」「rajah method 叫什麼名字」這種問題，答案就在你有完整讀寫權限的
+/Users/user/aladdin monorepo 原始碼裡（用 rajah-query skill、或直接 grep
+rajah/services/*.rajah），這正是你的工作、也是你唯一比呼叫端（企劃或另一個
+Claude session）有優勢的地方——他們沒有原始碼權限，答不出這種問題，你去問他們
+只會得到「不知道」，白白浪費一輪。**「我還沒查」不等於「查不到該問」**，先實際
+查過（找 method 簽名、掛在哪個 service、有沒有 sibling 查詢介面）再往下判斷。
+
+查過之後，才評估：這次的 request（如果是續接對話，連同下面的先前問答記錄）有沒有
+讓你能自信、安全地實作——尤其是：
+- 查完之後，這支 method 是否仍然真的找不到、或有多支高度相似的候選、你無法自己
+  判斷該用哪一支（這種才問，而不是「還沒查」就問）？
+- 如果這支 method 屬於 method-category-checklist.md 裡的高風險分類（例如讀取清單
+  類、Upsert 類、業務鍵間接定位更新類），知道該分類要求的具體檢查項在這次需求裡
+  該怎麼落實？
+- 需求裡有沒有「查完源碼後，技術上仍有兩種以上不同實作方式，選錯會導致企劃拿到
+  不是他要的東西」的模糊地帶（例如到底要哪個 service 的版本、要不要包含分頁/篩選、
+  失敗時該回什麼樣的錯誤訊息）——這是只有使用者才能拍板的業務決策，不是你查得到
+  的技術事實，才真的該問。
+
+**如果查過源碼後，真的還有卡住你、不問清楚就無法安全實作的問題**：不要寫任何代碼、
+不要建立任何檔案，直接寫出 manifest.json：
+{
+  "success": false,
+  "errorKind": "needs_clarification",
+  "questions": [ "具體、企劃看得懂能回答的問題，最多 3-5 個，不要問你自己查 rajah 就能查到的事" ],
+  "summary": "一句話說明為什麼需要先澄清",
+  "files": [],
+  "verification": { "ran": false, "notes": "" },
+  "warnings": []
+}
+問完就結束這一輪，不要接著猜測答案往下寫。**不要為了顯得有生產力而略過這一步**
+——問題问的越具體、企劃就越容易回答，回答之後你會拿到完整的先前對話記錄接著做。
+
+**如果資訊已經足夠**（含續接對話已經把疑點都答完的情況），才繼續走下面正常的
+六步驟流程，正常寫代碼、正常驗證、正常回傳 success:true。
+${ transcript.length > 0 ? `\n${ transcript }\n` : '' }
 ## 請完整遵守 /Users/user/aladdin/obsidian/mcps/README.md 的「新增一個 tool 的公版流程」六步驟
 
 1. **查清楚目標 RPC method（不能用猜的）**：讀 rajah/services/*.rajah 或用該文件
    提到的 rajah-query 相關手法，確認完整簽名、掛在哪個 gate、有沒有
-   \`@Type "Select:xxx"\` 這類依賴限制。
+   \`@Type "Select:xxx"\` 這類依賴限制。**同時必讀
+   /Users/user/aladdin/obsidian/mcps/method-category-checklist.md**，依這支
+   method 的實際回傳型別/參數形狀（不是方法名——這個 codebase 大量存在「叫 Get
+   其實是分頁清單」「叫 List 其實一次全撈」這類命名與行為不一致的案例）判斷它屬於
+   哪個分類（讀取單筆／讀取清單／新增／Upsert／業務鍵間接定位更新／狀態轉換／
+   刪除／敏感資料／驗證類／Send-Export-Import 等），套用該分類列出的強制檢查項。
+   **這一步不能省略**：2026-08-20 的真實 bug（一支編輯 tool 內部用 List 找特定
+   資料，寫死只查第一頁 200 筆，資料量超過 200 就查不到、更新失敗）就是在「只
+   要求打一次 dev 成功」的舊版流程下漏測出來的——第 5 步的 dev 驗證必須明確覆蓋
+   這裡判定出的分類要求，不能只驗一次「剛好成功」的情境。
 2. **檔案放哪裡：一個能力一個檔案**：新檔放在 ${ verifyWorkspaceDir }/src/tools/
    底下，檔名對應能力語意（不是照搬 RPC method 英文名）。
 3. **套用 README 第二節「套用這個骨架」列出的樣板**：import session.ts /
@@ -95,7 +153,11 @@ export function buildPrompt(input: BuildPromptInput): string {
    \`cd ${ verifyWorkspaceDir } && bunx @modelcontextprotocol/inspector bun src/stdio.ts\`
    或比照 README「除錯」一節寫一支 spike script）——不是紙上談兵、不是只看 TypeScript
    編譯過。**絕對不要在 ${ realDir } 正式目錄上執行任何驗證**，一律在
-   ${ verifyWorkspaceDir } 這份副本上跑。
+   ${ verifyWorkspaceDir } 這份副本上跑。驗收案例必須覆蓋第 1 步判定出的分類要求
+   （例如清單類 tool 要驗「目標不在第一頁」的情境，不能只驗一次剛好成功的資料），
+   並在 manifest.json 的 \`verification.notes\` 裡具體寫出套用了
+   method-category-checklist.md 哪個分類、哪幾條檢查項、各自的驗證結果——不要只
+   寫「已測試通過」這種無法覆核的空泛陳述。
 6. **把你新增/修改過的 README 段落也複製一份到 output/**（例如
    ${ outputDir }/README.md），manifest 的 files[] 要如實列出這個檔案。
 
