@@ -6,19 +6,64 @@
 
 ---
 
-## 0. 這套系統是什麼
+## 0. 這套系統是什麼，以及各服務怎麼串起來
 
-三個常駐服務，讓沒有公司原始碼的企劃用 Claude 操作 agrabah 後台：
+讓沒有公司原始碼的企劃用 Claude 操作 agrabah 後台。**四個 launchd job，缺一不可**：
 
-| 服務 | port | 說明 |
+```
+  企劃的電腦
+      │  https://<tunnel domain>/mcp-admin-dev/mcp
+      ▼
+  ┌─────────────────────────────────────────────┐
+  │ ngrok tunnel        （job: tg-dispatch-tunnel）│  ← 對外的門
+  └─────────────────────────────────────────────┘
+      │  轉到本機 127.0.0.1:8787
+      ▼
+  ┌─────────────────────────────────────────────┐
+  │ telegram-dispatcher （job: tg-dispatch-server）│  ← 唯一入口 + 守衛
+  │   :8787                                       │
+  │   • 認證閘（有沒有帶 Authorization）            │
+  │   • 流量限制、body 上限                        │
+  │   • 回應正規化（防拓撲探測的均一 401）           │
+  │   • 依路徑前綴分流 ↓                           │
+  │   • 同時承載原本的 Telegram bot webhook        │
+  └─────────────────────────────────────────────┘
+      │                          │
+      │ /mcp-admin-dev           │ /mcp-platform
+      ▼                          ▼
+  ┌──────────────────┐    ┌──────────────────┐
+  │ aladdin-admin    │    │ aladdin-platform │   ← 只綁 127.0.0.1
+  │   :8789          │    │   :8790          │      外面連不到
+  │ (job: mcp-admin- │    │ (job: mcp-       │
+  │  server)         │    │  platform-server)│
+  └──────────────────┘    └──────────────────┘
+      │                          │
+      ▼                          ▼
+   admin.alddev.com      pk-platform.alddev.com   ← 真正的後台
+```
+
+### 兩者的關係（常見疑問）
+
+**MCP server 與 telegram-dispatcher 是必要依賴，不是各自獨立的東西。**
+
+- 兩個 MCP server **只監聽 `127.0.0.1`**，外部網路連不到它們。企劃的請求一定要
+  經過 dispatcher 才進得來——**只部署 MCP server 而不部署 dispatcher，企劃會完全連不上**。
+- 所有安全機制都在 dispatcher 那一層：認證閘、rate limit、body 上限、以及讓
+  「哪些環境存在」無法被外部探測的均一 401。MCP server 自己只做 Bearer 名冊比對。
+- dispatcher 本來就是既有服務（Telegram bot），MCP proxy 是加掛上去的五條路由。
+  **部署時不要為了 MCP 而動到它既有的 webhook 設定。**
+
+### 路徑前綴對照
+
+| 對外路徑前綴 | 轉發到 | 狀態 |
 |---|---|---|
-| `aladdin-admin` | 8789 | 系統管理後台 MCP server（dev 實例） |
-| `aladdin-platform` | 8790 | 平台管理後台 MCP server（dev × PK 實例） |
-| `telegram-dispatcher` | 8787 | 對外唯一入口，依路徑前綴分流到上面兩個；同時承載既有 Telegram bot |
+| `/mcp-admin-dev` | 8789 | 常駐中 |
+| `/mcp-platform` | 8790 | 常駐中 |
+| `/mcp-admin-pre` | 8791 | plist 已備妥，未 bootstrap |
+| `/mcp-admin-evi` | 8792 | plist 已備妥，未 bootstrap |
+| `/toolsmith` | 8788 | 未上線 |
 
-對外經 ngrok tunnel（另一個 launchd job）→ 8787 → 前綴分流。
-
-保留但**尚未常駐**的實例：admin-pre(8791)、admin-evi(8792)、toolsmith(8788)。
+未啟用的前綴打進來會拿到跟「前綴不存在」一模一樣的 401（刻意設計，見 §5 驗收第 5 項）。
 
 ---
 
@@ -32,7 +77,10 @@ ls -l /Users/<USER>/.bun/bin/bun
 ls -d /Users/<USER>/aladdin/obsidian/mcps
 ls -d /Users/<USER>/aladdin/telegram-dispatcher
 
-# 3. node_modules（每個 server 目錄各自需要）
+# 3. ngrok（對外 tunnel 用，需 3.x）
+ngrok version
+
+# 4. node_modules（每個 server 目錄各自需要）
 cd /Users/<USER>/aladdin/obsidian/mcps/aladdin-admin && bun install
 cd ../aladdin-platform && bun install
 cd /Users/<USER>/aladdin/telegram-dispatcher && bun install
@@ -187,18 +235,88 @@ launchctl print gui/$(id -u)/com.aladdin.mcp-admin-server | grep -E 'state|last 
 
 ---
 
-## 4. 對外 tunnel
+## 4. 部署 telegram-dispatcher 與對外 tunnel
 
-`telegram-dispatcher` 有自己的兩個 launchd job（server + ngrok tunnel），部署方式見
-`/Users/<USER>/aladdin/telegram-dispatcher/README.md:32-68`。
+**這一節不能跳過**：兩個 MCP server 只綁 `127.0.0.1`，沒有 dispatcher 就沒有任何
+對外入口，企劃會完全連不上（見 §0 的架構圖）。
 
-**ngrok domain 是寫死的**，出現在這些地方（換 domain 要全部改）：
+dispatcher 有自己的兩個 launchd job，都在 `/Users/<USER>/aladdin/telegram-dispatcher/launchd/`：
+
+| plist | 做什麼 |
+|---|---|
+| `com.aladdin.tg-dispatch-server.plist` | 跑 webhook server 與 MCP proxy（:8787） |
+| `com.aladdin.tg-dispatch-tunnel.plist` | 跑 `ngrok http 8787 --url <domain> --inspect=false` |
+
+### 4.1 前置：ngrok 與 authtoken
+
+```bash
+ngrok version          # 需要 3.x（現行腳本依 3.23.3 的語法撰寫）
+ls -l ~/Library/Application\ Support/ngrok/ngrok.yml
+```
+
+> **authtoken 存在全域 `ngrok.yml`，不在 repo 裡**，換機器必須重新設定一次：
+> ```bash
+> ngrok config add-authtoken <你的 authtoken>
+> ```
+> 另外**保留的 domain 綁在 ngrok 帳號上**。新機器用同一個帳號才能用同一個 domain；
+> 若要換 domain，見下方 §4.4。
+
+### 4.2 dispatcher 自己的環境設定
+
+`telegram-dispatcher/.env`（gitignored，需手動建立）——裡面是 Telegram bot token
+等既有設定。**如果新機器不需要 Telegram bot 功能、只要 MCP proxy**，仍然要讓
+dispatcher 起得來；請先讀 `telegram-dispatcher/README.md` 確認哪些 key 是必要的，
+缺少時 server 會在啟動時報錯。
+
+### 4.3 部署與啟動
+
+```bash
+T=/Users/<USER>/aladdin/telegram-dispatcher
+cp "$T/launchd/com.aladdin.tg-dispatch-server.plist" ~/Library/LaunchAgents/
+cp "$T/launchd/com.aladdin.tg-dispatch-tunnel.plist" ~/Library/LaunchAgents/
+plutil -lint ~/Library/LaunchAgents/com.aladdin.tg-dispatch-*.plist
+
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.tg-dispatch-server.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.tg-dispatch-tunnel.plist
+
+# 等 server 就緒（同 §3.3 的輪詢寫法）
+for i in $(seq 1 90); do
+  d=$(curl -sS -o /dev/null -m 2 -w '%{http_code}' http://127.0.0.1:8787/health 2>/dev/null || echo 000)
+  [ "$d" = "200" ] && { echo "dispatcher 就緒（第 $i 次）"; break; }
+  [ "$i" = "90" ] && echo "未就緒: $d"
+done
+
+# 確認 tunnel 真的連上（ngrok 本機 API）
+curl -sS http://127.0.0.1:4040/api/tunnels | python3 -c \
+  "import sys,json;[print(t['public_url'],'->',t['config']['addr']) for t in json.load(sys.stdin).get('tunnels',[])]"
+```
+
+**四個 job 都跑起來後應該長這樣**：
+
+```bash
+launchctl list | grep -i aladdin
+# com.aladdin.mcp-admin-server
+# com.aladdin.mcp-platform-server
+# com.aladdin.tg-dispatch-server
+# com.aladdin.tg-dispatch-tunnel
+```
+
+### 4.4 換 domain 時要改的地方
+
+**ngrok domain 是寫死的**，出現在三個位置，改一個漏兩個服務就會壞：
 
 ```
-telegram-dispatcher/launchd/run-tunnel.sh          （TUNNEL_URL 常數）
-mcps/aladdin-ai-assistant-kit/.claude/settings.json （allow 規則，逐字比對）
+telegram-dispatcher/launchd/run-tunnel.sh:37        （TUNNEL_URL 常數）
+mcps/aladdin-ai-assistant-kit/.claude/settings.json （allow 規則，逐字比對，改錯會讓企劃每次都跳權限確認）
 mcps/aladdin-ai-assistant-kit/.mcp.json            （企劃連線的 URL）
 ```
+
+改完 `run-tunnel.sh` 要 `launchctl kickstart -k gui/$(id -u)/com.aladdin.tg-dispatch-tunnel`。
+**已發出去的 kit 全部要重發**（裡面的 URL 變了）。
+
+> **Telegram bot 的 webhook 也綁在 domain 上**。如果新機器要繼續提供 bot 功能，
+> 換 domain 後必須重新 `setWebhook`，否則 Telegram 會繼續往舊 domain 送。
+> 做法見 `telegram-dispatcher/README.md`。
 
 > **已知風險（H28）**：ngrok 官方文件現在寫免費方案不提供 static domain，但現有 reserved domain
 > 仍在運作——代表這個 domain 隨時可能被政策收回。Cloudflare Tunnel 的遷移評估報告見
