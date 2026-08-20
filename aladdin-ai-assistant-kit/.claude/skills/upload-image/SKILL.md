@@ -30,8 +30,11 @@ zero-args：兩個動態資訊（要上傳到哪個環境、本機圖片檔案�
 1. `.claude/skills/upload-image/.upload-env.tmp`
    純文字，只放一行：`.mcp.json` 裡對應目標環境的 server 別名，例如
    `aladdin-admin-dev`、`aladdin-admin-pre`、`aladdin-admin-evi`、
-   `aladdin-platform`。**這個別名要跟使用者當下正在操作的環境完全一致**
-   （見下方「怎麼決定要上傳到哪個環境」）。
+   `aladdin-platform-dev-pk`。**這個別名必須跟 `.mcp.json` 裡實際存在的
+   server key 一字不差**（platform 是「環境 × 平台產品」命名，不是單純
+   `aladdin-platform`——不確定的話先呼叫任何一個 MCP tool，工具說明或
+   `.mcp.json` 本身就能看到正確的別名），且要跟使用者當下正在操作的環境
+   完全一致（見下方「怎麼決定要上傳到哪個環境」）。
 2. `.claude/skills/upload-image/.upload-filepath.tmp`
    純文字，只放一行：本機圖片檔案的路徑（絕對路徑或相對於目前工作目錄的
    路徑皆可，Mac／Windows 路徑格式不用特別轉換，照使用者提供或你確認過的

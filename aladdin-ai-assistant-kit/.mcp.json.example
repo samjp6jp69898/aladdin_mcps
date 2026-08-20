@@ -21,9 +21,17 @@
     "pre/evi/prod 的 task 之前」——make-starter-kit.ts 的 BLOCKED_GRANTS 故意",
     "擋掉這兩個環境，手動加也請先確認 H38 是否已完成，不要繞過這個裁定。",
     "",
-    "aladdin-platform（平台後台）目前只部署了一個環境（dev×PK），",
-    "server 別名固定叫 aladdin-platform，url 前綴是 /mcp-platform/，",
-    "不需要環境後綴；其餘平台產品（6T…）與 pre/evi 尚未部署。"
+    "platform 後台目前只部署了一個環境×產品組合（dev×PK），server 別名是",
+    "aladdin-platform-dev-pk，url 前綴是 /mcp-platform/。",
+    "",
+    "【真人實測踩過的坑，2026-08-20】別名務必跟 .env.example 的欄位命名",
+    "（環境 × 平台產品，例如 ALADDIN_PLATFORM_DEV_PK_USER）對齊——login.sh",
+    "是從這裡的 server 別名機械推導 .env 欄位名（大寫、減號換底線、加",
+    "_USER/_PASSWORD），別名若寫成不含產品/環境後綴的 aladdin-platform，",
+    "推導出來的欄位是 ALADDIN_PLATFORM_USER，跟 .env.example 實際欄位對不",
+    "起來，企劃怎麼填都會被登入 skill 回報「找不到帳號密碼」。手動加 platform",
+    "環境時，別名一律用 aladdin-platform-<env>-<product> 這種完整形式，",
+    "不要偷懶省略。其餘平台產品（6T…）與 pre/evi 尚未部署。"
   ],
   "mcpServers": {
     "aladdin-admin-dev": {

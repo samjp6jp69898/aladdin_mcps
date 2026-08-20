@@ -17,7 +17,7 @@ bun make-starter-kit.ts --id chenmei --name "陳美"
 ```
 
 不帶 `--grants` 時預設兩個都給：`admin-dev`（`aladdin-admin-dev`）+
-`platform-dev-pk`（`aladdin-platform`）。目前也**只有**這兩個是真的部署上線
+`platform-dev-pk`（`aladdin-platform-dev-pk`）。目前也**只有**這兩個是真的部署上線
 可用的環境——pre/evi 被 tasks.json 的 H38 裁定擋住（prod 寫入閘門補強要先
 做完），uat 與 platform 其他平台產品根本還沒部署。腳本會拒絕任何其他
 `--grants` 值並講清楚理由，不會靜默忽略。

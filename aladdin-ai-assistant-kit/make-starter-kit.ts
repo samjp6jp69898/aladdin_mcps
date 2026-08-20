@@ -93,7 +93,18 @@ const ALLOWED_GRANTS: Record<string, GrantConfig> = {
         urlPrefix: '/mcp-admin-dev',
     },
     'platform-dev-pk': {
-        alias: 'aladdin-platform',
+        // 真人實測發現的 bug（2026-08-20）：alias 曾經是舊版 'aladdin-platform'
+        // （H16 時代「platform 目前只有一個環境、不分 dev/pre/evi」的設計），
+        // 但 .env.example 早就已經改成「環境 × 平台產品」欄位命名
+        // （ALADDIN_PLATFORM_DEV_PK_USER/_PASSWORD，H15 真人驗收後的修法），
+        // 兩邊沒有同步。login.sh 是從 .mcp.json 的 server 別名機械推導 .env
+        // 欄位名（見該檔 fieldPrefix()），別名是 'aladdin-platform' 時推導出
+        // 來的欄位是 ALADDIN_PLATFORM_USER/_PASSWORD——.env.example 裡根本
+        // 沒有這兩個欄位，導致登入 skill 對 platform 這個環境永遠回報「找不到
+        // 帳號密碼」，即使企劃確實填了 ALADDIN_PLATFORM_DEV_PK_*。改成
+        // 'aladdin-platform-dev-pk' 後機械推導才會對上 .env.example 實際
+        // 列出的欄位名。
+        alias: 'aladdin-platform-dev-pk',
         registryPath: join(KIT_DIR, '..', 'aladdin-platform', 'tokens.json'),
         urlPrefix: '/mcp-platform',
     },

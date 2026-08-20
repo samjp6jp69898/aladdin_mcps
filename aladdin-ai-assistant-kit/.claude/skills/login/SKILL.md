@@ -43,9 +43,9 @@ Bearer token／密碼一起送出去的風險開了一個口）。
    （dev 的 PK 平台跟 dev 的 6T 平台是兩個不同站台、不同帳號），各自是互不
    相通的帳號名冊。某個環境沒填，就只有那個環境登不了，不影響其他環境。
 2. 掃過 `.mcp.json` 裡每一筆已經填好真實 Bearer token 的環境（`aladdin-admin-dev`／
-   `aladdin-admin-pre`／`aladdin-admin-evi`／`aladdin-platform`……你的 kit
-   裡實際有哪幾筆，取決於工程師授權給你的範圍），對每一筆各自打一次該環境
-   的 `POST /login`。**不需要你告訴它要登入哪個環境**——它會把 kit 裡每個
+   `aladdin-admin-pre`／`aladdin-admin-evi`／`aladdin-platform-dev-pk`……你的
+   kit 裡實際有哪幾筆，取決於工程師授權給你的範圍），對每一筆各自打一次該
+   環境的 `POST /login`。**不需要你告訴它要登入哪個環境**——它會把 kit 裡每個
    已授權的環境都登入一輪，一次搞定；平常你只要在看到「需要重新登入」的
    訊號時重跑這支 skill 即可。
 3. 逐筆回報結果：成功、失敗（附錯誤訊息）、或該環境需要 TOTP 驗證碼。
