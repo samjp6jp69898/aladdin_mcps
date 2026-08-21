@@ -31,7 +31,28 @@ echo   ^|   Aladdin AI 助理 — 啟動中                ^|
 echo   +-----------------------------------------+
 echo.
 
-REM ── 檢查 1：找出 Claude 在這台電腦上的位置 ───────────────────
+REM ── 檢查 1：Node.js 是否已安裝 ─────────────────────────────
+REM login／upload-image 這兩個 skill 內部都是用 node 執行實際的登入／上傳
+REM 邏輯（理由見 .claude\skills\login\login.sh 檔頭）。原本假設「Claude Code
+REM 本身依賴 Node.js，所以 node 一定存在」，但 2026-08-21 實測發現不少企劃
+REM 電腦上沒有另外裝 Node.js——這裡提早攔下來，壞在使用者看得懂中文的地方，
+REM 而不是壞在對話裡說「幫我登入」時噴一句英文的 command not found。
+where node >nul 2>&1
+if errorlevel 1 (
+    echo   [X] 找不到 Node.js
+    echo.
+    echo   這份 kit 的登入與上傳圖片功能需要 Node.js 才能執行。
+    echo.
+    echo   請到 https://nodejs.org 下載安裝「LTS」版本，安裝檔一路下一步
+    echo   到底即可，不需要額外設定。
+    echo.
+    echo   安裝完成後，請重新雙擊這個檔案。
+    echo.
+    pause
+    exit /b 1
+)
+
+REM ── 檢查 2：找出 Claude 在這台電腦上的位置 ───────────────────
 set "CLAUDE_BIN="
 
 if defined CLAUDE_PATH (
@@ -74,7 +95,7 @@ if not defined CLAUDE_BIN (
     exit /b 1
 )
 
-REM ── 檢查 2：.env 是否已建立 ────────────────────────────────
+REM ── 檢查 3：.env 是否已建立 ────────────────────────────────
 if not exist ".env" (
     echo   [!] 還沒有設定你的帳號密碼
     echo.
@@ -103,7 +124,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM ── 檢查 3：.mcp.json 是否存在 ─────────────────────────────
+REM ── 檢查 4：.mcp.json 是否存在 ─────────────────────────────
 if not exist ".mcp.json" (
     echo   [X] 這份工具包不完整（缺少 .mcp.json）
     echo.

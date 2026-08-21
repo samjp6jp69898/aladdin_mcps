@@ -107,6 +107,14 @@ if [ ! -f "$MCP_FILE" ]; then
     exit 1
 fi
 
+# 2026-08-21 補強：正常情況下企劃是雙擊啟動器進來的，啟動器已經先檢查過
+# Node.js；這裡是給「方式二：完全手動、不透過啟動器」直接進 Claude 對話的
+# 情況兜底，避免直接摔進下面 `node -` 一行冷冰冰的 command not found。
+if ! command -v node > /dev/null 2>&1; then
+    echo "找不到 Node.js，登入功能需要它才能執行。請到 https://nodejs.org 下載安裝「LTS」版本，安裝完成後重新開一個終端機視窗再試一次。" >&2
+    exit 1
+fi
+
 # D13 多環境帳密（本次改動）：`.env` 的逐行純文字解析整段移到下面的 node
 # 區塊。原因是「哪些欄位要讀」不再是固定的兩個名字，而要依 `.mcp.json` 裡每
 # 個 server 別名各自推導一組欄位名（別名含 `-`，shell 變數名不能有 `-`，在
@@ -123,9 +131,14 @@ fi
 export ENV_FILE MCP_FILE TOTP_CODE TOTP_PENDING_ALIAS TOTP_PENDING_ALIAS_FILE
 
 # 實際的登入邏輯（解析 .mcp.json、逐環境組 curl config、判讀回應）交給 node
-# 執行：Claude Code 本身依賴 Node.js 才能執行，所以 node 在 Mac／Windows
-# Git Bash 環境下都可假設存在，不需要額外要求企劃安裝 jq 之類的工具
-# （Windows 版 Git for Windows 不保證內建 jq）。
+# 執行，不用 jq（Windows 版 Git for Windows 不保證內建 jq）。
+#
+# 【2026-08-21 更正】這裡原本假設「Claude Code 本身依賴 Node.js，所以 node
+# 在 Mac／Windows Git Bash 環境下都可假設存在」——實測發現這個假設不成立，
+# 不少企劃電腦上沒有另外裝 Node.js。改用 node 而非 jq 的理由本身依然成立
+# （jq 在 Git for Windows 不保證內建），只是「node 一定存在」這個前提站不
+# 住腳，因此在本檔與四支啟動器都補上明確的 Node.js 偵測與安裝指引，不再
+# 靜默假設。
 #
 # 用 `node -` 從 stdin 讀腳本本體：這段 heredoc 只是固定的程式碼文字，帳密／
 # token 全部在執行期從 process.env 讀，不會出現在 node 的 argv 裡。

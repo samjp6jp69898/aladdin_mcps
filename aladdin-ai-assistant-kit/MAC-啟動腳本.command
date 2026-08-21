@@ -34,7 +34,28 @@ echo "  │   Aladdin AI 助理 — 啟動中                │"
 echo "  └─────────────────────────────────────────┘"
 echo ""
 
-# ── 檢查 1：找出 Claude 在這台電腦上的位置 ───────────────────
+# ── 檢查 1：Node.js 是否已安裝 ─────────────────────────────
+# login／upload-image 這兩個 skill 內部都是用 node 執行實際的登入／上傳
+# 邏輯（理由見 .claude/skills/login/login.sh 檔頭）。原本假設「Claude Code
+# 本身依賴 Node.js，所以 node 一定存在」，但 2026-08-21 實測發現不少企劃
+# 電腦上沒有另外裝 Node.js——這裡提早攔下來，壞在使用者看得懂中文的地方，
+# 而不是壞在對話裡說「幫我登入」時噴一句英文的 command not found。
+if ! command -v node > /dev/null 2>&1; then
+    echo "  ❌ 找不到 Node.js"
+    echo ""
+    echo "  這份 kit 的登入與上傳圖片功能需要 Node.js 才能執行。"
+    echo ""
+    echo "  請到 https://nodejs.org 下載安裝「LTS」版本，安裝檔一路下一步"
+    echo "  到底即可，不需要額外設定。"
+    echo ""
+    echo "  安裝完成後，請重新雙擊這個檔案。"
+    echo ""
+    echo "  按 Enter 關閉這個視窗。"
+    read -r _
+    exit 1
+fi
+
+# ── 檢查 2：找出 Claude 在這台電腦上的位置 ───────────────────
 # 順序：使用者在檔案開頭填的路徑 → PATH 裡的 claude → 幾個常見安裝位置。
 # 每台電腦的安裝位置可能不同（官方安裝、Homebrew、手動放置各有去處），
 # 所以不寫死單一路徑。
@@ -88,7 +109,7 @@ if [ -z "$CLAUDE_BIN" ]; then
     exit 1
 fi
 
-# ── 檢查 2：.env 是否已建立並填寫 ───────────────────────────
+# ── 檢查 3：.env 是否已建立並填寫 ───────────────────────────
 if [ ! -f .env ]; then
     echo "  ⚠️  還沒有設定你的帳號密碼"
     echo ""
@@ -116,7 +137,7 @@ if ! grep -qE '^[A-Z0-9_]+_(USER|PASSWORD)=.+' .env 2>/dev/null; then
     exit 1
 fi
 
-# ── 檢查 3：.mcp.json 是否存在 ─────────────────────────────
+# ── 檢查 4：.mcp.json 是否存在 ─────────────────────────────
 if [ ! -f .mcp.json ]; then
     echo "  ❌ 這份工具包不完整（缺少 .mcp.json）"
     echo ""
@@ -127,7 +148,7 @@ if [ ! -f .mcp.json ]; then
     exit 1
 fi
 
-# ── 檢查 4：檔案權限（憑證檔不該被其他使用者讀到）──────────────
+# ── 檢查 5：檔案權限（憑證檔不該被其他使用者讀到）──────────────
 for f in .env .mcp.json; do
     perm="$(stat -f '%Lp' "$f" 2>/dev/null)"
     if [ -n "$perm" ] && [ "$perm" != "600" ]; then

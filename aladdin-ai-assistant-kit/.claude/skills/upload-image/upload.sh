@@ -83,6 +83,14 @@ if [ ! -f "$MCP_FILE" ]; then
     exit 1
 fi
 
+# 2026-08-21 補強：正常情況下企劃是雙擊啟動器進來的，啟動器已經先檢查過
+# Node.js；這裡是給「方式二：完全手動、不透過啟動器」直接進 Claude 對話的
+# 情況兜底，避免直接摔進下面 `node -` 一行冷冰冰的 command not found。
+if ! command -v node > /dev/null 2>&1; then
+    echo "找不到 Node.js，上傳圖片功能需要它才能執行。請到 https://nodejs.org 下載安裝「LTS」版本，安裝完成後重新開一個終端機視窗再試一次。" >&2
+    exit 1
+fi
+
 if [ ! -f "$UPLOAD_FILEPATH" ]; then
     echo "找不到檔案：${UPLOAD_FILEPATH}（請確認路徑正確、檔案存在）。" >&2
     exit 1
@@ -127,8 +135,8 @@ fi
 export MCP_FILE UPLOAD_FILEPATH UPLOAD_ENV
 
 # 從 .mcp.json 解析目標環境的 url／Bearer token，到實際組 curl config、呼叫
-# curl、判讀回應，全部交給 node 執行——理由同 login.sh：Claude Code 本身
-# 依賴 Node.js，Mac／Windows Git Bash 環境下都可假設存在（jq 則不行，見
+# curl、判讀回應，全部交給 node 執行——理由同 login.sh：改用 node 而非 jq
+# 是因為 jq 在 Git for Windows 不保證內建（見
 # 檔頭說明）；用 `node -` 從 stdin 讀腳本本體，token 全部在執行期從
 # process.env／解析出的 .mcp.json 內容取得，不會出現在 node 的 argv 裡。
 node - <<'NODE_SCRIPT'
