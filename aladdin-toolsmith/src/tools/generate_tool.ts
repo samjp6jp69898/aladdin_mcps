@@ -49,6 +49,7 @@ import { runAgent } from '../agent/run-agent.ts';
 import { loadConversation, saveConversation, type ConversationState } from '../agent/conversation.ts';
 import { runDeployPipeline, type ManifestFileEntry } from '../agent/deploy-pipeline.ts';
 import { snapshotRealDirs, realDirsTouched } from '../agent/collect-output.ts';
+import { ensureFreshSourceRepos } from '../agent/ensure-fresh-repos.ts';
 import { getCurrentIdentity } from '../identity.ts';
 
 // 這把鎖只涵蓋「研究＋寫代碼」這段（per-requestId 隔離的 verify-workspace，
@@ -91,6 +92,24 @@ async function processInBackground(requestId: string, scratchDir: string, state:
         try {
             state.status = 'researching';
             saveConversation(scratchDir, state);
+
+            // 研究開始前先確保 agrabah/abu/rajah/lago 是 origin/main 最新狀態
+            // （見 ensure-fresh-repos.ts 檔頭說明：這幾個路徑落後時，sub-agent
+            // 讀到的 method 簽名/欄位可能已經跟正式環境不一致，寫出來的新
+            // tool 會是錯的，且 tsc/對抗性覆核都抓不到這種「語意上過時」的
+            // 錯誤）。fail-closed：同步失敗直接中止這次請求，不帶著不確定的
+            // 來源繼續跑。
+            const freshen = await ensureFreshSourceRepos();
+            if (!freshen.ok) {
+                state.completed = true;
+                state.status = 'failed';
+                state.finalResult = {
+                    success: false, errorKind: 'source_repos_not_fresh',
+                    message: `同步來源 repo（${ freshen.repo }）失敗於 ${ freshen.step } 步驟，未開始研究，需要工程師人工檢查：${ freshen.message }`,
+                };
+                saveConversation(scratchDir, state);
+                return;
+            }
 
             // sub-agent 依 prompt 指示只能寫 scratchDir 底下，理論上不會碰到正式
             // 目錄——但它是 bypassPermissions 執行、對整個 monorepo 有完整讀寫
