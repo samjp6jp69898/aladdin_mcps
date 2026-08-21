@@ -5,6 +5,7 @@
       "name": "aladdin-platform-mcp",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.29.0",
+        "hono": "^4.13.2",
         "zod": "^4.0.0",
       },
       "devDependencies": {
