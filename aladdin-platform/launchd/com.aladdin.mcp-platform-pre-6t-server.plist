@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.aladdin.mcp-platform-pre-6t-server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform/launchd/run-server-pre-6t.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/user/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+        <key>ALADDIN_PLATFORM_API_URL</key>
+        <string>https://6t-platform.ald777.com</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform/logs/launchd-pre-6t-server.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform/logs/launchd-pre-6t-server.err.log</string>
+</dict>
+</plist>
