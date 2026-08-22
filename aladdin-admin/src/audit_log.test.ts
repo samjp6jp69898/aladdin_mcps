@@ -79,11 +79,11 @@ describe('audit_log — 基本寫入格式', () => {
     test('setAuditTool / setAuditResult / setAuditLoginIdentifier 會回填到同一個 request 的稽核行', async () => {
         const c = await fakeContext({ path: '/mcp' });
         runWithAuditAccumulator(() => {
-            setAuditTool('aladdin_admin_list_vendor_games', 'success');
+            setAuditTool('aladdin_admin_game_vendor_admin_list_games', 'success');
             logAuthenticatedRequest(c as never, 'Landon', performance.now());
         });
         const last = readLines(auditLogConfigForTests().path).at(-1);
-        expect(last?.tool).toBe('aladdin_admin_list_vendor_games');
+        expect(last?.tool).toBe('aladdin_admin_game_vendor_admin_list_games');
         expect(last?.result).toBe('success');
     });
 

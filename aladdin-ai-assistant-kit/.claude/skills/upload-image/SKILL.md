@@ -1,15 +1,15 @@
 ---
 name: upload-image
-description: 把一張本機圖片上傳到 agrabah hosted server，換取 fileId，供需要圖片的 MCP tool（aladdin_admin_edit_game、aladdin_platform_onboard_vendor_game）使用。Use when 使用者要幫某款遊戲換圖／設定圖片，而 MCP tool 的圖片參數要求 fileId（不是本機檔案路徑）的時候。
+description: 把一張本機圖片上傳到 agrabah hosted server，換取 fileId，供需要圖片的 MCP tool（aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game、aladdin_platform_game_vendor_platform_update_game_vendor_game）使用。Use when 使用者要幫某款遊戲換圖／設定圖片，而 MCP tool 的圖片參數要求 fileId（不是本機檔案路徑）的時候。
 ---
 
 # aladdin-upload-image — 上傳圖片換取 fileId（token 不進對話紀錄）
 
 ## 何時使用
 
-- 使用者要更新遊戲的方形圖／直方圖／橫幅圖（`aladdin_admin_edit_game` 的
+- 使用者要更新遊戲的方形圖／直方圖／橫幅圖（`aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game` 的
   `squareImages`／`rectangleImages`／`bannerImages`，或
-  `aladdin_platform_onboard_vendor_game` 的對應圖片參數），且這個 MCP
+  `aladdin_platform_game_vendor_platform_update_game_vendor_game` 的對應圖片參數），且這個 MCP
   server 是 hosted 模式（tool 的圖片欄位描述裡看得到 `fileId` 這個選項）。
 - hosted 模式下這些 tool 吃的是 `{code, fileId}`，**不是**
   `{code, filePath}`——你必須先用這支 skill 把本機圖片換成 `fileId`，才能
@@ -53,7 +53,7 @@ upload.sh，殘留的舊暫存檔會被這一輪誤用，導致靜默上傳到�
 ## 怎麼決定要上傳到哪個環境
 
 `fileId` 綁定「上傳當下用的是哪一把 Bearer token」——上傳到 dev 環境拿到的
-`fileId`，只能餵給 dev 環境的 `aladdin_admin_edit_game` 等 tool，不能拿去
+`fileId`，只能餵給 dev 環境的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game` 等 tool，不能拿去
 餵 pre／evi 環境的同一支 tool（會被拒絕）。所以：
 
 - 先確認使用者接下來要對哪個環境呼叫圖片類 tool（跟操作其他 admin/platform

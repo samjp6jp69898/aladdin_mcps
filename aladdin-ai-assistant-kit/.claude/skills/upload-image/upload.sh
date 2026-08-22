@@ -24,7 +24,7 @@
 # 「這張圖要換到哪一款遊戲」，fileId 綁定「上傳當下用的那把 Bearer token
 # 對應的 identity」（見 files.ts resolveFileIdForIdentity），如果自動廣播到
 # 好幾個環境，使用者事後很難判斷該把哪一個環境回傳的 fileId 交給
-# aladdin_admin_edit_game——而且 edit_game 呼叫的又是「使用者當下正在操作
+# aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game——而且這支 tool 呼叫的又是「使用者當下正在操作
 # 的那個環境」的 MCP tool，兩者對不上就會白跑。因此上傳圖片刻意設計成
 # 「一次操作、一個目標環境」，環境由呼叫端（Claude／使用者）明確指定，不用
 # login.sh 那種「不需要你告訴它」的廣播設計。
@@ -280,7 +280,7 @@ if (json && json.success === true && typeof json.fileId === 'string' && json.fil
     // 順帶印出來源檔案路徑（H18 review M3）：讓 Claude／企劃在把這個 fileId
     // 交給 edit_game 之前，有機會發現上傳的其實是殘留在暫存檔裡的上一張圖。
     console.log(`[${envAlias}] 上傳成功，fileId=${json.fileId}（來源：${filePath}）`);
-    console.log(`請把這個 fileId 原樣交給需要圖片的 MCP tool（例如 aladdin_admin_edit_game 的 fileId 參數），不要用本機檔案路徑。這個 fileId 只能用在「${envAlias}」這個環境，且僅供這一張圖片使用一次，不要拿去給不同的圖片重複用。`);
+    console.log(`請把這個 fileId 原樣交給需要圖片的 MCP tool（例如 aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game 的 fileId 參數），不要用本機檔案路徑。這個 fileId 只能用在「${envAlias}」這個環境，且僅供這一張圖片使用一次，不要拿去給不同的圖片重複用。`);
     process.exit(0);
 }
 

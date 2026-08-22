@@ -1,5 +1,5 @@
 /**
- * tools/get_message_board_setting.ts — aladdin_platform_get_message_board_setting
+ * tools/get_message_board_setting.ts — aladdin_platform_message_board_platform_get_message_board_post_setting
  *
  * rajah: MessageBoardPlatform.GetMessageBoardPostSetting
  * （message_board_back_office.rajah:1560-1561）
@@ -59,13 +59,13 @@ export function formatMessageBoardSetting(s: Record<string, unknown>): Record<st
 
 export function registerGetMessageBoardSettingTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_platform_get_message_board_setting',
+        'aladdin_platform_message_board_platform_get_message_board_post_setting',
         {
             title: 'Get message board (stage) basic setting',
             description:
                 '讀取本平台「大舞台中心」→「大舞台設定」頁籤中「基本設置」分頁目前的設定內容' +
                 '（rajah: MessageBoardPlatform.GetMessageBoardPostSetting，無參數，單例設定，平台由連線本身判定）。' +
-                '要修改請改用 aladdin_platform_update_message_board_setting——那支工具會先呼叫這支 tool 讀現值再合併覆蓋，' +
+                '要修改請改用 aladdin_platform_message_board_platform_set_message_board_post_setting——那支工具會先呼叫這支 tool 讀現值再合併覆蓋，' +
                 '所以呼叫端通常不需要自己先呼叫這支再手動拼參數，但仍可用這支單獨查看目前設定。' +
                 '回傳裡的 postsGiftWageringMultiplier 是後端實際儲存值（顯示倍率 × 10000 的整數，例如顯示 1.5 倍存的是 15000），' +
                 '不是顯示用小數。id/version/commentWeight/likeWeight/postsGiftPlatformCommission/' +

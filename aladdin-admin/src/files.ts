@@ -206,7 +206,7 @@ export type ResolveFileIdResult =
     | { found: false; reason: 'invalid_format' | 'not_found' | 'forbidden' | 'outside_tmp_dir' };
 
 /**
- * H9：圖片類 tool（edit_game.ts）解析 fileId → 本機路徑的唯一入口，消費端
+ * H9：圖片類 tool（upsert_game.ts）解析 fileId → 本機路徑的唯一入口，消費端
  * 不得繞過這支自行用 fileId 字串組路徑。兩層防護：
  *   1. regex 格式白名單：fileId 必須完全符合 generateFileId() 的實際輸出格式
  *      （43 字元 base64url），任何含 `/`、`..`、絕對路徑或其他字元的輸入在

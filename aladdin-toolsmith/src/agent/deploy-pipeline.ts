@@ -10,8 +10,9 @@
  *     當標準（2026-08-20 修 edit_game.ts 時就是用這個方法驗證的）。
  *   - Gate B（獨立第二個 agent）：對抗性覆核，重新對抗性檢查一次，不信任原本
  *     寫 code 那個 sub-agent 自己在 manifest.verification 裡的自我陳述；這個
- *     agent 被要求同時完成三件事：核對 method-category-checklist.md 分類要求、
- *     實際對 dev 打一次這支新/改過的 tool、給出 PASS/FAIL 結論。
+ *     agent 被要求同時完成四件事：核對 method-category-checklist.md 分類要求、
+ *     核對 tool-naming-convention.md 命名規則、實際對 dev 打一次這支新/改過的
+ *     tool、給出 PASS/FAIL 結論。
  *
  * git 操作一律用 manifest.files[] 精確列出的檔案路徑當 pathspec，絕不用
  * `git add -A`/`git add .`——obsidian 這個 repo 常態上會有其他工作階段正在
@@ -357,7 +358,12 @@ requestId: ${ requestId }
    清單類（有沒有處理「資料超過一頁」）、Upsert/CreateOrUpdate 類（有沒有先讀現值
    再合併）、業務鍵間接定位更新類（有沒有掃描到底而不是寫死小分頁）這幾個高風險
    分類，不能只看有沒有語法錯誤。
-4. **實際對 dev 環境打一次這支新/改過的 tool**（例如
+4. **核對 tool 命名**：對照 /Users/user/aladdin/obsidian/mcps/tool-naming-convention.md，
+   確認 \`server.registerTool()\` 第一個參數真的是 \`<server>_<service>_<method>\`
+   （各自 snake_case，service/method 是第 2 步查證到的真實 rajah 名稱）——常見缺陷
+   是原作者自己另外想了一個動詞_名詞式的名字、或該檔「兩支不同 tool 撞名」一節適用
+   卻仍分成兩支各自加字尾。命名不合規則視為本次覆核的一項缺陷，在結論中明確指出。
+5. **實際對 dev 環境打一次這支新/改過的 tool**（例如
    \`cd ${ realDir } && bunx @modelcontextprotocol/inspector bun src/stdio.ts\`，
    或比照該 server README「除錯」一節寫一支 spike script）——確認真的能登入、真的
    呼叫到後端拿到真實資料，不是只看程式碼推論、也不是只信任原作者 manifest 裡的
@@ -368,7 +374,7 @@ requestId: ${ requestId }
    監聽的 port），那樣測到的其實是舊代碼，你會產生假通過。一定要自己另外重新
    spawn 一個新的 process（像上面的 \`bun src/stdio.ts\`）直接讀 ${ realDir }
    當下的檔案內容，才是真的在測套用後的新代碼。
-5. 給出結論。
+6. 給出結論。
 
 ## 輸出（唯一交付物）
 把結論寫進 ${ verdictPath }（合法 JSON，只有這兩個欄位）：

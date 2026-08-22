@@ -7,8 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { registerLoginTool } from './login.ts';
 import { registerCreateGameVendorTool } from './create_game_vendor.ts';
-import { registerCreateGameTool } from './create_game.ts';
-import { registerEditGameTool } from './edit_game.ts';
+import { registerUpsertGameTool } from './upsert_game.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerListPlatformsTool } from './list_platforms.ts';
@@ -28,8 +27,7 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
         registerLoginTool(server);
     }
     registerCreateGameVendorTool(server);
-    registerCreateGameTool(server);
-    registerEditGameTool(server);
+    registerUpsertGameTool(server);
     registerListGameVendorsTool(server);
     registerListVendorGamesTool(server);
     registerListPlatformsTool(server);

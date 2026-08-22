@@ -1,8 +1,9 @@
 /**
- * tools/list_game_vendors.ts — aladdin_platform_list_game_vendors
+ * tools/list_game_vendors.ts — aladdin_platform_game_vendor_platform_list_game_vendors
  *
  * rajah: GameVendorPlatform.ListGameVendors / ListAllGameVendors
- * （game_back_office.rajah:1039, 1043）
+ * （game_back_office.rajah:1039, 1043）——命名以語意較泛的 ListGameVendors 為準，
+ * ListAllGameVendors 是它「無篩選條件」的內部最佳化分支。
  */
 
 import { z } from 'zod';
@@ -15,14 +16,14 @@ import { ACTIVE_STATUS_MAP } from '../const.ts';
 
 export function registerListGameVendorsTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_platform_list_game_vendors',
+        'aladdin_platform_game_vendor_platform_list_game_vendors',
         {
             title: 'List game vendors on this platform',
             description:
                 '在 agrabah platform 後台查詢已上架的三方遊戲廠商清單（不是 admin 端那種帶 adapter/匯率的技術視角，' +
                 '只有名稱/圖標/狀態/排序）。不帶任何篩選條件（name/status/maintenanceStatus）且不帶 page 時，' +
                 '會改用 ListAllGameVendors 一次拿全部（rajah: GameVendorPlatform.ListAllGameVendors），' +
-                '否則走 ListGameVendors 分頁查詢。回傳的 id 就是 aladdin_platform_list_vendor_games 要用的 gameVendorId。' +
+                '否則走 ListGameVendors 分頁查詢。回傳的 id 就是 aladdin_platform_game_vendor_platform_list_games 要用的 gameVendorId。' +
                 '注意：透過 aladdin-admin 剛建立的場館不會自動出現在這裡——場館要先被 admin 端啟用給特定 platform' +
                 '（GameVendorAdmin.UpdatePlatformGameVendorStatus，本 MCP 未提供這支 tool）才查得到，實測驗證過此限制。',
             inputSchema: {

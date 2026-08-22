@@ -1,5 +1,5 @@
 /**
- * tools/update_message_board_setting.ts — aladdin_platform_update_message_board_setting
+ * tools/update_message_board_setting.ts — aladdin_platform_message_board_platform_set_message_board_post_setting
  *
  * rajah: MessageBoardPlatform.GetMessageBoardPostSetting + SetMessageBoardPostSetting
  * （message_board_back_office.rajah:1560-1564，@Permission "MessageBoard.MbSetting.Setup.Save"）
@@ -37,7 +37,7 @@ const statusToggle = z.enum([ 'enabled', 'disabled' ]);
 
 export function registerUpdateMessageBoardSettingTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_platform_update_message_board_setting',
+        'aladdin_platform_message_board_platform_set_message_board_post_setting',
         {
             title: 'Update message board (stage) basic setting',
             description:

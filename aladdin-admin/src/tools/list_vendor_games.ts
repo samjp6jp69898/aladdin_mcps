@@ -1,5 +1,5 @@
 /**
- * tools/list_vendor_games.ts — aladdin_admin_list_vendor_games
+ * tools/list_vendor_games.ts — aladdin_admin_game_vendor_admin_list_games
  *
  * rajah: GameVendorAdmin.ListGames（game_back_office.rajah:300）
  */
@@ -12,17 +12,18 @@ import { asTextResult, asErrorResult } from '../mcp_result.ts';
 
 export function registerListVendorGamesTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_admin_list_vendor_games',
+        'aladdin_admin_game_vendor_admin_list_games',
         {
             title: "List a game vendor's games (admin master list)",
             description:
                 '查詢某個廠商在「廠商遊戲母表」裡的遊戲清單（rajah: GameVendorAdmin.ListGames）——這是全平台共用的' +
                 '母表視角，不是某個 platform 的上架清單（platform 的上架清單見 aladdin-platform 的 ' +
-                'aladdin_platform_list_vendor_games）。本工具操作的是全平台共用母表，查詢條件只有 gameVendorId，' +
-                '結果與平台無關，不需要也不接受 platformId 參數。回傳的 gameId 可以直接帶進 aladdin_admin_edit_game 編輯。' +
+                'aladdin_platform_game_vendor_platform_list_games）。本工具操作的是全平台共用母表，查詢條件只有 gameVendorId，' +
+                '結果與平台無關，不需要也不接受 platformId 參數。回傳的 gameId 可以直接帶進 ' +
+                'aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game 編輯。' +
                 '沒有 name/gameId 篩選參數，只有分頁；要找特定遊戲得自己在回傳結果裡比對 gameId。',
             inputSchema: {
-                gameVendorId: z.number().int().describe('廠商場館 id，來自 aladdin_admin_list_game_vendors 的回傳結果（同一份母表），或 aladdin_admin_create_game_vendor 的讀回結果'),
+                gameVendorId: z.number().int().describe('廠商場館 id，來自 aladdin_admin_game_vendor_admin_list_game_vendors 的回傳結果（同一份母表），或 aladdin_admin_game_vendor_admin_create_or_update_game_vendor 的讀回結果'),
                 page: z.number().int().min(1).optional().describe('頁碼，從 1 開始，預設 1'),
                 pageSize: z.number().int().min(1).optional().describe('每頁筆數，預設 50'),
             },

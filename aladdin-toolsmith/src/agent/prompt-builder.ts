@@ -146,8 +146,14 @@ ${ transcript.length > 0 ? `\n${ transcript }\n` : '' }
 2. **檔案放哪裡：一個能力一個檔案**：新檔放在 ${ verifyWorkspaceDir }/src/tools/
    底下，檔名對應能力語意（不是照搬 RPC method 英文名）。
 3. **套用 README 第二節「套用這個骨架」列出的樣板**：import session.ts /
-   mcp_result.ts / const.ts 的既有慣例、命名規則
-   \`aladdin_${ target }_<動詞>_<名詞>\`，inputSchema 每個欄位都要有 \`.describe()\`。
+   mcp_result.ts / const.ts 的既有慣例。**tool 註冊名稱必須照
+   /Users/user/aladdin/obsidian/mcps/tool-naming-convention.md 的
+   \`<server>_<service>_<method>\` 規則命名**（server/service/method 各自轉
+   snake_case，service/method 取第 1 步查到的真實 rajah service/method 名稱，
+   不是憑印象或業務描述另外想一個動詞_名詞式的名字）；若這支 tool 底層呼叫的
+   method 跟另一支既有 tool 撞名（常見於同一支 CreateOrUpdateXxx 被拆成兩支
+   tool），該檔「兩支不同 tool 撞名」一節有處理原則，不要用命名層面的字尾
+   勉強分身。inputSchema 每個欄位都要有 \`.describe()\`。
 4. **掛進** ${ verifyWorkspaceDir }/src/tools/index.ts。
 5. **真的在 verify-workspace 這份副本上跑一次 dev 驗證**（例如
    \`cd ${ verifyWorkspaceDir } && bunx @modelcontextprotocol/inspector bun src/stdio.ts\`

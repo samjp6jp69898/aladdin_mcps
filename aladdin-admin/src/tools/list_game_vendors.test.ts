@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * aladdin_admin_list_game_vendors 的註冊契約與分流測試。
+ * aladdin_admin_game_vendor_admin_list_game_vendors 的註冊契約與分流測試。
  *
  * 這支 tool 的存在理由是「admin 端沒有任何一支能列出母表全部場館的查詢」——真人測試中
  * agent 因此跑去 aladdin-platform server 找廠商 id。所以要釘住的正是那兩件事：
@@ -51,8 +51,8 @@ async function run(input: Record<string, unknown>): Promise<Record<string, unkno
 }
 
 describe('註冊契約', () => {
-    test('tool 名稱是 aladdin_admin_list_game_vendors', () => {
-        expect(tool.name).toBe('aladdin_admin_list_game_vendors');
+    test('tool 名稱是 aladdin_admin_game_vendor_admin_list_game_vendors', () => {
+        expect(tool.name).toBe('aladdin_admin_game_vendor_admin_list_game_vendors');
     });
 
     test('六個參數全部選填——不帶任何參數就能列出母表全部場館，這正是本 tool 要補的缺口', () => {
@@ -69,8 +69,8 @@ describe('註冊契約', () => {
         const d = tool.config.description;
         expect(d).toContain('母表');
         expect(d).toContain('gameVendorId');
-        expect(d).toContain('aladdin_admin_list_platform_game_vendors');
-        expect(d).toContain('aladdin_platform_list_game_vendors');
+        expect(d).toContain('aladdin_admin_game_vendor_admin_list_platform_game_vendors');
+        expect(d).toContain('aladdin_platform_game_vendor_platform_list_game_vendors');
     });
 });
 

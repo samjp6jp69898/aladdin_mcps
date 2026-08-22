@@ -1,12 +1,20 @@
 /**
- * tools/edit_game.ts — aladdin_admin_edit_game
+ * tools/upsert_game.ts — aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game
  *
- * rajah: GameVendorAdmin.ListGames（定位既有遊戲的內部 id）+ GetGameVendorGameForEdit(id) +
- * CreateOrUpdateGameVendorGame（game_back_office.rajah:300, 317, 319）
+ * rajah: GameVendorAdmin.CreateOrUpdateGameVendorGame（game_back_office.rajah:319）——底層
+ * 是同一支 upsert RPC，id 留空為新增、帶入既有 id 為更新。本工具用 gameVendorId+gameId
+ * 業務鍵先定位（GameVendorAdmin.ListGames 逐頁掃描到底 + GetGameVendorGameForEdit 讀現值）：
+ * 找到既有遊戲就走更新語意（讀現值合併、只覆蓋你有帶的欄位，含圖片上傳/多語系名稱）；
+ * 找不到就走新增語意（此時 name 必填）。
  *
- * 跟 create_game.ts 的差異：這支是「編輯既有遊戲」，用業務鍵 gameVendorId+gameId 定位
- * （GetGameVendorGameForEdit 本身只吃內部流水號 id，所以要先用 ListGames 查一次換到 id），
- * 讀既有資料當基準值、只覆蓋你有帶的欄位——包含圖片上傳。這是唯一支援圖片上傳的 admin tool。
+ * 2026-08-22 前這是兩支分開的 tool（create_game.ts 直接建立 / edit_game.ts 用業務鍵編輯）。
+ * 套用「<server>_<service>_<method>」命名規則時，兩支底層呼叫的其實是同一支
+ * CreateOrUpdateGameVendorGame，天生會撞名；改為合併成一支 upsert 工具，讓 tool 邊界
+ * 忠實反映「底層本來就是一支 upsert method」這個結構性事實，而不是在命名層面加字尾
+ * 勉強分成兩支。合併同時補上舊 create_game.ts 缺的一步：舊版直接帶 id 更新時不會先讀現值
+ * 合併，只送呼叫端當下給的欄位，有把沒帶到的欄位覆蓋成 undefined 的風險（不符合
+ * method-category-checklist.md 第 4 節「先讀現值、只覆蓋要改欄位」的強制要求）；合併後
+ * 一律先用業務鍵定位＋讀現值，不再提供繞過讀現值的直接 id 捷徑。
  */
 
 import { z } from 'zod';
@@ -125,17 +133,48 @@ async function uploadLocalizedImages(
     return { merged, errors };
 }
 
-export function registerEditGameTool(server: McpServer): void {
+const LIST_PAGE_SIZE = 200;
+
+/**
+ * 用 gameVendorId+gameId 業務鍵逐頁掃描定位既有遊戲的內部流水號 id。
+ * ListGames 沒有 gameId 篩選參數，只能翻頁比對——廠商遊戲數可能超過一頁（例如
+ * PP電子-XO 有 518 款），只查第一頁會漏掉排在後面的遊戲，故逐頁掃到找到或掃完為止。
+ * create/update 兩種模式共用：呼叫前先判斷「這筆是不是已經存在」，寫入後也重用它
+ * 做新增情境的 round-trip 讀回。
+ */
+async function findGameRowByBusinessKey(gameVendorId: number, gameId: string) {
+    let totalPage = 1;
+    let scannedPages = 0;
+    for (let page = 1; page <= totalPage; page++) {
+        const listR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(gameVendorId, page, LIST_PAGE_SIZE));
+        if (listR.failed) return { listR, matchedRow: undefined, scannedPages } as const;
+        scannedPages++;
+        totalPage = listR.data?.totalPage ?? 1;
+        const matchedRow = listR.data?.rows?.find((row) => row.gameId === gameId);
+        if (matchedRow) return { listR: undefined, matchedRow, scannedPages } as const;
+    }
+    return { listR: undefined, matchedRow: undefined, scannedPages } as const;
+}
+
+export function registerUpsertGameTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_admin_edit_game',
+        'aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game',
         {
-            title: 'Edit an existing vendor game (including image uploads)',
+            title: 'Create or update a vendor game (upsert, including image uploads)',
             description:
-                '編輯一款「已存在」的廠商遊戲（rajah: GameVendorAdmin.CreateOrUpdateGameVendorGame 的更新語意）——' +
-                '要新增全新遊戲請用 aladdin_admin_create_game，這支只處理既有遊戲。' +
-                '本工具操作的是全平台共用母表，結果與平台無關，不需要也不接受 platformId 參數。' +
-                '用 gameVendorId+gameId 這組業務鍵定位（不用先知道內部流水號 id，工具內部會自動查）。' +
-                '讀既有資料當基準值，只有你有帶的欄位會覆蓋，沒帶的欄位維持原值，完成後自動讀回驗證。' +
+                '新增或編輯一款廠商遊戲（rajah: GameVendorAdmin.CreateOrUpdateGameVendorGame，upsert 語意），' +
+                '會寫進全平台共用的「廠商遊戲母表」（game_vendor_games）——這是唯一真正的「建立新遊戲」入口，' +
+                'platform 後台做不到這件事，只能對母表已存在的遊戲做「上架到本平台」（見 aladdin-platform 的 ' +
+                'aladdin_platform_game_vendor_platform_update_game_vendor_game）。本工具操作的是全平台共用母表，' +
+                '結果與平台無關，不需要也不接受 platformId 參數。' +
+                '用 gameVendorId+gameId 這組業務鍵判斷是新增還是更新（工具內部會自動查，不用先知道內部流水號 id）：' +
+                '這個廠商底下已經有這個 gameId → 讀既有資料當基準值，只有你有帶的欄位會覆蓋，沒帶的欄位維持原值；' +
+                '沒有 → 視為新增全新遊戲，此時 name 必填。' +
+                'gameVendorId 必須是既有場館的 id（可用 aladdin_admin_game_vendor_admin_list_game_vendors 查母表，或用 ' +
+                'aladdin_admin_game_vendor_admin_create_or_update_game_vendor 的讀回結果拿到）——注意：場館的內部 id 全域共用（admin 建立的 id，platform 端看到的也是同一個數字），' +
+                '但新建立的場館預設不會出現在任何 platform 的清單裡，要先由 admin 端呼叫 ' +
+                'aladdin_admin_game_vendor_admin_update_platform_game_vendor_status 為該場館啟用特定 platform，' +
+                '否則 aladdin-platform 的 aladdin_platform_game_vendor_platform_list_game_vendors 查不到剛建立的場館。' +
                 'squareImage/rectangleImage/bannerImage 這三個圖片欄位是「每個語言各自一張圖」，不是一張圖套用全部語言——' +
                 '要幫哪個語言換圖，就在對應的 squareImages/rectangleImages/bannerImages 陣列裡帶一組 {code, filePath}（stdio 模式，' +
                 '工程師本機直接執行時用）或 {code, fileId}（hosted 模式，企劃端遠端連線時用，fileId 來自先呼叫 POST /files 上傳的結果）——' +
@@ -147,16 +186,16 @@ export function registerEditGameTool(server: McpServer): void {
                 '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
                 '絕不能自行假設使用者同意。非 prod 環境（dev/pre/evi）不需要、也會忽略 confirm 欄位。',
             inputSchema: {
-                gameVendorId: z.number().int().describe('廠商場館 id'),
-                gameId: z.string().min(1).describe('廠商系統裡的原始遊戲代碼，用來定位既有遊戲（同一廠商底下唯一）'),
-                name: z.string().optional().describe('遊戲名稱（單一顯示名稱，非多語系），不帶則沿用既有值'),
-                localizedNames: localizedTextSchema.describe('遊戲名稱的多語系版本，每個要更新的語言各帶一組 {code, value}，不帶則沿用既有值'),
-                displayTag: z.enum(GAME_TAG_KEYS).optional().describe('遊戲分類：unknown/slot(電子)/board(棋牌)/fish(捕魚)/live(真人)/sport(體育)/eSport(電競)/lottery(彩票)，不帶則沿用既有值'),
-                rebateTag: z.enum(GAME_TAG_KEYS).optional().describe('返水分類，選項同 displayTag，不帶則沿用既有值'),
-                openMode: z.enum(OPEN_MODE_KEYS).optional().describe('開啟模式：embedded/externalBrowser/embeddedWithTitle/inHouseGame/inHouseSport，不帶則沿用既有值'),
-                sortOrder: z.number().int().optional().describe('排序，不帶則沿用既有值'),
-                demo: z.boolean().optional().describe('是否為試玩，不帶則沿用既有值'),
-                squareImages: imageUploadSchema.describe('方形圖，每個要更新的語言各帶一組 {code, filePath} 或 {code, fileId}（二選一），不帶則沿用既有值'),
+                gameVendorId: z.number().int().describe('廠商場館 id，必填'),
+                gameId: z.string().min(1).describe('廠商系統裡的原始遊戲代碼，同一廠商底下須唯一——工具用它判斷這筆是新增還是更新'),
+                name: z.string().optional().describe('遊戲名稱（單一顯示名稱，非多語系）。若 gameId 是全新遊戲則必填；若是編輯既有遊戲，不帶則沿用既有值'),
+                localizedNames: localizedTextSchema.describe('遊戲名稱的多語系版本，每個要更新的語言各帶一組 {code, value}，編輯既有遊戲時不帶則沿用既有值'),
+                displayTag: z.enum(GAME_TAG_KEYS).optional().describe('遊戲分類：unknown/slot(電子)/board(棋牌)/fish(捕魚)/live(真人)/sport(體育)/eSport(電競)/lottery(彩票)，編輯既有遊戲時不帶則沿用既有值'),
+                rebateTag: z.enum(GAME_TAG_KEYS).optional().describe('返水分類，選項同 displayTag，編輯既有遊戲時不帶則沿用既有值'),
+                openMode: z.enum(OPEN_MODE_KEYS).optional().describe('開啟模式：embedded(內嵌，預設)/externalBrowser/embeddedWithTitle/inHouseGame/inHouseSport，編輯既有遊戲時不帶則沿用既有值'),
+                sortOrder: z.number().int().optional().describe('排序，編輯既有遊戲時不帶則沿用既有值'),
+                demo: z.boolean().optional().describe('是否為試玩，編輯既有遊戲時不帶則沿用既有值'),
+                squareImages: imageUploadSchema.describe('方形圖，每個要更新的語言各帶一組 {code, filePath} 或 {code, fileId}（二選一），編輯既有遊戲時不帶則沿用既有值'),
                 rectangleImages: imageUploadSchema.describe('直方圖，格式同 squareImages'),
                 bannerImages: imageUploadSchema.describe('橫幅圖，格式同 squareImages'),
                 confirm: z.string().optional().describe(
@@ -166,39 +205,27 @@ export function registerEditGameTool(server: McpServer): void {
             },
         },
         async (input) => {
-            const { gameVendorId, gameId, displayTag, rebateTag, openMode, squareImages, rectangleImages, bannerImages, localizedNames, confirm, ...rest } = input;
+            const { gameVendorId, gameId, name, displayTag, rebateTag, openMode, squareImages, rectangleImages, bannerImages, localizedNames, confirm, ...rest } = input;
             assertProdConfirmed(confirm);
 
-            // GetGameVendorGameForEdit 只吃內部流水號，先用 ListGames 把 gameId 換成 id。
-            // ListGames 沒有 gameId 篩選參數，只能逐頁掃描比對——廠商遊戲數可能超過一頁
-            // （例如 PP電子-XO 有 518 款），只查第一頁會漏掉排在後面的遊戲，故逐頁掃到找到或掃完為止。
-            const LIST_PAGE_SIZE = 200;
-            const findResult = await (async () => {
-                let totalPage = 1;
-                let scannedPages = 0;
-                for (let page = 1; page <= totalPage; page++) {
-                    const listR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(gameVendorId, page, LIST_PAGE_SIZE));
-                    if (listR.failed) return { listR, matchedRow: undefined, scannedPages } as const;
-                    scannedPages++;
-                    totalPage = listR.data?.totalPage ?? 1;
-                    const matchedRow = listR.data?.rows?.find((row) => row.gameId === gameId);
-                    if (matchedRow) return { listR: undefined, matchedRow, scannedPages } as const;
-                }
-                return { listR: undefined, matchedRow: undefined, scannedPages } as const;
-            })();
-            if (findResult.listR?.failed) return asErrorResult(findResult.listR);
-            const matchedRow = findResult.matchedRow;
-            if (!matchedRow) {
+            const found = await findGameRowByBusinessKey(gameVendorId, gameId);
+            if (found.listR?.failed) return asErrorResult(found.listR);
+            const matchedRow = found.matchedRow;
+            const isCreate = !matchedRow;
+
+            if (isCreate && !name) {
                 return asTextResult({
                     success: false,
-                    message: `在廠商 ${ gameVendorId } 底下找不到 gameId=${ gameId } 的遊戲（已掃描全部 ${ findResult.scannedPages } 頁）。若這是全新遊戲請改用 aladdin_admin_create_game。`,
+                    message: `在廠商 ${ gameVendorId } 底下找不到 gameId=${ gameId } 的既有遊戲（已掃描全部 ${ found.scannedPages } 頁），視為新增；新增全新遊戲時 name 必填。`,
                 });
             }
 
-            const getR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetGameVendorGameForEdit(matchedRow.id));
-            if (getR.failed) return asErrorResult(getR);
-
-            const base = getR.data?.game;
+            let base;
+            if (matchedRow) {
+                const getR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetGameVendorGameForEdit(matchedRow.id));
+                if (getR.failed) return asErrorResult(getR);
+                base = getR.data?.game;
+            }
 
             const squareResult = await uploadLocalizedImages('square', squareImages, base?.squareImage);
             const rectangleResult = await uploadLocalizedImages('rectangle', rectangleImages, base?.rectangleImage);
@@ -210,10 +237,11 @@ export function registerEditGameTool(server: McpServer): void {
 
             const merged = GameEdit.create({
                 ...(base ?? {}),
-                id: matchedRow.id,
+                id: matchedRow?.id,
                 gameVendorId,
                 gameId,
                 ...Object.fromEntries(Object.entries(rest).filter(([ , v ]) => v !== undefined)),
+                name: name ?? base?.name,
                 displayTag: displayTag ? GAME_TAG_MAP[ displayTag ] : base?.displayTag,
                 rebateTag: rebateTag ? GAME_TAG_MAP[ rebateTag ] : base?.rebateTag,
                 openMode: openMode ? OPEN_MODE_MAP[ openMode ] : base?.openMode,
@@ -223,14 +251,33 @@ export function registerEditGameTool(server: McpServer): void {
                 ...(localizedNames ? { localizedName: mergeLocalizedStrings(localizedNames, base?.localizedName) } : {}),
             });
 
-            const updateR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.CreateOrUpdateGameVendorGame(merged));
-            if (updateR.failed) return asErrorResult(updateR);
+            const writeR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.CreateOrUpdateGameVendorGame(merged));
+            if (writeR.failed) return asErrorResult(writeR);
 
-            const checkR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetGameVendorGameForEdit(matchedRow.id));
+            if (matchedRow) {
+                // 更新：id 本來就知道，直接讀回驗證。
+                const checkR = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.GetGameVendorGameForEdit(matchedRow.id));
+                return asTextResult({
+                    success: true,
+                    message: '更新成功',
+                    game: checkR.success ? checkR.data?.game : null,
+                });
+            }
+
+            // 新增：CreateOrUpdateGameVendorGame 不會直接回傳新 id，只能查回驗證。比照舊版
+            // create_game.ts 的作法，只用便宜的第一頁查找（不是像上面業務鍵定位那樣逐頁掃到底）
+            // ——這裡純粹是「順手驗證剛剛真的寫進去了」，不是本工具賴以判斷新增/更新的關鍵路徑，
+            // 沒必要為了它把每次新增的成本翻倍成兩次逐頁全掃。
+            const listResult = await withAutoRelogin(() => remote.gameBackOffice.gameVendorAdmin.ListGames(gameVendorId, 1, 50));
+            const matched = listResult.success
+                ? listResult.data?.rows?.find((row) => row.gameId === gameId)
+                : undefined;
+
             return asTextResult({
                 success: true,
-                message: '更新成功',
-                game: checkR.success ? checkR.data?.game : null,
+                message: '建立成功',
+                game: matched ?? null,
+                ...(!matched && listResult.success ? { note: '該廠商前 50 筆內沒找到，可能分頁較後面，非失敗' } : {}),
             });
         },
     );

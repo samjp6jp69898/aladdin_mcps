@@ -30,7 +30,7 @@ sub-agent 產出「成功」manifest 後，不會把 `output/` 底下的檔案�
 1. **precondition**：檢查這次要更新的檔案在正式目錄現況是否乾淨（git status 乾淨），不乾淨（可能有別的工作階段正在改同一批檔案）就直接中止，不動任何檔案。
 2. **copy**：把 `output/` 底下的檔案複製進正式目錄。
 3. **tsc gate**（決定性）：比對套用前後的 `tsc --noEmit` 錯誤集合，只有「新增」的錯誤才算失敗——這個 codebase 有既有型別債務，不能拿「有沒有錯誤」當標準。
-4. **對抗性覆核**（獨立第二個 `claude -p --permission-mode bypassPermissions` sub-agent，不信任原作者的自我陳述）：核對 `method-category-checklist.md` 的分類要求、實際對 dev 打一次新/改過的 tool、給出 `PASS`/`FAIL` 結論。
+4. **對抗性覆核**（獨立第二個 `claude -p --permission-mode bypassPermissions` sub-agent，不信任原作者的自我陳述）：核對 `method-category-checklist.md` 的分類要求、核對 `tool-naming-convention.md` 的命名規則、實際對 dev 打一次新/改過的 tool、給出 `PASS`/`FAIL` 結論。
 5. 兩關都過才 **commit**（`git add` 一律用精確檔案路徑，不用 `-A`）→ **reload**（`launchctl kickstart`）與 **push**（直接推 `origin main`）各自獨立 try/catch，一個失敗不擋另一個嘗試（不是連續依賴關係——「本地服務有沒有生效」跟「git 歷史有沒有同步到遠端」是兩件事）。
 6. 任一 gate（precondition/tsc/對抗性覆核）沒過：`git checkout` + `git clean` 回滾正式目錄到套用前的狀態，不 commit、不 push、不 reload，回傳結構化失敗原因。commit 一旦落地（不論 reload/push 各自成不成功）都算「部署成功」，會發一則 Telegram 通知（沿用 `scripts/tg-notify.sh`，收件人查 `tech-users.csv`）——目前只涵蓋成功情境，gate 沒過被回滾的失敗情況不通知。
 

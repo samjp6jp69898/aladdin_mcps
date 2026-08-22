@@ -23,7 +23,7 @@ import { HOSTED_RELOGIN_REQUIRED_MESSAGE } from './const.ts';
  */
 const testDir = mkdtempSync(join(tmpdir(), 'aladdin-platform-http-test-'));
 const auditLogPath = join(testDir, 'audit.jsonl');
-const TOOL_NAME = 'aladdin_platform_list_game_vendors';
+const TOOL_NAME = 'aladdin_platform_game_vendor_platform_list_game_vendors';
 
 const childScript = `
 const DIR = ${ JSON.stringify(dirname(fileURLToPath(import.meta.url))) };

@@ -1,5 +1,7 @@
 /**
- * tools/login.ts — aladdin_platform_login
+ * tools/login.ts — aladdin_platform_auth_login
+ *
+ * rajah: Auth.Login
  */
 
 import { z } from 'zod';
@@ -10,7 +12,7 @@ import { asTextResult, asErrorResult } from '../mcp_result.ts';
 
 export function registerLoginTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_platform_login',
+        'aladdin_platform_auth_login',
         {
             title: 'Login to agrabah platform backend',
             description:

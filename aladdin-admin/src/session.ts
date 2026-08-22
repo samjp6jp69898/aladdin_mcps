@@ -206,7 +206,7 @@ function isHostedIdentity(): boolean {
 }
 
 /**
- * H9：暴露目前呼叫身分的字串形式，供 tools（edit_game.ts）解析 fileId → 本機
+ * H9：暴露目前呼叫身分的字串形式，供 tools（upsert_game.ts）解析 fileId → 本機
  * 路徑時比對身分（見 files.ts 的 resolveFileIdForIdentity）。stdio 模式的
  * STDIO_IDENTITY 是 Symbol，不是任何合法的名冊 id，回傳 undefined——這對應
  * 到「stdio 模式本來就不會有合法 fileId 可用」的事實（POST /files 只存在於

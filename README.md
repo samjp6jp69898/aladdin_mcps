@@ -151,7 +151,7 @@ proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑�
 |---|---|---|
 | 使用者 | 工程師本機，有公司原始碼 | 企劃，零原始碼（starter kit） |
 | transport | host 直接 spawn 子行程（stdin/stdout） | Streamable HTTP，經 tg-dispatcher proxy 轉發 |
-| 登入方式 | `aladdin_admin_login`/`aladdin_platform_login` tool，或 env 帳密自動登入 | `POST /login`（REST，非 tool），帳密不進對話紀錄（D4） |
+| 登入方式 | `aladdin_admin_auth_login`/`aladdin_platform_auth_login` tool，或 env 帳密自動登入 | `POST /login`（REST，非 tool），帳密不進對話紀錄（D4） |
 | login tool 是否註冊 | 有（`registerAdminTools(server, 'stdio')`，見 `tools/index.ts`） | 停用（`mode === 'hosted'` 時不掛，H7） |
 | 登入態存放 | process 記憶體單一隱含身分（`STDIO_IDENTITY` Symbol） | per-token 容器（`sessions: Map<identity, {token}>`），identity 來自 Bearer token（H5） |
 | JWT 過期行為 | `withAutoRelogin` 用 env 帳密自動重登，行為不變 | 回 `HOSTED_RELOGIN_REQUIRED_MESSAGE` 明確信號，不嘗試自動重登（server 不留帳密），交由企劃端登入 skill 重跑 `/login`（H7） |
@@ -176,13 +176,13 @@ proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑�
 - 有沒有 `@Type "Select:xxx"` 依賴——代表這個欄位必須是「後端既有清單裡的值」，不是任意字串/數字，要嘛額外加一支查詢 tool、要嘛在 description 裡講清楚限制（不要無聲放過，agent 會亂填）。
 - 對應 agrabah 後端實作邏輯是不是真的等於「建立」語意（`id > 0` 判斷 create/update 是常見寫法，但不是每支都這樣——這次 `GameVendorPlatform.UpdateGameVendorGame` 就不是，見 `aladdin-platform` README）。
 - **跨 server 的假設要實測驗證，不能只憑「看起來是同一張表」下結論**：曾經誤以為 admin 建立的場館 id 在 platform 端「直接可用」，實測才發現場館要先被 admin 呼叫 `UpdatePlatformGameVendorStatus` 啟用給特定 platform，否則 platform 端完全查不到（該 id 全域共用沒錯，但「哪些 platform 看得到」是另一張獨立關聯表）。寫進文件前先跑一次真實呼叫確認，不要只靠程式碼推論就斷言跨模組行為。
-- **判斷這支 method 屬於哪個分類，套用該分類的檢查要求**：對照 `method-category-checklist.md`（同層目錄）——依 method 的回傳型別/參數形狀（不是方法名）分成讀取單筆、讀取清單（含高風險的「只有範圍鍵+分頁、沒有可鎖定目標欄位」B 級）、新增、Upsert/CreateOrUpdate、業務鍵間接定位更新、狀態轉換、刪除、敏感資料/PII、驗證類、Send/Export/Import 等分類，每類有各自的強制檢查項。**這一步不能省略**——2026-08-20 的真實 bug（`aladdin_admin_edit_game` 內部用 `ListGames` 找特定遊戲，寫死只查第一頁 200 筆，廠商遊戲數超過 200 就查不到、更新失敗）就是在「只要求打一次 dev 成功」的舊版流程下漏測出來的。
+- **判斷這支 method 屬於哪個分類，套用該分類的檢查要求**：對照 `method-category-checklist.md`（同層目錄）——依 method 的回傳型別/參數形狀（不是方法名）分成讀取單筆、讀取清單（含高風險的「只有範圍鍵+分頁、沒有可鎖定目標欄位」B 級）、新增、Upsert/CreateOrUpdate、業務鍵間接定位更新、狀態轉換、刪除、敏感資料/PII、驗證類、Send/Export/Import 等分類，每類有各自的強制檢查項。**這一步不能省略**——2026-08-20 的真實 bug（當時的 `aladdin_admin_edit_game`，2026-08-22 併入 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`，內部用 `ListGames` 找特定遊戲，寫死只查第一頁 200 筆，廠商遊戲數超過 200 就查不到、更新失敗）就是在「只要求打一次 dev 成功」的舊版流程下漏測出來的。
 
 ### 2. 檔案放哪裡：一個能力一個檔案
 
 在對應 server 的 `src/tools/` 底下新增檔案，**檔名對應能力語意**（不是照搬 RPC method 英文名），例如 `list_vendor_games.ts`，不是全部塞進一支 `tools.ts`。`src/session.ts`（登入態 + `uploadFile`）、`src/const.ts`（rajah enum 對照表、錯誤碼等常數）、`src/mcp_result.ts`（回傳包裝）是共用基礎設施，業務邏輯不要往這三個檔案塞；反過來說，enum 對照表這類**兩個以上 tool 檔案會用到的常數，一定放 `const.ts`，不要每個 tool 檔案各自宣告一份**（曾經 `GAME_TAG_MAP`/`ACTIVE_STATUS_MAP` 這類 map 在多支 tool 裡重複定義過，容易漂移）。帳號/URL 這類環境設定不放 `const.ts`，一律只走 `.mcp.json` 的 `env`（`process.env.*`），程式碼裡不寫死任何 fallback 值。
 
-### 3. 套用這個骨架
+### 3. 套用這個骨架（tool 命名規則見 `tool-naming-convention.md`，同層目錄）
 
 ```ts
 /**
@@ -200,7 +200,10 @@ import { <NeededEnumMap> } from '../const.ts'; // enum 對照表/錯誤碼放這
 
 export function register<CapabilityName>Tool(server: McpServer): void {
     server.registerTool(
-        '<mcp_tool_name>',                // 命名慣例：aladdin_<admin|platform>_<動詞>_<名詞>
+        '<mcp_tool_name>',                // 命名規則：<server>_<service>_<method>（各自轉 snake_case），
+                                           // 例如 aladdin_admin_game_vendor_admin_list_game_vendors；
+                                           // 完整規則、撞名處理方式見 tool-naming-convention.md（同層目錄），
+                                           // 不要自己另外發明 <動詞>_<名詞> 這類命名
         {
             title: '...',
             description:
@@ -259,7 +262,7 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 - **身分/認證相關的敘述要對兩種模式都成立**：tool description 若提到「登入」
   「帳密」，不要預設一定有 env 帳密可用（hosted 模式沒有，見 `ensureLoggedIn`/
   `withAutoRelogin` 的雙模式分支，`session.ts`）。
-- **圖片類參數**：比照 `edit_game.ts`/`onboard_vendor_game.ts` 的
+- **圖片類參數**：比照 `upsert_game.ts`/`onboard_vendor_game.ts` 的
   `{code, filePath}`/`{code, fileId}` 二選一設計（H9），不要只做 stdio 的
   `filePath` 就視為完成。
 - **寫入類 tool 若未來要在 `aladdin-admin` 的 prod 實例啟用**：要接上

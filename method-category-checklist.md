@@ -1,8 +1,10 @@
 # Method 分類檢查要求
 
-給「新增一個 tool 的公版流程」(見 `README.md` 第二節)第 1 步(查清楚目標 RPC method)與第 5 步(dev 驗證)引用。目標:公版流程原本只要求「打一次 dev 成功」,對 list 類方法這種要求太弱——2026-08-20 真實 bug(`aladdin_admin_edit_game` 內部用 `ListGames` 找特定遊戲,寫死只查第一頁 200 筆,PP電子-XO 有 518 款遊戲時查不到、更新失敗)就是在「打一次 dev 成功」的驗收標準下漏測出來的,因為驗收時剛好用了排在前 200 筆內的遊戲。
+給「新增一個 tool 的公版流程」(見 `README.md` 第二節)第 1 步(查清楚目標 RPC method)與第 5 步(dev 驗證)引用。目標:公版流程原本只要求「打一次 dev 成功」,對 list 類方法這種要求太弱——2026-08-20 真實 bug(當時的 `aladdin_admin_edit_game`,2026-08-22 併入 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`,內部用 `ListGames` 找特定遊戲,寫死只查第一頁 200 筆,PP電子-XO 有 518 款遊戲時查不到、更新失敗)就是在「打一次 dev 成功」的驗收標準下漏測出來的,因為驗收時剛好用了排在前 200 筆內的遊戲。
 
 來源:對 `rajah/services/*.rajah` 全部 101 檔、3358 支 method 的分類調查 + 三輪獨立對抗驗證(每個結論都嘗試被獨立反證過,非單一視角)。
+
+Tool 命名規則另見 `tool-naming-convention.md`(同層目錄)——挑到候選 method、確認分類與檢查項之後,新 tool 的註冊名稱要照該檔的 `<server>_<service>_<method>` 規則命名,不是自己選一個順口的名字。
 
 **用法**:挑到候選 method 後,先過第 0 節排除規則,再依回傳型別/參數形狀對照第 1-11 節找到對應分類,套用該分類的檢查要求。**方法名不可信,必須看實際簽名與回傳型別**——這個 codebase 有大量「叫 Get 其實是分頁清單」「叫 List 其實一次全撈」「叫 Toggle 其實要帶明確目標狀態」的命名與實際行為不一致案例。
 
@@ -80,7 +82,7 @@
 - 一律先確認是否已有用業務鍵直接查詢的 sibling method(`GetXxxForEdit(業務鍵)`);若有,直接用,禁止自己重新發明「List 全部 + 逐頁比對」邏輯。
 - 若確實沒有直接查詢介面,只能靠分頁掃描比對業務鍵定位:比照第 2 節 B 級要求,逐頁掃到底、設上限與逾時保護、驗收案例含「目標不在第一頁」。
 - 注意同名 method 在不同 service 可能一個用 id 定位、一個用業務鍵定位,不能假設同名行為一致。
-- **實際範例**:`obsidian/mcps/aladdin-admin/src/tools/edit_game.ts` 今天的修法(先問 sibling method 是否存在、否則逐頁掃描到 `totalPage`、設定回報格式)可直接參考。
+- **實際範例**:`obsidian/mcps/aladdin-admin/src/tools/upsert_game.ts` 的 `findGameRowByBusinessKey()`(先問 sibling method 是否存在、否則逐頁掃描到 `totalPage`、設定回報格式)可直接參考。
 
 ## 6. 寫入 — 狀態轉換(Enable / Disable / Toggle / Approve / Reject / Cancel / Reset / UpdateXxxStatus)
 

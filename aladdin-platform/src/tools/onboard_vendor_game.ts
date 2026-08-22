@@ -1,5 +1,5 @@
 /**
- * tools/onboard_vendor_game.ts — aladdin_platform_onboard_vendor_game
+ * tools/onboard_vendor_game.ts — aladdin_platform_game_vendor_platform_update_game_vendor_game
  *
  * rajah: GameVendorPlatform.GetGameVendorGameForEdit / UpdateGameVendorGame
  * （game_back_office.rajah:1074, 1076）
@@ -134,7 +134,7 @@ async function uploadLocalizedImages(
 
 export function registerOnboardVendorGameTool(server: McpServer): void {
     server.registerTool(
-        'aladdin_platform_onboard_vendor_game',
+        'aladdin_platform_game_vendor_platform_update_game_vendor_game',
         {
             title: 'Onboard (or update) a vendor game on this platform',
             description:
@@ -157,7 +157,7 @@ export function registerOnboardVendorGameTool(server: McpServer): void {
                 '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
                 '絕不能自行假設使用者同意。非 prod 環境不需要、也會忽略 confirm 欄位。',
             inputSchema: {
-                gameVendorId: z.number().int().describe('遊戲廠商 id，來自 aladdin_platform_list_game_vendors'),
+                gameVendorId: z.number().int().describe('遊戲廠商 id，來自 aladdin_platform_game_vendor_platform_list_game_vendors'),
                 gameId: z.string().min(1).describe('廠商遊戲 id（廠商系統裡的原始遊戲代碼，不是本平台的流水號）'),
                 name: z.string().optional().describe('遊戲名稱（單一顯示名稱，非多語系），不帶則沿用既有值'),
                 localizedNames: localizedTextSchema.describe('遊戲名稱的多語系版本，每個要更新的語言各帶一組 {code, value}，不帶則沿用既有值'),
