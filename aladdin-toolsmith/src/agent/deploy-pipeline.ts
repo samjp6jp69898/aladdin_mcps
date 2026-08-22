@@ -20,10 +20,22 @@
  * 自動 commit。同理，部署前會先檢查這批目標檔案在正式目錄現況是否乾淨，不乾淨
  * 就直接中止，不猜測「應該沒關係」。
  *
- * 步驟順序刻意是 precondition → copy → tsc → adversarial → commit → reload →
- * push（reload 排在 push 之前）：commit 完成、驗證都通過後，先讓本地 dev 常駐
- * 服務真的用上新代碼（企劃打過去馬上就能用，這是這次功能的核心目標），push
- * 到 origin 失敗只影響 git 歷史的同步，不影響「企劃現在能不能用」，兩者解耦。
+ * 2026-08-22：precondition 補上「這批目標檔案在 origin/main 若有本地沒有的
+ * 新異動，就把 OBSIDIAN_ROOT（REAL_DIR 所在的 obsidian repo）`fetch` +
+ * `merge --ff-only` 同步過去」這一步——跟 ensure-fresh-repos.ts 對
+ * agrabah/abu/rajah/lago 四個「研究用」來源 repo 做的事對稱，補的是「部署
+ * 目標本身」這一側原本沒做的同一件事：本地落後遠端時若不先同步，會一路跑完
+ * tsc/對抗性覆核/commit/reload 才在最後 push 因 non-fast-forward 失敗，屆時
+ * dev 常駐服務早已套用一個跟遠端分岔的版本，沒有回滾機制。刻意只在目標檔案
+ * 真的落後時才同步整個 repo（不是每次部署都無條件 merge），避免跟這次部署
+ * 無關的遠端異動、疊加本地對不相干檔案的未提交異動，平白擋死一次無關的部署。
+ * 詳細理由見 runDeployPipelineLocked() 裡這段的行內註解。
+ *
+ * 步驟順序刻意是 precondition（含同步 origin/main）→ copy → tsc → adversarial
+ * → commit → reload → push（reload 排在 push 之前）：commit 完成、驗證都
+ * 通過後，先讓本地 dev 常駐服務真的用上新代碼（企劃打過去馬上就能用，這是
+ * 這次功能的核心目標），push 到 origin 失敗只影響 git 歷史的同步，不影響
+ * 「企劃現在能不能用」，兩者解耦。
  */
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -169,15 +181,85 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
         };
     }
 
-    // 1b. precondition：目標檔案在正式目錄現況必須乾淨，避免蓋掉別的工作階段
-    // 尚未 commit 的異動。
+    // 1b. precondition：只有「這次要部署的目標檔案在 origin/main 真的有本地
+    // 沒有的新異動」時，才把整個 OBSIDIAN_ROOT 同步到 origin/main（git 沒有
+    // 「只同步這幾個檔案又保留可正常 commit 的 HEAD」這種操作，fast-forward
+    // 天生是整個 tree 一起前移，做不到只挑 pathspec）。理由跟 ensure-fresh-
+    // repos.ts 對 agrabah/abu/rajah/lago 四個來源 repo 做的事對稱——那邊解決
+    // 「sub-agent 研究時讀到的 rajah 簽名是不是最新」，這裡解決「部署時要改的
+    // 正式目錄本身是不是最新」。沒有這一步的舊行為：若本地落後遠端，
+    // precondition/tsc/對抗性覆核/commit/reload 會全部先跑完（reload 排在
+    // push 之前，dev 常駐服務已經套用新代碼），才在最後一步 push 因
+    // non-fast-forward 失敗，此時已經來不及回滾，只能留一則「需要人工推送」
+    // 的訊息。
+    //
+    // 加了「先判斷這批目標檔案是否真的落後」這道前置檢查，而不是無條件對整個
+    // repo 做 fetch+merge，有兩個理由：
+    //   1. obsidian 是知識庫+程式碼混合的 repo，常態上會有其他工作階段留著
+    //      跟這次部署完全無關的未提交異動（見本檔案頭 commit 那步的說明）。
+    //      若這次 origin/main 剛好只多了跟這批目標檔案無關的 commit（例如
+    //      某人 push 了一則 doctrine 筆記），無條件 `merge --ff-only` 一旦
+    //      撞上「本地剛好對那個不相干檔案也有未提交異動」就會被 git 拒絕，
+    //      擋死這次跟它完全無關的部署——先確認目標檔案本身真的落後，能避開
+    //      絕大多數這種巧合。
+    //   2. 多數情況下上一輪部署自己的 push 已經讓本地跟遠端同步，不用每次
+    //      部署都多付一次全 repo fast-forward 的成本。
+    // 殘留風險（刻意不進一步處理，非遺漏）：如果這批目標檔案本身真的落後、
+    // 且本地剛好對某個「不相干但也在這批 origin/main 新 commit 裡」的檔案有
+    // 未提交異動，下面的 merge 仍然可能被拒絕——這種情況下擋住部署、要求人工
+    // 確認現況才是正確行為，不強行繞過。
+    //
+    // 誠實看待這一步能縮小多少風險窗口：不是「幾乎消除」，commit 前面還隔著
+    // Gate A（tsc，至多 180 秒）跟 Gate B（對抗性覆核 sub-agent，至多
+    // AGENT_TIMEOUT_SECONDS=1800 秒），這裡同步完到真正 push 之間仍有最長
+    // 約半小時的窗口，push 仍可能因為這段期間遠端又有新 commit 而失敗——
+    // 這一步解決的是「本地長期、無上限地落後遠端」這種情況，不是把 push
+    // 失敗的機率壓到零。
+    try {
+        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'fetch', 'origin', 'main' ], { encoding: 'utf8', timeout: 30_000 });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log(`precondition 失敗，同步 obsidian repo 時 fetch 失敗: ${ message }`);
+        return {
+            success: false, stage: 'precondition',
+            message: `部署前檢查 obsidian repo 是否落後 origin/main 時 fetch 失敗，已中止部署，未動任何檔案：${ message }`,
+        };
+    }
+
+    const behindOnTargetFiles = execFileSync(
+        'git', [ '-C', OBSIDIAN_ROOT, 'log', '--oneline', 'HEAD..origin/main', '--', ...pathspecs ],
+        { encoding: 'utf8', timeout: 15_000 },
+    ).trim();
+
+    let syncedToOrigin = false;
+    if (behindOnTargetFiles.length > 0) {
+        try {
+            execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'merge', '--ff-only', 'origin/main' ], { encoding: 'utf8', timeout: 30_000 });
+            syncedToOrigin = true;
+            log(`precondition：這批目標檔案在 origin/main 有本地沒有的新異動，已同步整個 repo 到 origin/main：\n${ behindOnTargetFiles }`);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            log(`precondition 失敗，這批目標檔案在 origin/main 有新異動，但同步整個 repo 時失敗: ${ message }`);
+            return {
+                success: false, stage: 'precondition',
+                message: `這批要部署的檔案在 origin/main 有本地沒有的新異動，但同步整個 obsidian repo 到 origin/main 失敗（本地可能與遠端分岔、或遠端異動會覆蓋本地某個未提交檔案），已中止部署，需要人工確認現況：${ message }`,
+            };
+        }
+    } else {
+        log('precondition：這批目標檔案在 origin/main 沒有本地沒有的新異動，略過整個 repo 的同步');
+    }
+
+    // 1c. precondition：目標檔案在正式目錄現況必須乾淨，避免蓋掉別的工作階段
+    // 尚未 commit 的異動。放在上面之後檢查：上面那步拿的是「別人已經
+    // commit/push 過的異動」，這裡查的是「這批目標檔案有沒有『尚未 commit』
+    // 的本地異動」，是兩個不同來源的風險。
     const dirtyBefore = gitStatusShort(pathspecs);
     if (dirtyBefore.trim().length > 0) {
         log(`precondition 失敗，目標檔案已有未提交異動:\n${ dirtyBefore }`);
         return {
             success: false,
             stage: 'precondition',
-            message: `這次要更新的檔案在正式目錄已有未提交的異動（可能有別的工作階段正在改同一批檔案），為避免覆蓋，已中止部署，未動任何檔案。受影響檔案：\n${ dirtyBefore }`,
+            message: `這次要更新的檔案在正式目錄已有未提交的異動（可能有別的工作階段正在改同一批檔案），為避免覆蓋，已中止部署${ syncedToOrigin ? '（上一步已把 obsidian repo 同步到 origin/main 最新狀態，這批目標檔案的本地未提交異動未受影響、未被覆蓋）' : '，未動任何檔案' }。受影響檔案：\n${ dirtyBefore }`,
         };
     }
 

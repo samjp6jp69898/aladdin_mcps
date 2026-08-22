@@ -27,7 +27,7 @@
 
 sub-agent 產出「成功」manifest 後，不會把 `output/` 底下的檔案內容回傳給企劃，而是交給決定性的部署流程接手，依序：
 
-1. **precondition**：檢查這次要更新的檔案在正式目錄現況是否乾淨（git status 乾淨），不乾淨（可能有別的工作階段正在改同一批檔案）就直接中止，不動任何檔案。
+1. **precondition**：(a) 確認目前在 `main` 分支；(b) `fetch` 後只在「這次要部署的目標檔案在 `origin/main` 真的有本地沒有的新異動」時，才把 obsidian repo 本身 `merge --ff-only` 同步到 `origin/main`（跟 `ensure-fresh-repos.ts` 對 agrabah/abu/rajah/lago 四個研究來源 repo 做的事對稱，補的是部署目標本身這一側；刻意不是無條件同步整個 repo，避免跟這次部署無關的遠端異動連帶擋住不相干的部署）——目標檔案落後又同步失敗（本地分岔/會覆蓋本地未提交檔案）時直接中止；(c) 檢查這次要更新的檔案在正式目錄現況是否乾淨（git status 乾淨），不乾淨（可能有別的工作階段正在改同一批檔案）就直接中止。三關都過才進下一步。
 2. **copy**：把 `output/` 底下的檔案複製進正式目錄。
 3. **tsc gate**（決定性）：比對套用前後的 `tsc --noEmit` 錯誤集合，只有「新增」的錯誤才算失敗——這個 codebase 有既有型別債務，不能拿「有沒有錯誤」當標準。
 4. **對抗性覆核**（獨立第二個 `claude -p --permission-mode bypassPermissions` sub-agent，不信任原作者的自我陳述）：核對 `method-category-checklist.md` 的分類要求、核對 `tool-naming-convention.md` 的命名規則、實際對 dev 打一次新/改過的 tool、給出 `PASS`/`FAIL` 結論。
