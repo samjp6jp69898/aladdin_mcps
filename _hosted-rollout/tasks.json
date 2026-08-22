@@ -163,6 +163,10 @@
     {
       "date": "2026-08-22",
       "note": "2026-08-22（使用者裁定，H28 risk_notes 收斂的部分子項，非 H28 整體完成）：\n\n使用者針對 H28 risk_notes 累積的運維項目逐項拍板，本輪完成程式碼層級的四項（皆已跑過 aladdin-admin/aladdin-platform 全套 bun test，admin 94/94、platform 84/84 全綠，含新增測試）：\n\n(5) expected_agrabah_identifier 死欄位：使用者裁定移除（而非實作綁定）。admin/platform 的 auth.ts 各刪除該欄位定義與範例註解；已核對所有 tokens*.json 本來就沒有任何條目設過這個欄位，無資料需要遷移。\n\n(7) 稽核 log identity 改用唯一 id：audit_log.ts 的 logAuthenticatedRequest 簽章新增 displayName 參數，JSON 行同時寫 identity（H3/H4 名冊唯一 id，歸屬鍵）與 displayName（僅供人讀），http.ts 呼叫端改用 getIdentity(c) 取 identity、getDisplayName(c) 取 displayName。admin/platform 兩邊同步修改。\n\n(9) session 閒置逾時：session.ts 的 per-identity 登入態容器新增 lastActivityMs，改用「存取當下檢查＋順便延展」的模式（getActiveSession），不用 setInterval 主動掃描——headerHandler 與 ensureLoggedIn 都改讀這支函式。門檻 5 分鐘（IDLE_TIMEOUT_MS，可用 ALADDIN_ADMIN_SESSION_IDLE_TIMEOUT_MS / ALADDIN_PLATFORM_SESSION_IDLE_TIMEOUT_MS 覆寫，供測試指定小門檻，不必真的等待 5 分鐘）。新增 setSessionForTests() 測試專用入口，直接灌入既定的 lastActivityMs 狀態驗證『剛好過期』與『仍在門檻內』兩種情境，全程不依賴真實等待。\n\n(5) tokens.json / 根目錄 .mcp.json 檔案權限：chmod 600（原本 644，同機任何使用者可讀）。涵蓋 aladdin-admin/tokens.json、tokens.pre.json、tokens.evi.json、aladdin-platform/tokens.json、aladdin-toolsmith/tokens.json、根目錄 .mcp.json 共六份。純檔案系統權限變更，不涉及程式碼。\n\n【核對後發現已經完成，不需要重做】使用者同時要求『健康監控需要寫日誌並發 TG 通知』——查證後這件事在 T19/F-3（telegram-dispatcher/lib/webhook-server/health-monitor.ts，server.ts:166 createHealthMonitor().start()）已經實作且正在跑：監控 ngrok tunnel 可達性與四份 token 名冊（admin dev/pre/evi、platform）是否可載入，寫 log 到 telegram-dispatcher/logs/health-monitor.log，狀態翻轉時經 tg-notify.sh 發送到 OPERATOR_CHAT_ID='5022865804'——已核對這正是使用者本人（Landon）在 tech-users.csv 的 tg_chat_id，不是別人。本輪未新增任何程式碼。\n\n【尚未部署】本次改動只改程式碼、測試與檔案權限，未重啟正在服務的 launchd 行程（8789/8790）——重啟會清空 session.ts 的 per-token 登入態容器，所有在線企劃需要重新登入，比照 H38 changelog 的既有慣例，需另外跟使用者協調時機才 deploy。\n\n【仍待進行，本輪未動】(2)(3)(4)(6)(8)(10)(11) 與 ngrok→Cloudflare Tunnel 遷移（使用者已裁定『現在就評估/進行』，但 cloudflared tunnel login 需要互動式瀏覽器授權，agent 無法代為完成，需使用者親自執行該指令的授權步驟後才能繼續）；H28 文件本體（撰寫 mcps/README.md 連結的完整運維文件）也還沒寫。"
+    },
+    {
+      "date": "2026-08-22",
+      "note": "H21 標記 done（2026-08-22，使用者裁定）：使用者本人回報已在企劃的 Windows 電腦上實際測試過\nkit，沒有問題，直接裁定標記完成。\n\n【記錄透明度】本輪對話中曾提醒 acceptance_criteria 裡兩個最容易破的細節——jq 在該 Windows\n環境是否可用（H18 從 .mcp.json 取 token 依賴 jq，若不可用需要不依賴 jq 的替代做法）、CRLF\n情境是否用記事本實際存檔重現（而非只用 unix2dos 模擬）——使用者確認整體驗收通過但未逐條複述\n這兩項細節的具體結果。是否已個別覆蓋這兩點，以使用者本人的確認為準；日後若在其他 Windows 環境\n遇到 jq 缺失或 CRLF 相關的登入失敗，可回頭參照本 task 的 acceptance_criteria 補測。"
     }
   ],
   "architecture_summary": "企劃 Claude Code 桌面版（Mac/Win，零公司原始碼，只有 starter kit：.mcp.json 填 URL + 個人 Bearer token、.env 放自己的 agrabah 帳密、兩支 skill 負責登入與上傳圖片）→ HTTPS 打 telegram-dispatcher 既有 ngrok domain → /Users/user/aladdin/telegram-dispatcher/server.ts 的 Hono app 依 path 分流 proxy 三條 route（/mcp-admin/* → localhost:8789、/mcp-platform/* → localhost:8790、/toolsmith/* → localhost:8788；TG webhook guard 不得攔到這三條）→ 各 hosted server（Hono + WebStandardStreamableHTTPServerTransport，stateless MCP transport）先過 Bearer 認證 middleware（timingSafeEqual，token → 企劃身分），再依 token 取得該人的登入態（D2：Map<bearerToken, 登入態>；D3：記憶體只留 agrabah JWT，絕不留帳密）→ 登入不走 MCP tool 而走 POST /login REST 端點（D4，密碼由企劃端 shell 從本地 .env 展開，不進 LLM 對話紀錄）；圖片走自家 POST /files multipart 回 fileId（D5），圖片類 tool 參數 hosted 吃 fileId、stdio 保留 filePath 向後相容 → tool 實作沿用現有扁平的 src/tools/*（D8），stdio.ts 與 http.ts 雙進入點共用同一組註冊函式 → 最終打 agrabah Gate（dev）HTTP POST /api/:group/:service/:method（protobuf + XOR，經 genie client，見既有 session.ts）。錯誤語意不硬編魔術數字，改 import rajah 對 abu 生成的 error 定義並把後端錯誤名稱原樣透傳（D10）；harness 只做事實診斷、不引導跨後台操作（D11），權限硬防線是 agrabah 後端 @Permission ＋ admin/platform 兩台獨立發 token。agrabah-toolsmith（/Users/user/.claude/plans/logical-jumping-cook.md 原設計）沿用 Phase 1-5、7-8，交付端依 D9 改為把生成的 tool 部署到 hosted server 並重載，全企劃立即可用。一切僅限 dev 環境。",
@@ -699,7 +703,7 @@
       "id": "H21",
       "module": "starter-kit",
       "title": "Windows 實機驗證（單一份跨平台 kit 的關鍵驗收）",
-      "status": "pending",
+      "status": "done",
       "depends_on": [
         "H20"
       ],
