@@ -14,7 +14,7 @@
 - **stdio**（原始形態）：只有工程師本機、有公司原始碼的環境能跑，host 直接
   spawn 子行程。第一節「基礎架構」與第三節「安裝與連線」預設講的就是這個模式。
 - **hosted**（H1 起新增；`_hosted-rollout/plan.md` D1-D13）：Streamable HTTP，
-  常駐工程師機器，經 `telegram-dispatcher` 既有 ngrok domain 分流，給沒有公司
+  常駐工程師機器，經 `telegram-dispatcher` 既有 Cloudflare Tunnel domain 分流（2026-08-22 起，先前為 ngrok），給沒有公司
   原始碼的企劃用。詳見本節最後的「Hosted 模式」小節與差異對照表。
 
 給企劃用的零原始碼 starter kit 在 `mcps/aladdin-ai-assistant-kit/`（H16-H18；`README.md`／
@@ -86,7 +86,7 @@ REST 端點。
 企劃 Claude Code（starter kit，零原始碼）
   │ .mcp.json: url + headers.Authorization: Bearer <個人 token>
   ▼
-https://<既有 ngrok domain>/mcp-admin-dev（或 -pre / -evi / /mcp-platform / /toolsmith）
+https://mcp.aladdin-assistant.cc/mcp-admin-dev（或 -pre / -evi / /mcp-platform / /toolsmith）
   │  telegram-dispatcher/server.ts 的 5 條 path 分流 proxy（H14）：剝掉前綴後轉發
   │  到 http://localhost:<port>，見下表。轉發前依序過四層流量控制——前綴格式
   │  檢查、Authorization header 是否存在（只檢查有沒有帶，不檢查內容）、

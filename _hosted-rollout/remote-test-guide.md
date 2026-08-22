@@ -18,8 +18,8 @@
 
 | 項目 | 值 |
 |---|---|
-| Admin（dev）MCP URL | `https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp` |
-| Platform MCP URL | `https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-platform/mcp` |
+| Admin（dev）MCP URL | `https://mcp.aladdin-assistant.cc/mcp-admin-dev/mcp` |
+| Platform MCP URL | `https://mcp.aladdin-assistant.cc/mcp-platform/mcp` |
 | Bearer token | `landon-remote-test`（admin 與 platform 各一把，**值不同**） |
 
 ### token 怎麼拿
@@ -49,7 +49,7 @@ python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/alad
 ### A-1 完成 MCP 握手
 
 ```bash
-curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp \
+curl -sS -X POST https://mcp.aladdin-assistant.cc/mcp-admin-dev/mcp \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -57,12 +57,12 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
 ```
 
 **預期**：一段 JSON，含 `"name":"aladdin-admin"`、`protocolVersion`，以及一段中文 `instructions`。
-看到就代表「公網 → ngrok → proxy → hosted server」整條鏈路通了。
+看到就代表「公網 → Cloudflare Tunnel → proxy → hosted server」整條鏈路通了。
 
 ### A-2 列出可用工具
 
 ```bash
-curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp \
+curl -sS -X POST https://mcp.aladdin-assistant.cc/mcp-admin-dev/mcp \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -89,12 +89,12 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
   "mcpServers": {
     "aladdin-admin-dev": {
       "type": "http",
-      "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp",
+      "url": "https://mcp.aladdin-assistant.cc/mcp-admin-dev/mcp",
       "headers": { "Authorization": "Bearer <ADMIN_TOKEN>" }
     },
     "aladdin-platform": {
       "type": "http",
-      "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-platform/mcp",
+      "url": "https://mcp.aladdin-assistant.cc/mcp-platform/mcp",
       "headers": { "Authorization": "Bearer <PLATFORM_TOKEN>" }
     }
   }
@@ -113,7 +113,7 @@ hosted 模式下每個 token 各自維護後台登入態，服務重啟就會清
 若 Claude 回報「登入態失效 / HOSTED_RELOGIN_REQUIRED」，手動打一次：
 
 ```bash
-curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/login \
+curl -sS -X POST https://mcp.aladdin-assistant.cc/mcp-admin-dev/login \
   -H "Authorization: Bearer <ADMIN_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"identifier":"<帳號>","password":"<密碼>"}'
@@ -136,7 +136,7 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
 | 現象 | 意義 |
 |---|---|
 | **401（空回應）** | 四種可能，逐一排除：token 不對 / 沒帶 Authorization header / 網址前綴打錯 / **該環境的後端沒在跑** |
-| 連不上、逾時 | 工程師那台機器睡眠、斷網，或 ngrok tunnel 掉了 |
+| 連不上、逾時 | 工程師那台機器睡眠、斷網，或 Cloudflare tunnel 掉了 |
 | 429 | 觸發流量限制（每條路徑每分鐘 30 次），等一分鐘再試 |
 | **405** | **正常。** `GET /mcp` 本來就該回 405，MCP client 靠它判定「沒有 GET SSE」 |
 | 回應說「登入態失效」 | 正常，照上面 `/login` 重登 |
@@ -151,7 +151,7 @@ curl -sS -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admi
 打 proxy 自己的健康檢查（不需要 token、不透露任何服務身分）：
 
 ```bash
-curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/health
+curl -s https://mcp.aladdin-assistant.cc/health
 # 預期：{"status":"ok","uptime_seconds":…}
 ```
 
@@ -180,8 +180,9 @@ curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/health
 launchctl bootout gui/$(id -u)/com.aladdin.mcp-admin-server
 launchctl bootout gui/$(id -u)/com.aladdin.mcp-platform-server
 
-# 最快、最確定的整體對外下線：停掉 ngrok，公網入口立即消失
-launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel
+# 最快、最確定的整體對外下線：停掉 Cloudflare tunnel，公網入口立即消失
+# （2026-08-22 起改用 cloudflared，plist label 已改名；ngrok 版本已停用不再常駐）
+launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel-cloudflare
 ```
 
 撤銷單一 token：從對應 `tokens.json` 刪掉那筆條目存檔即可**立即生效、不需重啟**。
@@ -192,4 +193,4 @@ launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel
 
 - 服務由 launchd 常駐管理，但屬於 LaunchAgent（`gui/` domain）：**重開機後要等工程師登入桌面 session 才會自動拉起**，不是開機就起。
 - 工程師那台機器必須保持開機、不斷網、不睡眠，否則測試端直接連線失敗。
-- 對外流量經 ngrok，TLS 在 ngrok 邊緣終止——`/login` 的帳密與所有 token 在 ngrok 伺服器上是明文。目前僅涉及 dev 環境，已列入風險紀錄。
+- 對外流量經 Cloudflare Tunnel，TLS 在 Cloudflare 邊緣終止（2026-08-22 起，先前為 ngrok）——`/login` 的帳密與所有 token 在 Cloudflare 邊緣節點上是明文（他們的基礎設施，非我方持有）。目前僅涉及 dev 環境，已列入風險紀錄。

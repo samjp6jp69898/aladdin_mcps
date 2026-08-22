@@ -72,7 +72,8 @@ import { join, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 
 const KIT_DIR = dirname(new URL(import.meta.url).pathname);
-const DISPATCH_DOMAIN = 'https://unrefreshing-trudy-subsequently.ngrok-free.dev';
+// 2026-08-22：改用 Cloudflare Tunnel 取代 ngrok（使用者裁定，H28 risk_notes (12) 收斂）。
+const DISPATCH_DOMAIN = 'https://mcp.aladdin-assistant.cc';
 
 interface GrantConfig {
     /** .mcp.json 裡的 server 別名。 */

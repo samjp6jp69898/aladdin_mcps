@@ -98,7 +98,7 @@ bun make-starter-kit.ts --list | grep chenmei
 # 4. 新 token 真的能通過認證（實際打一次 initialize；token 直接從
 #    dist/chenmei/.mcp.json 裡讀，不要手動複製貼上到別的地方）
 TOKEN=$(python3 -c "import json;print(json.load(open('dist/chenmei/.mcp.json'))['mcpServers']['aladdin-admin-dev']['headers']['Authorization'].split(' ')[1])")
-curl -sS -m 5 -X POST https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp \
+curl -sS -m 5 -X POST https://mcp.aladdin-assistant.cc/mcp-admin-dev/mcp \
   -H "Authorization: Bearer $TOKEN" \
   -H 'content-type: application/json' \
   -H 'accept: application/json, text/event-stream' \

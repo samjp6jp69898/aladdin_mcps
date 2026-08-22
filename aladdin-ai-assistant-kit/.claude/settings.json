@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(curl -s https://unrefreshing-trudy-subsequently.ngrok-free.dev/health)",
+      "Bash(curl -s https://mcp.aladdin-assistant.cc/health)",
       "Bash(bash .claude/skills/login/login.sh)",
       "Bash(bash .claude/skills/upload-image/upload.sh)"
     ],
@@ -49,6 +49,9 @@
     "那種指令本質上就沒有辦法用這裡的萬用字元語法安全地 allowlist。",
     "",
     "如果之後真的需要放寬（例如 skill 要支援可變路徑），先重新做一次同樣的",
-    "『兩個 host 對照組』實測，不要假設語法看起來合理就是安全的。"
+    "『兩個 host 對照組』實測，不要假設語法看起來合理就是安全的。",
+    "",
+    "【2026-08-22】網域從 ngrok 換成 Cloudflare Tunnel（mcp.aladdin-assistant.cc），",
+    "只是把逐字比對規則裡的網域字串換掉，比對機制本身（完全不帶 * 的逐字錨定）沒有變。"
   ]
 }

@@ -36,7 +36,7 @@
   "mcpServers": {
     "aladdin-admin-dev": {
       "type": "http",
-      "url": "https://unrefreshing-trudy-subsequently.ngrok-free.dev/mcp-admin-dev/mcp",
+      "url": "https://mcp.aladdin-assistant.cc/mcp-admin-dev/mcp",
       "headers": {
         "Authorization": "Bearer <YOUR_BEARER_TOKEN>"
       }

@@ -15,7 +15,8 @@
       │  https://<tunnel domain>/mcp-admin-dev/mcp
       ▼
   ┌─────────────────────────────────────────────┐
-  │ ngrok tunnel        （job: tg-dispatch-tunnel）│  ← 對外的門
+  │ Cloudflare tunnel  （job: tg-dispatch-tunnel- │  ← 對外的門
+  │   (cloudflared)         cloudflare）          │     （2026-08-22 起，先前為 ngrok）
   └─────────────────────────────────────────────┘
       │  轉到本機 127.0.0.1:8787
       ▼
@@ -78,8 +79,8 @@ ls -l /Users/<USER>/.bun/bin/bun
 ls -d /Users/<USER>/aladdin/obsidian/mcps
 ls -d /Users/<USER>/aladdin/obsidian/telegram-dispatcher
 
-# 3. ngrok（對外 tunnel 用，需 3.x）
-ngrok version
+# 3. cloudflared（對外 tunnel 用；2026-08-22 起取代 ngrok）
+cloudflared --version
 
 # 4. node_modules（每個 server 目錄各自需要）
 cd /Users/<USER>/aladdin/obsidian/mcps/aladdin-admin && bun install
@@ -260,21 +261,52 @@ dispatcher 有自己的兩個 launchd job，都在 `/Users/<USER>/aladdin/obsidi
 | plist | 做什麼 |
 |---|---|
 | `com.aladdin.tg-dispatch-server.plist` | 跑 webhook server 與 MCP proxy（:8787） |
-| `com.aladdin.tg-dispatch-tunnel.plist` | 跑 `ngrok http 8787 --url <domain> --inspect=false` |
+| `com.aladdin.tg-dispatch-tunnel-cloudflare.plist` | 跑 `cloudflared tunnel --config cloudflared-config.yml run aladdin-mcp`（2026-08-22 起，取代 ngrok 版的 `com.aladdin.tg-dispatch-tunnel.plist`——舊 plist 與 `run-tunnel.sh` 仍留在 repo 供參考，但不應再 bootstrap） |
 
-### 4.1 前置：ngrok 與 authtoken
+### 4.1 前置：cloudflared 與 tunnel 憑證
+
+**這一節分兩種情境，先判斷你是哪一種：**
+
+- **(A) 這台機器就是當初建立 tunnel 的那台**：`~/.cloudflared/` 已經有 `cert.pem`
+  與 `<tunnel-id>.json`，不需要做任何事，跳到 §4.3。
+- **(B) 全新機器（換機器 / 加一台備援機器跑同一個 tunnel）**：往下看。
 
 ```bash
-ngrok version          # 需要 3.x（現行腳本依 3.23.3 的語法撰寫）
-ls -l ~/Library/Application\ Support/ngrok/ngrok.yml
+cloudflared --version   # 沒裝先 brew install cloudflared（或官方安裝腳本）
 ```
 
-> **authtoken 存在全域 `ngrok.yml`，不在 repo 裡**，換機器必須重新設定一次：
-> ```bash
-> ngrok config add-authtoken <你的 authtoken>
-> ```
-> 另外**保留的 domain 綁在 ngrok 帳號上**。新機器用同一個帳號才能用同一個 domain；
-> 若要換 domain，見下方 §4.4。
+**tunnel id 與網域**（記在這裡，換了要回頭更新本節）：
+
+| 項目 | 值 |
+|---|---|
+| Tunnel 名稱 | `aladdin-mcp` |
+| Tunnel id | `6906f8e7-e46e-43f3-abd5-b43bbaa96e3e` |
+| 對外網域 | `mcp.aladdin-assistant.cc`（Cloudflare Registrar 註冊，nameserver 已指向 Cloudflare） |
+
+**新機器要跑同一條 tunnel，正確做法是複製既有憑證，不是重新 `login` + `create`**
+（`tunnel create` 會產生一個全新、不同 id 的 tunnel，還要重新 `route dns`，等於
+另開一條全新的 tunnel，不是「同一條 tunnel 換一台機器跑」）：
+
+1. 在**原本那台機器**，安全地把這個檔案傳到新機器（AirDrop / `scp` over SSH /
+   USB——**不要**透過 Slack、email、任何會被第三方存放的通道，這個檔案等同
+   私鑰，外洩等於任何人都能冒充這條 tunnel 接受流量）：
+   ```
+   ~/.cloudflared/6906f8e7-e46e-43f3-abd5-b43bbaa96e3e.json
+   ```
+2. 在**新機器**，把它放到同樣的路徑 `~/.cloudflared/`（目錄不存在就 `mkdir -p ~/.cloudflared`）。
+3. `cert.pem` **不需要複製**——純粹「跑一條既有 tunnel」只需要上面那份 credentials-file；
+   `cert.pem` 只有在這台機器要自己管理帳號層級操作（建立/刪除 tunnel、改 DNS route）
+   時才需要，那種情境才需要在這台機器另外跑 `cloudflared tunnel login`。
+4. `cloudflared-config.yml`（引用 credentials-file 路徑 + ingress 規則）已經在 repo 裡，
+   clone/pull `obsidian` repo 就會帶到，不需要另外處理。
+
+> **风险提示**：這份 credentials-file 目前只存在建立它的那台機器與你剛複製過去的
+> 這台機器。它跟 `tokens.json` / 根目錄 `.mcp.json` 一樣屬於「外洩等於可冒用」的
+> 機密，建議 `chmod 600`；如果之後不再需要某台機器跑這條 tunnel，直接刪掉那台機器
+> 上的這個檔案即可（不影響其他機器，因為 credentials-file 只是"能不能連上這條
+> tunnel"的憑證，撤銷單一機器的存取需要用 `cloudflared tunnel revoke-credentials`
+> 或直接在 Cloudflare Zero Trust 後台刪除整條 tunnel 重建——後者是核彈級做法，
+> 影響所有正在用這條 tunnel 的機器，非必要不要做）。
 
 ### 4.2 dispatcher 自己的環境設定
 
@@ -289,11 +321,11 @@ ls -l ~/Library/Application\ Support/ngrok/ngrok.yml
 ```bash
 T=/Users/<USER>/aladdin/obsidian/telegram-dispatcher
 cp "$T/launchd/com.aladdin.tg-dispatch-server.plist" ~/Library/LaunchAgents/
-cp "$T/launchd/com.aladdin.tg-dispatch-tunnel.plist" ~/Library/LaunchAgents/
+cp "$T/launchd/com.aladdin.tg-dispatch-tunnel-cloudflare.plist" ~/Library/LaunchAgents/
 plutil -lint ~/Library/LaunchAgents/com.aladdin.tg-dispatch-*.plist
 
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.tg-dispatch-server.plist
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.tg-dispatch-tunnel.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.tg-dispatch-tunnel-cloudflare.plist
 
 # 等 server 就緒（同 §3.3 的輪詢寫法）
 for i in $(seq 1 90); do
@@ -302,9 +334,10 @@ for i in $(seq 1 90); do
   [ "$i" = "90" ] && echo "未就緒: $d"
 done
 
-# 確認 tunnel 真的連上（ngrok 本機 API）
-curl -sS http://127.0.0.1:4040/api/tunnels | python3 -c \
-  "import sys,json;[print(t['public_url'],'->',t['config']['addr']) for t in json.load(sys.stdin).get('tunnels',[])]"
+# 確認 tunnel 真的連上（cloudflared 本機 metrics /ready；2026-08-22 起取代 ngrok 的 4040/api/tunnels）
+curl -sS http://127.0.0.1:20241/ready
+# 預期：{"status":200,"readyConnections":4,"connectorId":"..."}——readyConnections
+# 是 0 代表行程活著但完全連不上 Cloudflare 邊緣，檢查網路或 credentials-file。
 ```
 
 **四個 job 都跑起來後應該長這樣**：
@@ -314,29 +347,54 @@ launchctl list | grep -i aladdin
 # com.aladdin.mcp-admin-server
 # com.aladdin.mcp-platform-server
 # com.aladdin.tg-dispatch-server
-# com.aladdin.tg-dispatch-tunnel
+# com.aladdin.tg-dispatch-tunnel-cloudflare
 ```
 
 ### 4.4 換 domain 時要改的地方
 
-**ngrok domain 是寫死的**，出現在三個位置，改一個漏兩個服務就會壞：
+**2026-08-22 起改用 Cloudflare Tunnel，domain 的來源跟 ngrok 版不同**：ngrok 版是
+寫死在 `run-tunnel.sh` 的字串常數；Cloudflare 版的網域是 **DNS CNAME route**（用
+`cloudflared tunnel route dns` 建立），`cloudflared-config.yml` 的 `hostname:` 欄位
+只是宣告這條 tunnel 要接哪個 hostname 的流量，兩邊要一致。
+
+換 domain 步驟：
+
+```bash
+# 1. 幫這條 tunnel 加一個新的 DNS route（舊的不會自動移除，仍會繼續指過去）
+cloudflared tunnel route dns aladdin-mcp <新網域>
+
+# 2. 改 cloudflared-config.yml 的 hostname 欄位成新網域
+#    路徑：obsidian/telegram-dispatcher/launchd/cloudflared-config.yml
+
+# 3. 重啟 tunnel 行程讓新設定生效
+launchctl kickstart -k gui/$(id -u)/com.aladdin.tg-dispatch-tunnel-cloudflare
+
+# 4.（可選）不想再用舊網域，去 Cloudflare 後台 DNS 設定刪掉舊的 CNAME record
+```
+
+除了 tunnel 本身，這兩個位置也要跟著改（跟 ngrok 版一樣，這兩處是 domain 唯二的
+另外兩份拷貝）：
 
 ```
-obsidian/telegram-dispatcher/launchd/run-tunnel.sh:37   （TUNNEL_URL 常數）
 mcps/aladdin-ai-assistant-kit/.claude/settings.json （allow 規則，逐字比對，改錯會讓企劃每次都跳權限確認）
-mcps/aladdin-ai-assistant-kit/.mcp.json            （企劃連線的 URL）
+mcps/aladdin-ai-assistant-kit/.mcp.json / make-starter-kit.ts 的 DISPATCH_DOMAIN 常數
 ```
 
-改完 `run-tunnel.sh` 要 `launchctl kickstart -k gui/$(id -u)/com.aladdin.tg-dispatch-tunnel`。
-**已發出去的 kit 全部要重發**（裡面的 URL 變了）。
+**已發出去的 kit 全部要重發**（裡面的 URL 變了）——`aladdin-ai-assistant-kit/dist/`
+底下每個企劃的 `.mcp.json` 也要同步更新，且更新的是**這台機器上的本機拷貝**，
+真正生效需要把新檔案交付給每個企劃（重新整份 kit 發送，或請企劃自行把
+`.mcp.json` 裡的網域改掉）——這一步無法用腳本代勞，是人工交付動作。
 
 > **Telegram bot 的 webhook 也綁在 domain 上**。如果新機器要繼續提供 bot 功能，
 > 換 domain 後必須重新 `setWebhook`，否則 Telegram 會繼續往舊 domain 送。
 > 做法見 `obsidian/telegram-dispatcher/README.md`。
 
-> **已知風險（H28）**：ngrok 官方文件現在寫免費方案不提供 static domain，但現有 reserved domain
-> 仍在運作——代表這個 domain 隨時可能被政策收回。Cloudflare Tunnel 的遷移評估報告見
-> `scratchpad/cloudflare-tunnel-eval.md`（結論：有條件遷移；CF 解決出口 IP 洩漏但同樣終止 TLS）。
+> **相較 ngrok 的改善**：ngrok 免費方案的 reserved domain 隨時可能被政策收回
+> （H28 已知風險），且同帳號同時只能有一個 tunnel session；Cloudflare Tunnel
+> 用的是你自己註冊、掛在自己 Cloudflare 帳號下的網域（`aladdin-assistant.cc`），
+> 沒有這兩個限制。仍未解決的：TLS 終止在 Cloudflare 邊緣（不是我方持有），
+> 帳密與 token 經過時對 Cloudflare 基礎設施而言是明文——跟 ngrok 版本質相同，
+> 只是換了信任對象。
 
 ---
 
@@ -397,13 +455,13 @@ launchctl kickstart -k gui/$(id -u)/com.aladdin.mcp-admin-server
 # 停單一服務
 launchctl bootout gui/$(id -u)/com.aladdin.mcp-admin-server
 
-# 最快、最確定的整體對外下線（停 ngrok，公網入口立即消失）
-launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel
+# 最快、最確定的整體對外下線（停 Cloudflare tunnel，公網入口立即消失）
+launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel-cloudflare
 
 # 撤銷某人的 token：從 tokens.json 移除該筆條目（用暫存檔+mv），立即生效不需重啟
 ```
 
-> **緊急止血優先用 `bootout tg-dispatch-tunnel`**，不要用刪名冊檔的方式——
+> **緊急止血優先用 `bootout tg-dispatch-tunnel-cloudflare`**，不要用刪名冊檔的方式——
 > 刪檔雖然現在是 fail-closed（安全的一邊），但停 tunnel 更快也更確定。
 
 ---
@@ -449,6 +507,6 @@ launchctl bootout gui/$(id -u)/com.aladdin.tg-dispatch-tunnel
 | token 無到期機制 | 唯一失效方式是人工刪條目（H28） |
 | 稽核 log 用 display_name 而非唯一 id | 兩人同名時歸屬會失效（H28） |
 | `.mcp.json`（kit 內）被 git tracked | `.gitignore` 對已追蹤檔無效，填真 token 後可能誤 commit（H19） |
-| ngrok domain 可能被政策收回 | 見 §4（H28） |
+| ~~ngrok domain 可能被政策收回~~ | 已於 2026-08-22 遷移至 Cloudflare Tunnel（自有網域 `mcp.aladdin-assistant.cc`），此風險已解除；TLS 終止在第三方邊緣的性質不變，見 §4.4 |
 
 完整清單見 `tasks.json` 的 H28 `risk_notes`。
