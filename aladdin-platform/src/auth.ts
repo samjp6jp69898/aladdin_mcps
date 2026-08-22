@@ -26,8 +26,7 @@
  *         "id": "landon",                          // 唯一，程式當 key
  *         "token": "<randomBytes(32).toString('base64url')>",
  *         "display_name": "Landon",                // 只用於 log
- *         "issued_at": "2026-08-19T00:00:00Z",
- *         "expected_agrabah_identifier": null        // 選填，供帳號綁定用
+ *         "issued_at": "2026-08-19T00:00:00Z"
  *       }
  *     ]
  *   }
@@ -72,12 +71,14 @@ import { readFileSync } from 'node:fs';
 import type { Context, MiddlewareHandler } from 'hono';
 import { logAuthFailure } from './audit_log.ts';
 
+// 2026-08-22：expected_agrabah_identifier 是死欄位（型別與註解都在，全專案零消費點，
+// 使用者裁定移除；H28 risk_notes (6) 收斂）。要嘛實作帳號綁定要嘛移除，選擇移除以免
+// 誤以為有這層防護。原始名冊資料本來就沒有任何條目設過這個欄位（已核對 tokens*.json）。
 export interface TokenRegistryEntry {
     id: string;
     token: string;
     display_name: string;
     issued_at: string;
-    expected_agrabah_identifier?: string | null;
 }
 
 interface RegistryFile {

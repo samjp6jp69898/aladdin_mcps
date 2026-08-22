@@ -60,7 +60,7 @@ async function run(handler) {
             threw = true;
             errorMessage = err instanceof Error ? err.message : String(err);
         }
-        logAuthenticatedRequest(fakeCtx, 'tester', performance.now());
+        logAuthenticatedRequest(fakeCtx, 'tester-id', 'tester', performance.now());
     });
     console.error = originalConsoleError;
     return { threw, value, errorMessage, logs };

@@ -117,8 +117,8 @@ app.use('*', async (c, next) => {
  * H32 稽核 log：掛在 Bearer 認證之後、所有 route 之前，/health 同樣例外（不算
  * 「通過認證的請求」，這支端點本來就不驗證任何東西）。對每個通過認證的
  * request 在整段處理完成後（含 route handler 拋例外的路徑，見 finally）寫
- * 恰好一行；method/path/耗時/來源 IP 在這層就能取得，identity（顯示名）由
- * 上面的 Bearer middleware 剛剛 c.set() 好；tool 名稱、業務結果、/login 用的
+ * 恰好一行；method/path/耗時/來源 IP 在這層就能取得，identity（唯一 id）與
+ * displayName（顯示名，僅供人讀）由上面的 Bearer middleware 剛剛 c.set() 好；tool 名稱、業務結果、/login 用的
  * agrabah identifier 這幾個欄位深處的 handler 才知道，用 audit_log.ts 的
  * AsyncLocalStorage 累積物件回填（runWithAuditAccumulator 包住整個
  * downstream 呼叫鏈，比照 session.ts 的 runWithIdentity 同一種手法，兩個
@@ -129,12 +129,15 @@ app.use('*', async (c, next) => {
         return next();
     }
     const startedAtMs = performance.now();
-    const identity = getDisplayName(c);
+    // 2026-08-22：稽核 log 的歸屬鍵改用唯一 id（H28 risk_notes (7)），displayName
+    // 另外傳、只供人類閱讀，見 audit_log.ts 檔頭說明。
+    const identity = getIdentity(c);
+    const displayName = getDisplayName(c);
     await runWithAuditAccumulator(async () => {
         try {
             await next();
         } finally {
-            logAuthenticatedRequest(c, identity, startedAtMs);
+            logAuthenticatedRequest(c, identity, displayName, startedAtMs);
         }
     });
 });

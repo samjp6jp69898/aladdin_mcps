@@ -219,16 +219,48 @@ export function currentIdentityForFiles(): string | undefined {
 }
 
 /**
- * per-identity 登入態容器（D2）。只存 agrabah JWT（D3：絕不存帳密）。
- * key 是 H3 名冊唯一 id 或 STDIO_IDENTITY，不是顯示名。
+ * 2026-08-22（使用者裁定，H28 risk_notes (9) 收斂）：hosted 登入態閒置逾時。
+ * token 洩漏後的有效窗口原本等於 agrabah JWT 的自然壽命；改成「距上次真的發出過
+ * RPC 請求超過 IDLE_TIMEOUT_MS 就視為登出」，把窗口收斂到一段閒置時間。
+ *
+ * 純「存取當下檢查」而非另開計時器：每次 headerHandler 被呼叫（＝這個身分真的要
+ * 發一次 RPC）就順便檢查＋延展 lastActivityMs，不需要 setInterval 主動掃描——沒
+ * 有人在用的 session 本來就不會被存取，讓它留在 Map 裡到下次存取才發現已過期並
+ * 清掉，結構上等同於一個被動淘汰的快取，不是靠等待判斷正確性（CLAUDE.md 禁止的
+ * 是拿 sleep/輪詢間隔規避競態，這裡是用「存取當下與上次存取的真實時間差」做狀態
+ * 判斷，兩者不同）。stdio 模式同樣受管轄（STDIO_IDENTITY 也是 Identity 的一種
+ * key），行為一致：閒置太久一樣要求重新登入。
  */
-const sessions = new Map<Identity, { token: string }>();
+const IDLE_TIMEOUT_MS = Number(process.env.ALADDIN_ADMIN_SESSION_IDLE_TIMEOUT_MS ?? 5 * 60 * 1000);
+
+/**
+ * per-identity 登入態容器（D2）。只存 agrabah JWT（D3：絕不存帳密）+ 最後一次真的
+ * 發出 RPC 的時間戳（lastActivityMs，供閒置逾時判斷）。key 是 H3 名冊唯一 id 或
+ * STDIO_IDENTITY，不是顯示名。
+ */
+const sessions = new Map<Identity, { token: string; lastActivityMs: number }>();
+
+/**
+ * 讀取一個身分目前是否仍有登入態：不存在、或距上次存取已超過 IDLE_TIMEOUT_MS，都
+ * 視為未登入（後者順便從 Map 移除，避免長期閒置的條目無限累積在記憶體）；仍在有效
+ * 期內則「觸碰」它（更新 lastActivityMs），讓使用中的 session 不會在使用中途過期。
+ */
+function getActiveSession(identity: Identity): { token: string } | undefined {
+    const session = sessions.get(identity);
+    if (!session) return undefined;
+    if (Date.now() - session.lastActivityMs > IDLE_TIMEOUT_MS) {
+        sessions.delete(identity);
+        return undefined;
+    }
+    session.lastActivityMs = Date.now();
+    return session;
+}
 
 export const remote = new Remote();
 remote.setBaseUrlToAllGroup(BASE_URL);
 remote.setHeaderHandlerToAllGroup(() => {
     const headers: Record<string, string> = {};
-    const session = sessions.get(currentIdentity());
+    const session = getActiveSession(currentIdentity());
     if (session?.token) headers['Authorization'] = `Bearer ${ session.token }`;
     return headers;
 });
@@ -257,8 +289,19 @@ export async function login(opts: { identifier?: string; password?: string; totp
         return { success: false, errorCode: r.errorCode, message: r.message };
     }
 
-    sessions.set(identity, { token: r.data.loginToken });
+    sessions.set(identity, { token: r.data.loginToken, lastActivityMs: Date.now() });
     return { success: true, message: '登入成功', mustBindTotp: r.data.mustBindTotp };
+}
+
+/**
+ * 供測試直接灌入登入態，不必真的打一次 RPC 登入（比照 audit_log.ts 的
+ * auditLogConfigForTests 慣例）。lastActivityMsAgo 是「距離現在已經過了多久」，
+ * 用來直接構造「剛登入」或「已閒置超過門檻」兩種既定狀態，不必真的等待
+ * IDLE_TIMEOUT_MS 那麼久（CLAUDE.md 禁止用等待驗證正確性）。僅供測試使用，
+ * 正式程式碼路徑一律走 login()。
+ */
+export function setSessionForTests(identity: string, token: string, lastActivityMsAgo: number): void {
+    sessions.set(identity, { token, lastActivityMs: Date.now() - lastActivityMsAgo });
 }
 
 /**
@@ -283,7 +326,7 @@ export class ReloginRequiredError extends Error {}
  * 後重試。措辭止於 HOSTED_RELOGIN_REQUIRED_MESSAGE，符合 D11「只陳述事實」。
  */
 async function ensureLoggedIn(): Promise<void> {
-    if (sessions.has(currentIdentity())) return;
+    if (getActiveSession(currentIdentity())) return;
     if (isHostedIdentity()) {
         throw new ReloginRequiredError(HOSTED_RELOGIN_REQUIRED_MESSAGE);
     }

@@ -49,14 +49,16 @@ describe('audit_log — 基本寫入格式', () => {
     test('logAuthenticatedRequest 寫出含所有欄位的一行 JSON，tool/agrabahIdentifier 預設 null', async () => {
         const c = await fakeContext({ path: '/mcp', method: 'POST', xff: '1.2.3.4, 10.0.0.1' });
         runWithAuditAccumulator(() => {
-            logAuthenticatedRequest(c as never, 'Landon', performance.now());
+            logAuthenticatedRequest(c as never, 'landon-id', 'Landon', performance.now());
         });
 
         const lines = readLines(auditLogConfigForTests().path);
         expect(lines.length).toBe(1);
         const line = lines[0];
         expect(line.event).toBe('request');
-        expect(line.identity).toBe('Landon');
+        // identity 是唯一 id（歸屬鍵）、displayName 是顯示名（僅供人讀，2026-08-22 分離）。
+        expect(line.identity).toBe('landon-id');
+        expect(line.displayName).toBe('Landon');
         expect(line.sourceIp).toBe('1.2.3.4'); // 只取第一個（最靠近呼叫端的那個）
         expect(line.method).toBe('POST');
         expect(line.path).toBe('/mcp');
@@ -70,7 +72,7 @@ describe('audit_log — 基本寫入格式', () => {
     test('沒有 X-Forwarded-For header：sourceIp 為 null，不臆造來源 IP', async () => {
         const c = await fakeContext({ path: '/health' });
         runWithAuditAccumulator(() => {
-            logAuthenticatedRequest(c as never, 'Landon', performance.now());
+            logAuthenticatedRequest(c as never, 'landon-id', 'Landon', performance.now());
         });
         const lines = readLines(auditLogConfigForTests().path);
         expect(lines.at(-1)?.sourceIp).toBeNull();
@@ -80,7 +82,7 @@ describe('audit_log — 基本寫入格式', () => {
         const c = await fakeContext({ path: '/mcp' });
         runWithAuditAccumulator(() => {
             setAuditTool('aladdin_admin_game_vendor_admin_list_games', 'success');
-            logAuthenticatedRequest(c as never, 'Landon', performance.now());
+            logAuthenticatedRequest(c as never, 'landon-id', 'Landon', performance.now());
         });
         const last = readLines(auditLogConfigForTests().path).at(-1);
         expect(last?.tool).toBe('aladdin_admin_game_vendor_admin_list_games');
@@ -96,12 +98,12 @@ describe('audit_log — 基本寫入格式', () => {
                 setAuditLoginIdentifier('userA');
                 setAuditResult('success');
                 await new Promise(r => setTimeout(r, 0)); // 讓兩個 context 交錯執行
-                logAuthenticatedRequest(cA as never, 'landon', performance.now());
+                logAuthenticatedRequest(cA as never, 'landon', 'Landon', performance.now());
             }),
             runWithAuditAccumulator(async () => {
                 setAuditLoginIdentifier('userB');
                 setAuditResult('error:401');
-                logAuthenticatedRequest(cB as never, 'alice', performance.now());
+                logAuthenticatedRequest(cB as never, 'alice', 'Alice', performance.now());
             }),
         ]);
 
@@ -159,7 +161,7 @@ describe('audit_log — 輪替', () => {
         for (let i = 0; i < 20; i++) {
             runWithAuditAccumulator(() => {
                 setAuditTool(`tool_${ i }`, 'success');
-                logAuthenticatedRequest(c as never, 'Landon', performance.now());
+                logAuthenticatedRequest(c as never, 'landon-id', 'Landon', performance.now());
             });
         }
 
@@ -199,7 +201,7 @@ describe('audit_log — best-effort：I/O 失敗不影響 request，且能自我
                 for (let i = 0; i < 15; i++) {
                     runWithAuditAccumulator(() => {
                         setAuditTool(`blocked_${ i }`, 'success');
-                        logAuthenticatedRequest(c as never, 'Landon', performance.now());
+                        logAuthenticatedRequest(c as never, 'landon-id', 'Landon', performance.now());
                     });
                 }
             }).not.toThrow(); // best-effort：即使底層 I/O 全部失敗，呼叫端也拿不到例外
@@ -212,7 +214,7 @@ describe('audit_log — best-effort：I/O 失敗不影響 request，且能自我
         // null，下次呼叫的 ensureOpen() 會自動重新 mkdir+open，不需要重啟行程。
         runWithAuditAccumulator(() => {
             setAuditTool('healed_after_chmod_back', 'success');
-            logAuthenticatedRequest(c as never, 'Landon', performance.now());
+            logAuthenticatedRequest(c as never, 'landon-id', 'Landon', performance.now());
         });
 
         const lines = readLines(auditLogConfigForTests().path);

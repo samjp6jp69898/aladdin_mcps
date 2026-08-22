@@ -6,11 +6,19 @@
  * Lines，供操作歸屬到人（plan.md D2 動機）與稽核憑證外洩範圍（§4.2）之用。
  *
  * 一個通過 Bearer 認證的 request 恰好一行（event:"request"）；欄位：ts / identity
- * （H3/H4 名冊 display_name，不是 token 值）/ sourceIp（X-Forwarded-For，
- * ngrok/proxy 帶的來源 IP）/ method / path / tool（tools/call 時的 tool 名稱，
- * 其餘請求固定 null）/ result（'success' 或 'error:<code或短原因>'）/
- * agrabahIdentifier（僅 /login 成功時帶，這次使用的 agrabah 帳號 identifier，
- * 使我方 log 與 agrabah 後端 log 對得起來）/ durationMs。
+ * （H3/H4 名冊**唯一 id**，2026-08-22 使用者裁定改用這個而非 display_name 當歸屬鍵——
+ * 見下方 identity/displayName 分離說明）/ displayName（H3/H4 名冊 display_name，僅供
+ * 人看的顯示用途，允許重複）/ sourceIp（X-Forwarded-For，ngrok/proxy 帶的來源 IP）/
+ * method / path / tool（tools/call 時的 tool 名稱，其餘請求固定 null）/ result
+ * （'success' 或 'error:<code或短原因>'）/ agrabahIdentifier（僅 /login 成功時帶，
+ * 這次使用的 agrabah 帳號 identifier，使我方 log 與 agrabah 後端 log 對得起來）/
+ * durationMs。
+ *
+ * identity 改用唯一 id（2026-08-22，H28 risk_notes (7) 收斂，比照 aladdin-admin
+ * 版本）：auth.ts 檔頭已警告 display_name 不保證唯一，若拿它當稽核 log 的歸屬鍵，
+ * 兩人同名時「操作歸屬到人」（plan.md D2 的核心動機）會失效——兩人的操作在 log 上
+ * 會混成同一個 identity 值，事後無法區分。改成寫唯一 id 當 identity、display_name
+ * 只另外存一欄供人類閱讀（identity 本身可能是不好認的 slug），兩個欄位互不取代。
  *
  * tool/result/agrabahIdentifier 這幾個欄位在 MCP tool 呼叫、/login 當下才確定，
  * 最外層 middleware 開始處理 request 時還不知道——用 AsyncLocalStorage 讓深處的
@@ -174,13 +182,18 @@ function extractSourceIp(c: Context): string | null {
     return xff.split(',')[0]?.trim() || null;
 }
 
-/** 最外層 middleware 在 next() resolve（含例外路徑，見 http.ts 的 try/finally）後呼叫，寫恰好一行。 */
-export function logAuthenticatedRequest(c: Context, identity: string, startedAtMs: number): void {
+/**
+ * 最外層 middleware 在 next() resolve（含例外路徑，見 http.ts 的 try/finally）後呼叫，
+ * 寫恰好一行。identity 是名冊唯一 id（歸屬鍵，見檔頭說明）；displayName 只供人類閱讀，
+ * 呼叫端各自從 getIdentity(c) / getDisplayName(c) 取得，這裡不重複解析 Context。
+ */
+export function logAuthenticatedRequest(c: Context, identity: string, displayName: string, startedAtMs: number): void {
     const acc = currentAccumulator();
     appendLine({
         ts: new Date().toISOString(),
         event: 'request',
         identity,
+        displayName,
         sourceIp: extractSourceIp(c),
         method: c.req.method,
         path: c.req.path,

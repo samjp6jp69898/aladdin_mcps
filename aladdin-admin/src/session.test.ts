@@ -12,8 +12,11 @@ import { describe, expect, test } from 'bun:test';
 process.env.ALADDIN_ADMIN_API_URL = 'http://127.0.0.1:1/never-called-in-this-test';
 delete process.env.ALADDIN_ADMIN_USER;
 delete process.env.ALADDIN_ADMIN_PASSWORD;
+// 2026-08-22：閒置逾時測試用的小門檻。必須在 import session.ts 之前設定
+// （IDLE_TIMEOUT_MS 是模組載入時讀一次的 top-level const，比照 BASE_URL 等既有慣例）。
+process.env.ALADDIN_ADMIN_SESSION_IDLE_TIMEOUT_MS = '50';
 
-const { withAutoRelogin, runWithIdentity, ReloginRequiredError } = await import('./session.ts');
+const { withAutoRelogin, runWithIdentity, ReloginRequiredError, setSessionForTests } = await import('./session.ts');
 const { HOSTED_RELOGIN_REQUIRED_MESSAGE } = await import('./const.ts');
 
 describe('withAutoRelogin — hosted 模式沒有登入態', () => {
@@ -36,6 +39,47 @@ describe('withAutoRelogin — hosted 模式沒有登入態', () => {
         expect(err).toBeInstanceOf(ReloginRequiredError);
         expect((err as Error).message).toBe(HOSTED_RELOGIN_REQUIRED_MESSAGE);
         expect(called).toBe(false);
+    });
+});
+
+describe('hosted 登入態閒置逾時（2026-08-22，使用者裁定，H28 risk_notes (9)）', () => {
+    test('距上次存取已超過門檻：視同未登入，拋 ReloginRequiredError 且不呼叫下游 RPC', async () => {
+        let called = false;
+        const thunk = async () => {
+            called = true;
+            return { failed: false, errorCode: 0, message: '', data: null };
+        };
+
+        const err = await runWithIdentity('idle-planner', async () => {
+            // lastActivityMsAgo 遠大於門檻（50ms），不必真的等待——直接構造「已閒置超過門檻」的既定狀態。
+            setSessionForTests('idle-planner', 'fake-token', 10_000);
+            try {
+                await withAutoRelogin(thunk);
+                return null;
+            } catch (e) {
+                return e;
+            }
+        });
+
+        expect(err).toBeInstanceOf(ReloginRequiredError);
+        expect((err as Error).message).toBe(HOSTED_RELOGIN_REQUIRED_MESSAGE);
+        expect(called).toBe(false);
+    });
+
+    test('距上次存取仍在門檻內：視為已登入，正常呼叫下游 RPC 不要求重登', async () => {
+        let called = false;
+        const thunk = async () => {
+            called = true;
+            return { failed: false, errorCode: 0, message: '', data: { ok: true } };
+        };
+
+        const result = await runWithIdentity('fresh-planner', async () => {
+            setSessionForTests('fresh-planner', 'fake-token', 0); // 剛剛才存取過
+            return withAutoRelogin(thunk);
+        });
+
+        expect(called).toBe(true);
+        expect(result.failed).toBe(false);
     });
 });
 
