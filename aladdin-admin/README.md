@@ -22,6 +22,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_get_game_vendor_for_edit` | 用場館 id 讀取單一三方場館的完整編輯用資料（含 decryptedKey/decryptedToken，預設遮罩，帶 revealSecrets=true 才回明文） |
 | `aladdin_admin_game_vendor_admin_list_all_game_tag_names_by_type` | `GameVendorAdmin.ListAllGameTagNamesByType` | 依標籤類型列出遊戲標籤的完整多語名稱清單（不分頁，一次全撈）。已知限制：`gameTagType=frontendGroup` 固定回傳空陣列（後端只讀寫死在 TS enum 裡的內建標籤，不查 DB 的自訂標籤表）；個別標籤的 `name` 可能整欄位缺漏（dev 實測 vendorFee 全部 8 筆都沒有 `name`）。 |
 | `aladdin_admin_game_vendor_admin_update_game_tag_name` | `GameVendorAdmin.UpdateGameTagName` | 更新遊戲標籤（vendorFee 廠商殺數分類/appDisplay 前端顯示分類/rebate 返水分類，三者共用同一組固定 tag enum；不支援 frontendGroup 前台自訂標籤，那是另一張表）的多語系顯示名稱；寫入前後各呼叫一次 `ListAllGameTagNamesByType` 做 before/after round-trip，`names` 只動到你列出的語系代碼——2026-08-24 dev 站台實測確認「未列出語系不受影響」與非法 tagType 回業務錯誤碼 317（gameTagTypeNotExists） |
+| `aladdin_admin_game_vendor_admin_set_game_vendor_maintenance` | 設定廠商場館（母表 game_vendors）的維護時間窗口（rajah: GameVendorAdmin.SetGameVendorMaintenance）；毫秒 epoch，無獨立開關（isMaintaining 是即時計算的衍生值），寫入後用 ListAllGameVendors 讀回驗證 |
 
 ## src/ 結構
 
