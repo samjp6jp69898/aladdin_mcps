@@ -18,6 +18,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerUpdateVendorGameStatusTool } from './update_vendor_game_status.ts';
 import { registerGetGameVendorTool } from './get_game_vendor.ts';
 import { registerListGameTagNamesTool } from './list_game_tag_names.ts';
+import { registerUpdateGameTagNameTool } from './update_game_tag_name.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -43,4 +44,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdateVendorGameStatusTool(server);
     registerGetGameVendorTool(server);
     registerListGameTagNamesTool(server);
+    registerUpdateGameTagNameTool(server);
 }

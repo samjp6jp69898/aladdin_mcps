@@ -21,6 +21,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_update_game_vendor_game_status` | GameVendorAdmin.UpdateGameVendorGameStatus | 更新廠商遊戲母表（game_vendor_games）裡某一筆遊戲的啟停狀態；id 來自 list_games / upsert_game 讀回結果；寫入後用 ListGames 第一頁讀回驗證（找不到≠失敗，見 tool 說明） |
 | `aladdin_admin_game_vendor_admin_get_game_vendor_for_edit` | 用場館 id 讀取單一三方場館的完整編輯用資料（含 decryptedKey/decryptedToken，預設遮罩，帶 revealSecrets=true 才回明文） |
 | `aladdin_admin_game_vendor_admin_list_all_game_tag_names_by_type` | `GameVendorAdmin.ListAllGameTagNamesByType` | 依標籤類型列出遊戲標籤的完整多語名稱清單（不分頁，一次全撈）。已知限制：`gameTagType=frontendGroup` 固定回傳空陣列（後端只讀寫死在 TS enum 裡的內建標籤，不查 DB 的自訂標籤表）；個別標籤的 `name` 可能整欄位缺漏（dev 實測 vendorFee 全部 8 筆都沒有 `name`）。 |
+| `aladdin_admin_game_vendor_admin_update_game_tag_name` | `GameVendorAdmin.UpdateGameTagName` | 更新遊戲標籤（vendorFee 廠商殺數分類/appDisplay 前端顯示分類/rebate 返水分類，三者共用同一組固定 tag enum；不支援 frontendGroup 前台自訂標籤，那是另一張表）的多語系顯示名稱；寫入前後各呼叫一次 `ListAllGameTagNamesByType` 做 before/after round-trip，`names` 只動到你列出的語系代碼——2026-08-24 dev 站台實測確認「未列出語系不受影響」與非法 tagType 回業務錯誤碼 317（gameTagTypeNotExists） |
 
 ## src/ 結構
 
