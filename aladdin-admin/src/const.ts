@@ -34,6 +34,12 @@ export const IMAGE_SHAPE_MAP = { square: 1, rectangle: 2, banner: 3 } as const;
 export const STATUS_MAP = { unknown: 0, enabled: 1, disabled: 2, frozen: 3, deleted: 10 } as const;
 export const STATUS_KEYS = Object.keys(STATUS_MAP) as [ keyof typeof STATUS_MAP, ...(keyof typeof STATUS_MAP)[] ];
 
+// GameTagTypeEnum（game_back_office.rajah:43-52）——ListAllGameTagNamesByType/UpdateGameTagName 的 gameTagType 參數用這組值。
+// 與既有 GAME_TAG_MAP 是不同語意：GAME_TAG_MAP 是「標籤值本身」(GameDisplayTagEnum/GameRebateTagEnum 的 0~7)，
+// 這裡是「標籤分類/類型」的選擇器 (1~4)，不要混用、不要沿用同一個名字。
+export const GAME_TAG_TYPE_MAP = { vendorFee: 1, appDisplay: 2, rebate: 3, frontendGroup: 4 } as const;
+export const GAME_TAG_TYPE_KEYS = Object.keys(GAME_TAG_TYPE_MAP) as [ keyof typeof GAME_TAG_TYPE_MAP, ...(keyof typeof GAME_TAG_TYPE_MAP)[] ];
+
 // dev 環境 2026-08-18 實測 GameVendorAdmin.ListAdapters() 拿到的已知合法值，僅供參考、非強制窮舉
 // （後端可能持續新增，agent 若不確定應先向操作者確認，或直接嘗試、依錯誤訊息判斷）。
 export const KNOWN_ADAPTERS = [

@@ -20,6 +20,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_update_game_vendor_status` | `GameVendorAdmin.UpdateGameVendorStatus` | 把某廠商場館在全平台共用母表（`game_vendors`）裡的狀態改成指定值（需要權限節點 `GameVendor.Vendor.Status.Edit`）。**重要副作用**：目標 status 非 enabled 時會連鎖把該場館在**全部平台**的 `platform_game_vendors.admin_status` 一併改掉，且改回 enabled 不會逆向恢復（2026-08-24 讀 game_vendor_admin.ts:346-371 查證）；沒有帶 status 的單筆查詢 method，改用不分頁的 `ListAllGameVendors` 讀回驗證 |
 | `aladdin_admin_game_vendor_admin_update_game_vendor_game_status` | GameVendorAdmin.UpdateGameVendorGameStatus | 更新廠商遊戲母表（game_vendor_games）裡某一筆遊戲的啟停狀態；id 來自 list_games / upsert_game 讀回結果；寫入後用 ListGames 第一頁讀回驗證（找不到≠失敗，見 tool 說明） |
 | `aladdin_admin_game_vendor_admin_get_game_vendor_for_edit` | 用場館 id 讀取單一三方場館的完整編輯用資料（含 decryptedKey/decryptedToken，預設遮罩，帶 revealSecrets=true 才回明文） |
+| `aladdin_admin_game_vendor_admin_list_all_game_tag_names_by_type` | `GameVendorAdmin.ListAllGameTagNamesByType` | 依標籤類型列出遊戲標籤的完整多語名稱清單（不分頁，一次全撈）。已知限制：`gameTagType=frontendGroup` 固定回傳空陣列（後端只讀寫死在 TS enum 裡的內建標籤，不查 DB 的自訂標籤表）；個別標籤的 `name` 可能整欄位缺漏（dev 實測 vendorFee 全部 8 筆都沒有 `name`）。 |
 
 ## src/ 結構
 
