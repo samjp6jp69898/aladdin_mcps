@@ -17,6 +17,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_list_platform_game_vendors` | `GameVendorAdmin.ListPlatformGameVendors` | 查指定 platformId 底下的廠商場館清單與各自 status——真正平台化的查詢（RPC 簽名有明確 platformId） |
 | `aladdin_admin_game_vendor_admin_update_platform_game_vendor_status` | `GameVendorAdmin.UpdatePlatformGameVendorStatus` | 把某場館在某平台底下的 status 改成指定值（需要權限節點 `PlatformManagementAdmin.PlatformList.Vendor.Status`），補上「幫平台啟用場館」這一步 |
 | `aladdin_admin_game_vendor_admin_list_adapters` | `GameVendorAdmin.ListAdapters` | 無參數，即時列出後端目前已註冊的三方遊戲廠商 adapter 代碼（全撈，不分頁；底層是原始碼裡靜態註冊的 adapter class 清單，非 DB 表，2026-08-24 實測 37 個）。用途：`aladdin_admin_game_vendor_admin_create_or_update_game_vendor` 的 `adapter` 欄位（`@Type "Select:GameVendorAdapter"` + `@Rules "Required"`）與 `aladdin_admin_game_vendor_admin_list_game_vendors` 的 `adapter` 篩選條件都吃這裡回傳的值；比那兩支 description 引用的 `const.ts` `KNOWN_ADAPTERS` 靜態快照（2026-08-18 實測記錄）更即時可靠 |
+| `aladdin_admin_game_vendor_admin_update_game_vendor_status` | `GameVendorAdmin.UpdateGameVendorStatus` | 把某廠商場館在全平台共用母表（`game_vendors`）裡的狀態改成指定值（需要權限節點 `GameVendor.Vendor.Status.Edit`）。**重要副作用**：目標 status 非 enabled 時會連鎖把該場館在**全部平台**的 `platform_game_vendors.admin_status` 一併改掉，且改回 enabled 不會逆向恢復（2026-08-24 讀 game_vendor_admin.ts:346-371 查證）；沒有帶 status 的單筆查詢 method，改用不分頁的 `ListAllGameVendors` 讀回驗證 |
 
 ## src/ 結構
 

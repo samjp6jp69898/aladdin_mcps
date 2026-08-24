@@ -14,6 +14,7 @@ import { registerListPlatformsTool } from './list_platforms.ts';
 import { registerListPlatformGameVendorsTool } from './list_platform_game_vendors.ts';
 import { registerUpdatePlatformGameVendorStatusTool } from './update_platform_game_vendor_status.ts';
 import { registerListGameVendorAdaptersTool } from './list_game_vendor_adapters.ts';
+import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -35,4 +36,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerListPlatformGameVendorsTool(server);
     registerUpdatePlatformGameVendorStatusTool(server);
     registerListGameVendorAdaptersTool(server);
+    registerUpdateGameVendorStatusTool(server);
 }
