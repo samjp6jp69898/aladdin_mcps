@@ -14,6 +14,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_update_game_vendor_game` | `GameVendorPlatform.GetGameVendorGameForEdit` + `UpdateGameVendorGame` | 把廠商遊戲母表已存在、但本平台還沒設定過的遊戲上架到本平台（或更新既有設定），**含方形圖/直方圖/橫幅圖上傳、`localizedNames` 多語系名稱**——不是建立全新遊戲 |
 | `aladdin_platform_message_board_platform_get_message_board_post_setting` | `MessageBoardPlatform.GetMessageBoardPostSetting` | 讀取「大舞台中心」→「大舞台設定」頁籤「基本設置」分頁目前的設定內容（單例設定，無參數，不吃 platformId） |
 | `aladdin_platform_message_board_platform_set_message_board_post_setting` | `MessageBoardPlatform.GetMessageBoardPostSetting` + `SetMessageBoardPostSetting` | 修改「大舞台中心」→「大舞台設定」頁籤「基本設置」分頁的設定並儲存，所有欄位皆 optional，只覆蓋有帶到的欄位，其餘先讀現值原樣帶回 |
+| `aladdin_platform_game_vendor_platform_get_localizations` | `GameVendorPlatform.GetLocalizations` | 批次取得遊戲/廠商/品牌的多語名稱（不分頁全撈，即使已停用仍查得到，用於解析歷史紀錄；gameName 實測近 5000 筆，5 分鐘快取） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 

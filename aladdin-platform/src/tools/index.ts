@@ -11,6 +11,7 @@ import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
 import { registerGetMessageBoardSettingTool } from './get_message_board_setting.ts';
 import { registerUpdateMessageBoardSettingTool } from './update_message_board_setting.ts';
+import { registerGetGameLocalizationsTool } from './get_game_localizations.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -27,4 +28,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerOnboardVendorGameTool(server);
     registerGetMessageBoardSettingTool(server);
     registerUpdateMessageBoardSettingTool(server);
+    registerGetGameLocalizationsTool(server);
 }
