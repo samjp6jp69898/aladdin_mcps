@@ -26,6 +26,7 @@ import { registerListAvailableGameCodesTool } from './list_available_game_codes.
 import { registerGetInHouseVendorListTool } from './get_in_house_vendor_list.ts';
 import { registerGetInHousePlayGroupListTool } from './get_in_house_play_group_list.ts';
 import { registerGetInHouseGameEditTool } from './get_in_house_game_edit.ts';
+import { registerGetInHouseVendorEditTool } from './get_in_house_vendor_edit.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -59,4 +60,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetInHouseVendorListTool(server);
     registerGetInHousePlayGroupListTool(server);
     registerGetInHouseGameEditTool(server);
+    registerGetInHouseVendorEditTool(server);
 }

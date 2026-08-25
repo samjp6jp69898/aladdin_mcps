@@ -29,6 +29,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_in_house_game_back_office_get_vendor_list` | `InHouseGameBackOffice.GetVendorList` | 分頁查詢自研遊戲廠商清單，可用 gameId（精確比對但非唯一，一個遊戲可對應多個廠商）或 vendorName（模糊比對）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（9 筆） |
 | `aladdin_admin_in_house_game_back_office_get_play_group_list` | `InHouseGameBackOffice.GetPlayGroupList` | 分頁查詢自研遊戲「玩法組」清單，可用 vendorId（精確但非唯一）、name（模糊）、status（enabled/disabled）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（25 筆） |
 | `aladdin_admin_in_house_game_back_office_get_game_edit` | `InHouseGameBackOffice.GetGameEdit` | 取得單一自研遊戲的完整編輯詳情（含二八槓開盤設定、開獎結果來源 apiUrl），gameId 不存在回 errorCode=14；apiUrl 已評估不含憑證但無權限節點保護，2026-08-25 dev 實測含存在/不存在 id 邊界案例 |
+| `aladdin_admin_in_house_game_back_office_get_vendor_edit` | `InHouseGameBackOffice.GetVendorEdit` | 取得單一自研遊戲廠商的完整編輯詳情，含 7 個多語富文本說明欄位（前台展示文案，非敏感資料），vendorId 不存在回 errorCode=14，2026-08-25 dev 實測含存在/不存在 id 邊界案例 |
 
 ## src/ 結構
 
