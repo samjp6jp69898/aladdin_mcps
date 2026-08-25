@@ -27,6 +27,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_audit_admin_get_audit_logs` | `AuditAdmin.GetAuditLogs` | 查詢系統管理後台（跨平台）的操作紀錄；`systemId` 省略內部固定送 -1（0 是合法值 core，不能當不篩選）；`actionId` 是 AdminActionIdEnum 字串 key（122 個值，完整列舉）；`pageSize` 只接受 10/20/30/50/100/200；2026-08-25 dev 實測 |
 | `aladdin_admin_currency_admin_get_currencies` | `CurrencyAdmin.GetCurrencies` | 列出全域幣別清單，無 @Permission；不分頁一次全撈（小型列舉表）；2026-08-25 dev 實測 |
 | `aladdin_admin_currency_admin_update_currency` | `CurrencyAdmin.UpdateCurrency` | 更新既有全域幣別的 name/symbol/displayDigits；code/type/decimalPlaces 不可改；寫入成功會全平台廣播（ReloadCurrency）；name 最長 20 字元、symbol 最長 10 字元（比照 DB VARCHAR 上限）；三值皆與現值相同時後端回 nothingChanged（本工具視為非失敗）；先讀現值合併未帶欄位、寫入後 round-trip 逐欄比對；2026-08-25 dev 實測含正常更新、nothingChanged、超長欄位、id 不存在四種情境 |
+| `aladdin_admin_core_admin_get_platform_domains` | `CoreAdmin.GetPlatformDomains` | 列出指定平台的 platform/agent gate 域名清單（不含 App 端域名，那是另一支公開但本輪未包裝的 method）；totalPage 恆為 1（無真正分頁）；不存在的 platformId 回空陣列非錯誤；2026-08-25 dev 實測 |
 
 ## src/ 結構
 
