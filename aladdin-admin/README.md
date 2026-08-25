@@ -25,6 +25,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_set_game_vendor_maintenance` | 設定廠商場館（母表 game_vendors）的維護時間窗口（rajah: GameVendorAdmin.SetGameVendorMaintenance）；毫秒 epoch，無獨立開關（isMaintaining 是即時計算的衍生值），寫入後用 ListAllGameVendors 讀回驗證 |
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
 | `aladdin_admin_time_based_otp_admin_list_platform_totp_modes` | `TimeBasedOtpAdmin.ListPlatformTotpModes` | 列出 admin 後台全域（platformId=0）與每個平台目前的 TOTP 模式（normal/force）；尚未設定過的一律回傳 normal（後端預設值） |
+| `aladdin_admin_time_based_otp_admin_set_mode` | `TimeBasedOtpAdmin.SetMode` | 設定 admin 全域或指定平台的 TOTP 模式；切到 force 會強制該範圍下所有後台帳號下次登入綁定 TOTP，屬高影響變更，見工具 description 的風險提示；沒有單筆查詢 method，寫入後用 `ListPlatformTotpModes` 讀回驗證 |
 
 ## src/ 結構
 
@@ -51,6 +52,7 @@ src/
     list_platform_game_vendors.ts
     update_platform_game_vendor_status.ts
     list_platform_totp_modes.ts
+    set_platform_totp_mode.ts
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
@@ -65,7 +67,7 @@ src/
 | `ALADDIN_ADMIN_API_URL` | admin 後台 dev 站台，例如 `https://admin.alddev.com` |
 | `ALADDIN_ADMIN_USER` | 預設測試帳號 |
 | `ALADDIN_ADMIN_PASSWORD` | 預設測試密碼 |
-| `ALADDIN_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，三支寫入 tool（`create_game_vendor`/`upsert_game`/`update_platform_game_vendor_status`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
+| `ALADDIN_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，寫入 tool（`create_game_vendor`/`upsert_game`/`update_platform_game_vendor_status`/`set_platform_totp_mode`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 TOTP：dev 環境目前不需要。若未來需要，`aladdin_admin_auth_login` 保留 `totpCode` 選填參數——由 agent 在對話中向操作者當場索取當下驗證碼再帶入，不寫死、不落地存檔。
 
