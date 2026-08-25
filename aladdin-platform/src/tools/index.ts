@@ -27,6 +27,7 @@ import { registerGetIpRegionListTool } from './get_ip_region_list.ts';
 import { registerUpdateIpRegionStatusTool } from './update_ip_region_status.ts';
 import { registerBatchUpdateIpRegionStatusTool } from './batch_update_ip_region_status.ts';
 import { registerDeleteIpRegionTool } from './delete_ip_region.ts';
+import { registerBatchDeleteIpRegionTool } from './batch_delete_ip_region.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -59,4 +60,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateIpRegionStatusTool(server);
     registerBatchUpdateIpRegionStatusTool(server);
     registerDeleteIpRegionTool(server);
+    registerBatchDeleteIpRegionTool(server);
 }
