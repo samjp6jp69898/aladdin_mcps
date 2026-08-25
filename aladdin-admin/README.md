@@ -27,6 +27,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_in_house_game_back_office_get_game_list` | `InHouseGameBackOffice.GetGameList` | 分頁查詢自研（in-house）遊戲清單（二八槓類），可用 gameCode（精確比對，DB 有 UNIQUE INDEX）或 gameName（模糊比對）篩選；2026-08-25 dev 實測目前 5 筆（4 款正常代碼 + 1 筆 gameCode 為空字串的「關閉」停用佔位資料，該筆無法單獨用 gameCode 篩出） |
 | `aladdin_admin_in_house_game_back_office_list_available_game_codes` | `InHouseGameBackOffice.ListAvailableGameCodes` | 列出自研二八槓遊戲可用的 gameCode 全集，無參數、不分頁，直接回傳後端固定的 GameCodeEnum 靜態列舉（不查 DB）；2026-08-25 dev 實測回傳 CND28/ORG28/BIT28/MIN28 共 4 筆 |
 | `aladdin_admin_in_house_game_back_office_get_vendor_list` | `InHouseGameBackOffice.GetVendorList` | 分頁查詢自研遊戲廠商清單，可用 gameId（精確比對但非唯一，一個遊戲可對應多個廠商）或 vendorName（模糊比對）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（9 筆） |
+| `aladdin_admin_in_house_game_back_office_get_play_group_list` | `InHouseGameBackOffice.GetPlayGroupList` | 分頁查詢自研遊戲「玩法組」清單，可用 vendorId（精確但非唯一）、name（模糊）、status（enabled/disabled）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（25 筆） |
 
 ## src/ 結構
 

@@ -24,6 +24,7 @@ import { registerCreatePlatformTool } from './create_platform.ts';
 import { registerGetGameListTool } from './get_game_list.ts';
 import { registerListAvailableGameCodesTool } from './list_available_game_codes.ts';
 import { registerGetInHouseVendorListTool } from './get_in_house_vendor_list.ts';
+import { registerGetInHousePlayGroupListTool } from './get_in_house_play_group_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -55,4 +56,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetGameListTool(server);
     registerListAvailableGameCodesTool(server);
     registerGetInHouseVendorListTool(server);
+    registerGetInHousePlayGroupListTool(server);
 }
