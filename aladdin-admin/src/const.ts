@@ -40,6 +40,12 @@ export const STATUS_KEYS = Object.keys(STATUS_MAP) as [ keyof typeof STATUS_MAP,
 export const GAME_TAG_TYPE_MAP = { vendorFee: 1, appDisplay: 2, rebate: 3, frontendGroup: 4 } as const;
 export const GAME_TAG_TYPE_KEYS = Object.keys(GAME_TAG_TYPE_MAP) as [ keyof typeof GAME_TAG_TYPE_MAP, ...(keyof typeof GAME_TAG_TYPE_MAP)[] ];
 
+// CaptchaTypeEnum（verification_code_common.rajah:7-12）——AdminCaptchaConfig/PlatformCaptchaConfig
+// 共用同一組值，含 off。off 是合法列舉值（用於 PlatformCaptchaConfig 的 platformCurrentCaptchaType/
+// availableCaptchaTypes），但 GetCaptchaConfig/SetCaptchaConfig 不接受它（沒有對應後端 adapter，
+// 見 get_captcha_config.ts 檔頭註解），那兩支 tool 各自另外宣告排除 off 的子集，不在這裡收窄。
+export const CAPTCHA_TYPE_MAP = { off: 0, numeral: 1, arithmetic: 2, geetest: 3 } as const;
+
 // dev 環境 2026-08-18 實測 GameVendorAdmin.ListAdapters() 拿到的已知合法值，僅供參考、非強制窮舉
 // （後端可能持續新增，agent 若不確定應先向操作者確認，或直接嘗試、依錯誤訊息判斷）。
 export const KNOWN_ADAPTERS = [

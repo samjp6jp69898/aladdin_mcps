@@ -24,6 +24,10 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_update_game_tag_name` | `GameVendorAdmin.UpdateGameTagName` | 更新遊戲標籤（vendorFee 廠商殺數分類/appDisplay 前端顯示分類/rebate 返水分類，三者共用同一組固定 tag enum；不支援 frontendGroup 前台自訂標籤，那是另一張表）的多語系顯示名稱；寫入前後各呼叫一次 `ListAllGameTagNamesByType` 做 before/after round-trip，`names` 只動到你列出的語系代碼——2026-08-24 dev 站台實測確認「未列出語系不受影響」與非法 tagType 回業務錯誤碼 317（gameTagTypeNotExists） |
 | `aladdin_admin_game_vendor_admin_set_game_vendor_maintenance` | 設定廠商場館（母表 game_vendors）的維護時間窗口（rajah: GameVendorAdmin.SetGameVendorMaintenance）；毫秒 epoch，無獨立開關（isMaintaining 是即時計算的衍生值），寫入後用 ListAllGameVendors 讀回驗證 |
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
+| `aladdin_admin_admin_captcha_config_get_captcha_config` | `AdminCaptchaConfig.GetCaptchaConfig` | 讀取系統層級某一驗證碼類型（numeral/arithmetic/geetest，不含 off——off 沒有對應 adapter 必回錯）的設定，geetestKey 預設遮罩尾 4 碼 |
+| `aladdin_admin_admin_captcha_config_set_captcha_config` | `AdminCaptchaConfig.GetCaptchaConfig` + `SetCaptchaConfig` | 修改系統層級驗證碼類型設定，先讀現值只覆蓋有帶到的欄位；**高風險副作用**：停用某類型會級聯把選用該類型的所有平台改成 numeral/off，且無自動復原，詳見工具說明 |
+| `aladdin_admin_admin_captcha_config_get_platform_verification_configs` | `AdminCaptchaConfig.GetPlatformVerificationConfigs` | 列出各平台的驗證碼設定；帶 `platformId` 會內部逐頁掃描到底找該平台那一筆 |
+| `aladdin_admin_admin_captcha_config_set_platform_verification_config` | `AdminCaptchaConfig.GetPlatformVerificationConfigs`（找現值）+ `SetPlatformVerificationConfig` | 修改指定平台的可用驗證碼類型清單/目前類型；因後端 proto3 空陣列地雷（見工具說明），工具每次都送完整 `availableCaptchaTypes` 陣列，不依賴後端做欄位級保護 |
 
 ## src/ 結構
 
@@ -49,6 +53,10 @@ src/
     list_platforms.ts
     list_platform_game_vendors.ts
     update_platform_game_vendor_status.ts
+    get_captcha_config.ts                    — 另外 export formatCaptchaConfigResult()，update 工具的回傳共用同一支格式化函式
+    update_captcha_config.ts                 — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回；高風險副作用見檔頭註解
+    get_platform_verification_configs.ts     — 另外 export findPlatformVerificationConfigRow()，update 工具的讀現值步驟共用
+    update_platform_verification_config.ts   — 每次都送完整 availableCaptchaTypes 陣列，規避 proto3 空陣列地雷（見檔頭註解）
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。

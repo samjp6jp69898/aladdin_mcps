@@ -20,6 +20,8 @@ import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_p
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 import { registerGetChatSpeechSettingTool } from './get_chat_speech_setting.ts';
 import { registerUpdateChatSpeechSettingTool } from './update_chat_speech_setting.ts';
+import { registerGetPlatformVerificationConfigTool } from './get_platform_verification_config.ts';
+import { registerUpdatePlatformVerificationCaptchaTypeTool } from './update_platform_verification_captcha_type.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -45,4 +47,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorStatusTool(server);
     registerGetChatSpeechSettingTool(server);
     registerUpdateChatSpeechSettingTool(server);
+    registerGetPlatformVerificationConfigTool(server);
+    registerUpdatePlatformVerificationCaptchaTypeTool(server);
 }

@@ -21,6 +21,10 @@ import { registerListGameTagNamesTool } from './list_game_tag_names.ts';
 import { registerUpdateGameTagNameTool } from './update_game_tag_name.ts';
 import { registerSetGameVendorMaintenanceTool } from './set_game_vendor_maintenance.ts';
 import { registerCreatePlatformTool } from './create_platform.ts';
+import { registerGetCaptchaConfigTool } from './get_captcha_config.ts';
+import { registerUpdateCaptchaConfigTool } from './update_captcha_config.ts';
+import { registerGetPlatformVerificationConfigsTool } from './get_platform_verification_configs.ts';
+import { registerUpdatePlatformVerificationConfigTool } from './update_platform_verification_config.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +53,8 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdateGameTagNameTool(server);
     registerSetGameVendorMaintenanceTool(server);
     registerCreatePlatformTool(server);
+    registerGetCaptchaConfigTool(server);
+    registerUpdateCaptchaConfigTool(server);
+    registerGetPlatformVerificationConfigsTool(server);
+    registerUpdatePlatformVerificationConfigTool(server);
 }

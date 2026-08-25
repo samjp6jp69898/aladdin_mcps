@@ -23,6 +23,8 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
 | `aladdin_platform_chat_speech_setting_platform_get_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` | 讀取「房間管理」→「房間限制設定」→「房間功能設定」→「聊天室發言設定」目前的設定內容（單例設定，無參數，不吃 platformId；查無資料時回傳全 0／空陣列預設值，不是錯誤） |
 | `aladdin_platform_chat_speech_setting_platform_save_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` + `SaveChatSpeechSetting` | 修改聊天室發言設定並儲存，所有欄位皆 optional，只覆蓋有帶到的欄位，其餘先讀現值原樣帶回；memberLevels 陣列為整包覆蓋（後端整批刪除重建關聯表），非差異運算 |
+| `aladdin_platform_platform_captcha_config_get_platform_verification_config` | `PlatformCaptchaConfig.GetPlatformVerificationConfig` | 讀取本平台的驗證碼設定（可用類型清單 + 目前類型），無參數，平台由連線本身判定 |
+| `aladdin_platform_platform_captcha_config_set_platform_verification_captcha_type` | `PlatformCaptchaConfig.SetPlatformVerificationCaptchaType` | 切換本平台目前使用的驗證碼類型（須屬於 availableCaptchaTypes 清單），後端自己會保留清單不受影響，工具直接單參數呼叫 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -60,6 +62,8 @@ src/
     update_message_board_setting.ts  — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，比照 onboard_vendor_game.ts 的模式
     get_chat_speech_setting.ts       — 另外 export formatChatSpeechSetting()，同 get_message_board_setting.ts 模式
     update_chat_speech_setting.ts    — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，同 update_message_board_setting.ts 模式
+    get_platform_verification_config.ts            — 單例設定，platformId 隱式帶入，查無資料回預設值
+    update_platform_verification_captcha_type.ts    — 後端自己保留 availableCaptchaTypes，工具直接單參數呼叫，不需自己讀現值合併
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
