@@ -24,6 +24,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_module_platform_get_platform_modules` | `ModulePlatform.GetPlatformModules` | 查詢目前登入平台已啟用的模組清單（無參數，自動取 context.platformId；只回已啟用的子集，欄位比 admin 端精簡）；platform 後台本身無寫入能力，調整模組啟停需改用 `aladdin-admin` |
 | `aladdin_platform_point_platform_list_point_transactions` | `PointPlatform.ListPointTransactions` | 分頁查詢本平台會員的積分交易紀錄，identifier 查無會員回空陣列（非錯誤），orderId 為 LIKE 模糊比對 |
 | `aladdin_platform_point_platform_list_app_user_total_points` | `PointPlatform.ListAppUserTotalPoints` | 分頁查詢本平台會員目前積分餘額；帶 identifier 且會員存在但無積分紀錄時回一筆 quantity=0（非空陣列） |
+| `aladdin_platform_point_platform_list_vip_point_settings` | `PointPlatform.ListVipPointSettings` | 列出本平台每個 VIP 層級的積分返利設定摘要，無參數、固定小量列舉 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
