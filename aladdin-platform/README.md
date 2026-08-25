@@ -25,6 +25,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_inventory_platform_list_items` | `InventoryPlatform.ListItems` | 查「商城 → 道具」總表，依 category/name（模糊）/status 篩選分頁；**method-category-checklist B 級**——搜尋條件沒有 id 欄位，無法精確鎖定單一道具；`pageSize` 是 `PageSizeEnum` 只接受 10/20/30/50/100/200（2026-08-25 dev 實測帶 1 會回 errorCode=9，已用 zod enum 收斂輸入避免呼叫端帶出未定義行為）；2026-08-25 dev 實測含分頁翻到底、category 篩選正確性、不存在名稱回空陣列三種情境 |
 | `aladdin_platform_inventory_platform_list_enabled_items_all` | `InventoryPlatform.ListEnabledItemsAll` | 取得本平台啟用中道具全集，無參數、不分頁；**回傳不含 commonDetail/depositWithdrawDetail**（底層查詢只查道具本體表，讀 agrabah 原始碼證實），需要完整細項請改用 list_items；2026-08-25 dev 實測（33 筆）含全部 enabled、不含 detail 欄位、與 list_items(status=enabled) 交叉比對 id 集合一致三種情境 |
 | `aladdin_platform_inventory_platform_get_item_names_by_id` | `InventoryPlatform.GetItemNamesById` | 依道具 id 陣列批次查名稱；回傳與輸入 ids **同長度、同順序**（讀 agrabah 原始碼證實，先用輸入 id 建骨架列再補 name，非查到才回傳），不存在的 id 該筆 name 為空陣列、不報錯；2026-08-25 dev 實測含混合真實/不存在 id 情境 |
+| `aladdin_platform_inventory_platform_update_item_status` | `InventoryPlatform.UpdateItemStatus` | 切換道具啟用/停用狀態；只接受 enabled/disabled（後端拒絕其他值）；**目標狀態與現值相同時必須短路不呼叫後端**（後端對同值呼叫回 needRefresh 錯誤，非可有可無的最佳化，2026-08-25 dev 實測證實）；讀現值/讀回驗證共用 create_or_update_item.ts 的 findItemById；2026-08-25 dev 實測含同值短路、切換+復原 round-trip、不存在 id 三種情境 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -64,6 +65,7 @@ src/
     list_items.ts              — B 級清單（無 id 篩選欄位），pageSize 用 zod enum 收斂為合法 PageSizeEnum 離散值
     list_enabled_items_all.ts  — 無分頁全撈，回傳不含 commonDetail/depositWithdrawDetail
     get_item_names_by_id.ts    — 批次查名稱，回傳與輸入 ids 同長度同順序（讀原始碼證實的特例）
+    update_item_status.ts      — 同值短路是必要邏輯（後端同值回錯誤），非最佳化；共用 create_or_update_item.ts 的 findItemById
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。

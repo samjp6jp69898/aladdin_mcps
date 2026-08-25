@@ -22,6 +22,7 @@ import { registerCreateOrUpdateItemTool } from './create_or_update_item.ts';
 import { registerListItemsTool } from './list_items.ts';
 import { registerListEnabledItemsAllTool } from './list_enabled_items_all.ts';
 import { registerGetItemNamesByIdTool } from './get_item_names_by_id.ts';
+import { registerUpdateItemStatusTool } from './update_item_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +50,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListItemsTool(server);
     registerListEnabledItemsAllTool(server);
     registerGetItemNamesByIdTool(server);
+    registerUpdateItemStatusTool(server);
 }

@@ -196,8 +196,12 @@ async function uploadLocalizedFiles(
     return { merged, errors };
 }
 
-/** ListItemsSearch 沒有 id 篩選欄位，找既有道具只能逐頁掃描比對 id（比照 upsert_game.ts 的 findGameRowByBusinessKey）。 */
-async function findItemById(id: number) {
+/**
+ * ListItemsSearch 沒有 id 篩選欄位，找既有道具只能逐頁掃描比對 id（比照 upsert_game.ts 的
+ * findGameRowByBusinessKey）。export 供 list_items 領域內其他需要「先讀現值」的 tool
+ * （如 update_item_status.ts）共用，不重新發明一套。
+ */
+export async function findItemById(id: number) {
     let totalPage = 1;
     let scannedPages = 0;
     for (let page = 1; page <= Math.min(totalPage, LIST_SCAN_PAGE_CAP); page++) {
