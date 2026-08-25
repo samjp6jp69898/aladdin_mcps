@@ -26,6 +26,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
 | `aladdin_admin_in_house_game_back_office_get_game_list` | `InHouseGameBackOffice.GetGameList` | 分頁查詢自研（in-house）遊戲清單（二八槓類），可用 gameCode（精確比對，DB 有 UNIQUE INDEX）或 gameName（模糊比對）篩選；2026-08-25 dev 實測目前 5 筆（4 款正常代碼 + 1 筆 gameCode 為空字串的「關閉」停用佔位資料，該筆無法單獨用 gameCode 篩出） |
 | `aladdin_admin_in_house_game_back_office_list_available_game_codes` | `InHouseGameBackOffice.ListAvailableGameCodes` | 列出自研二八槓遊戲可用的 gameCode 全集，無參數、不分頁，直接回傳後端固定的 GameCodeEnum 靜態列舉（不查 DB）；2026-08-25 dev 實測回傳 CND28/ORG28/BIT28/MIN28 共 4 筆 |
+| `aladdin_admin_in_house_game_back_office_get_vendor_list` | `InHouseGameBackOffice.GetVendorList` | 分頁查詢自研遊戲廠商清單，可用 gameId（精確比對但非唯一，一個遊戲可對應多個廠商）或 vendorName（模糊比對）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（9 筆） |
 
 ## src/ 結構
 
