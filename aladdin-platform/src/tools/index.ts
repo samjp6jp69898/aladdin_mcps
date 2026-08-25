@@ -25,6 +25,7 @@ import { registerUpdatePlatformRiskStrategyStatusTool } from './update_platform_
 import { registerListPlatformRiskEventsTool } from './list_platform_risk_events.ts';
 import { registerGetIpRegionListTool } from './get_ip_region_list.ts';
 import { registerUpdateIpRegionStatusTool } from './update_ip_region_status.ts';
+import { registerBatchUpdateIpRegionStatusTool } from './batch_update_ip_region_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -55,4 +56,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListPlatformRiskEventsTool(server);
     registerGetIpRegionListTool(server);
     registerUpdateIpRegionStatusTool(server);
+    registerBatchUpdateIpRegionStatusTool(server);
 }
