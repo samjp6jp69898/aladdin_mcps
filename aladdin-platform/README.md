@@ -25,6 +25,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_activity_platform_create_or_update_activity_tabs` | `ActivityPlatform.CreateOrUpdateActivityTabs` | 新增或修改本平台一筆活動頁籤；先讀現值只覆蓋有帶到的欄位（含逐語系合併 name），id 不存在時客戶端先擋不送 RPC，新增因後端無回傳 id 靠寫入前後差異反推；2026-08-25 dev 實測 6 種情境（新增預設值、逐欄修改、逐語系合併、不存在 id、缺 name）全過，唯這組 service 無 Delete 方法，測試資料只能設 disabled 無法真正刪除 |
 | `aladdin_platform_activity_platform_toggle_activity_tab` | `ActivityPlatform.ToggleActivityTab` | 把單一活動頁籤設為明確目標狀態（enabled/disabled/deleted，deleted 是這組 method 唯一的軟刪除入口）；後端連線走 mysql2 預設 `CLIENT_FOUND_ROWS`，同值呼叫天生冪等成功、objectNotFound 可放心解讀為 id 不存在，工具因此不需要先讀現值再判斷；2026-08-25 dev 實測 8 種情境（含對已軟刪除的 id 重複刪除、復原軟刪除）全過，測試資料已用本工具設回 deleted 清理 |
 | `aladdin_platform_activity_platform_get_activity_configs` | `ActivityPlatform.GetActivityConfigs` | 查詢本平台活動配置清單（後台「優惠中心 > 活動管理 > 活動配置」），無 id 篩選欄位、靠 status/name/activityTabIds 三個條件組合縮小範圍，已排除軟刪除；pageSize 雖無 `@Validate` 但 jasmine 對 enum 參數自動生成成員檢查，2026-08-25 dev 實測繞過 zod 直打 RPC 確認非法值真的被後端拒絕（errorCode=9）；另發現並記錄一個後端分頁陷阱：`totalPage` 只有 page=1 才會計算，其餘頁一律回 0 |
+| `aladdin_platform_activity_platform_get_user_id_by_identifier` | `ActivityPlatform.GetUserIdByIdentifier` | 用會員帳號（精準比對，限本平台 app 會員、非後台管理員帳號）查對應的內部 userId；⚠️ 這支 RPC 沒有掛任何權限節點、無法確認是否刻意設計，任何登入後台的帳號皆可呼叫且可能被用來探測帳號是否存在；rajah 還有另外兩支同名但不同 service 的 `GetUserIdByIdentifier`（admin.rajah、platform.rajah），簽名不同不可假設一致；2026-08-25 dev 實測查無帳號（含後台帳號、亂數帳號）與空字串防呆皆正確，唯未取得已知存在的真實會員帳號驗證成功路徑，已誠實記錄此限制 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
