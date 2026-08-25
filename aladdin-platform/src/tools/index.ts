@@ -20,6 +20,7 @@ import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_p
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 import { registerGetPlatformModulesTool } from './get_platform_modules.ts';
 import { registerListPointTransactionsTool } from './list_point_transactions.ts';
+import { registerListAppUserTotalPointsTool } from './list_app_user_total_points.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -45,4 +46,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorStatusTool(server);
     registerGetPlatformModulesTool(server);
     registerListPointTransactionsTool(server);
+    registerListAppUserTotalPointsTool(server);
 }
