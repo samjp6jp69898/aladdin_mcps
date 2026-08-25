@@ -31,6 +31,7 @@ import { registerGetInHousePlayGroupEditTool } from './get_in_house_play_group_e
 import { registerGetTwoEightOddsSettingTool } from './get_two_eight_odds_setting.ts';
 import { registerGetTwoEightBetLimitSettingTool } from './get_two_eight_bet_limit_setting.ts';
 import { registerGetTwoEightHedgeSettingTool } from './get_two_eight_hedge_setting.ts';
+import { registerUpdateInHouseVendorStatusTool } from './update_in_house_vendor_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -69,4 +70,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetTwoEightOddsSettingTool(server);
     registerGetTwoEightBetLimitSettingTool(server);
     registerGetTwoEightHedgeSettingTool(server);
+    registerUpdateInHouseVendorStatusTool(server);
 }
