@@ -26,6 +26,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
 | `aladdin_admin_time_based_otp_admin_list_platform_totp_modes` | `TimeBasedOtpAdmin.ListPlatformTotpModes` | 列出 admin 後台全域（platformId=0）與每個平台目前的 TOTP 模式（normal/force）；尚未設定過的一律回傳 normal（後端預設值） |
 | `aladdin_admin_time_based_otp_admin_set_mode` | `TimeBasedOtpAdmin.SetMode` | 設定 admin 全域或指定平台的 TOTP 模式；切到 force 會強制該範圍下所有後台帳號下次登入綁定 TOTP，屬高影響變更，見工具 description 的風險提示；沒有單筆查詢 method，寫入後用 `ListPlatformTotpModes` 讀回驗證 |
+| `aladdin_admin_time_based_otp_list_route_settings` | `TimeBasedOtp.ListRouteSettings` | 列出 admin gate 自己（不涉及任何平台）目前所有可設定 TOTP 二次驗證的路由與設定；rajah 目前完全未掛 `@Permission`（歷史上曾掛 `AdminManagement.Setting.Totp`，2026-07-14 commit 33b6e2dd 移除），任何登入 admin 後台的帳號皆可呼叫 |
 
 ## src/ 結構
 
@@ -53,6 +54,7 @@ src/
     update_platform_game_vendor_status.ts
     list_platform_totp_modes.ts
     set_platform_totp_mode.ts
+    list_totp_route_settings.ts
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。

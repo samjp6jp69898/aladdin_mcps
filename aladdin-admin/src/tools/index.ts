@@ -23,6 +23,7 @@ import { registerSetGameVendorMaintenanceTool } from './set_game_vendor_maintena
 import { registerCreatePlatformTool } from './create_platform.ts';
 import { registerListPlatformTotpModesTool } from './list_platform_totp_modes.ts';
 import { registerSetPlatformTotpModeTool } from './set_platform_totp_mode.ts';
+import { registerListTotpRouteSettingsTool } from './list_totp_route_settings.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -53,4 +54,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerCreatePlatformTool(server);
     registerListPlatformTotpModesTool(server);
     registerSetPlatformTotpModeTool(server);
+    registerListTotpRouteSettingsTool(server);
 }
