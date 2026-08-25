@@ -23,6 +23,7 @@ import { registerUpdateChatSpeechSettingTool } from './update_chat_speech_settin
 import { registerGetPlatformVerificationConfigTool } from './get_platform_verification_config.ts';
 import { registerUpdatePlatformVerificationCaptchaTypeTool } from './update_platform_verification_captcha_type.ts';
 import { registerListInformationConfigsTool } from './list_information_configs.ts';
+import { registerGetInformationReadCountTool } from './get_information_read_count.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -51,4 +52,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetPlatformVerificationConfigTool(server);
     registerUpdatePlatformVerificationCaptchaTypeTool(server);
     registerListInformationConfigsTool(server);
+    registerGetInformationReadCountTool(server);
 }
