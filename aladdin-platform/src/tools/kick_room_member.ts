@@ -1,7 +1,7 @@
 /**
  * tools/kick_room_member.ts — aladdin_platform_room_platform_kick_room_member
  *
- * rajah: RoomPlatform.KickRoomMember（room_back_office.rajah:222-225，@Permission "Room.RoomList.Actions"）
+ * rajah: RoomPlatform.KickRoomMember（room_back_office.rajah:222-226，@Permission "Room.RoomList.Actions"）
  *
  * 2026-08-25 讀 agrabah 實作確認（agrabah/src/servers/room_back_office/services/room_platform.ts:448-478，
  * 真正踢人邏輯在非同步 job consumer：agrabah/src/servers/room_back_office/index.ts:78-121
