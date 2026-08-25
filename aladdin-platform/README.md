@@ -27,6 +27,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_update_platform_risk_strategy_status` | `RiskPlatform.UpdatePlatformRiskStrategyStatus` | 切換單一策略啟用/停用，只改 status，不動其他欄位；寫入後用不分頁的 `get_platform_risk_strategies` 讀回驗證。2026-08-25 dev 實測：不存在 id/跨平台 id 回 errorCode=14（objectNotFound）、同值呼叫成功（不會誤判失敗） |
 | `aladdin_platform_risk_platform_list_platform_risk_events` | `RiskPlatform.ListPlatformRiskEvents` | 分頁查詢風控事件（策略命中紀錄，對應「風控 → 出款標籤日誌」頁）。搜尋條件皆選填：userId/platformRiskStrategyId 精確比對、identifier LIKE 模糊比對、時間區間、riskLevel。**已知分頁陷阱**：`totalPage` 只有 `page=1` 才會真的計算 |
 | `aladdin_platform_risk_platform_ip_region_get_ip_region_list` | `RiskPlatformIpRegion.GetIpRegionList` | 分頁查詢「限制遊戲 IP/地區」規則。**limitContent 搜尋是逗號分隔多值 FIND_IN_SET OR 查詢，不是子字串模糊比對**（remark 才是 LIKE）；pageSize 為固定選項（PageSizeEnum）。回傳含後台表單標 @Hide 但 API 仍會給的 status/promptText/customerId。**已知分頁陷阱**：`totalPage` 只有 `page=1` 才會真的計算 |
+| `aladdin_platform_risk_platform_ip_region_update_ip_region_status` | `RiskPlatformIpRegion.UpdateIpRegionStatus` | 切換單一規則啟用/停用。同值呼叫是明確 no-op（後端先查現況、相同直接回成功不執行 UPDATE），可放心重複呼叫 |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
