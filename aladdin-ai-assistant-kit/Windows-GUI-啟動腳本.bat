@@ -31,22 +31,59 @@ REM 邏輯（理由見 .claude\skills\login\login.sh 檔頭）。原本假設「
 REM 本身依賴 Node.js，所以 node 一定存在」，但 2026-08-21 實測發現不少企劃
 REM 電腦上沒有另外裝 Node.js——這裡提早攔下來，壞在使用者看得懂中文的地方，
 REM 而不是壞在對話裡說「幫我登入」時噴一句英文的 command not found。
+REM where 只看 Windows 側的 PATH：WSL 裡裝過的 node/git 這裡看不到，而那
+REM 正是要的行為——Claude Code 在 Windows 上走 Git Bash，不會用 WSL 裡的
+REM 版本；文案裡有跟使用者講清楚，避免被誤會成腳本壞掉。
 where node >nul 2>&1
 if errorlevel 1 (
     echo   [X] 找不到 Node.js
     echo.
     echo   這份 kit 的登入與上傳圖片功能需要 Node.js 才能執行。
     echo.
-    echo   請到 https://nodejs.org 下載安裝「LTS」版本，安裝檔一路下一步
-    echo   到底即可，不需要額外設定。
+    echo   已經幫你用瀏覽器打開 Node.js 官網，請下載安裝「LTS」版本，
+    echo   安裝檔一路下一步到底即可，不需要額外設定。
+    echo   （如果瀏覽器沒有打開，自己前往 https://nodejs.org 也可以。）
+    echo.
+    echo   如果你是在 WSL（Windows Subsystem for Linux）裡面裝的 Node.js，
+    echo   這裡偵測不到是正常的——請直接在 Windows 本身（不是 WSL 裡面）
+    echo   再裝一份：Claude Code 在 Windows 上是透過 Git Bash 執行指令，
+    echo   不會用到 WSL 裡的版本。
     echo.
     echo   安裝完成後，請重新雙擊這個檔案。
     echo.
+    start "" "https://nodejs.org"
     pause
     exit /b 1
 )
 
-REM ── 檢查 2：.env 是否已建立 ────────────────────────────────
+REM ── 檢查 2：Git 是否已安裝 ─────────────────────────────
+REM Claude 在 Windows 上執行指令一律透過 Git Bash（Git for Windows 的一部
+REM 分，README「Windows 使用者注意」一節有講），沒裝的話登入／上傳這些
+REM 功能都動不了——跟 Node.js 一樣提早攔下來，壞在使用者看得懂中文的地方。
+where git >nul 2>&1
+if errorlevel 1 (
+    echo   [X] 找不到 Git
+    echo.
+    echo   Claude 在 Windows 上執行指令要靠 Git Bash，它是 Git for Windows
+    echo   的一部分，沒裝的話這份 kit 沒辦法正常運作。
+    echo.
+    echo   已經幫你用瀏覽器打開 Git for Windows 下載頁，安裝檔一路下一步
+    echo   到底即可，不需要額外設定。
+    echo   （如果瀏覽器沒有打開，自己前往 https://git-scm.com/download/win 也可以。）
+    echo.
+    echo   如果你是在 WSL（Windows Subsystem for Linux）裡面裝的 Git，
+    echo   這裡偵測不到是正常的——請直接在 Windows 本身（不是 WSL 裡面）
+    echo   再裝一份：Claude Code 在 Windows 上是透過 Git Bash 執行指令，
+    echo   不會用到 WSL 裡的版本。
+    echo.
+    echo   安裝完成後，請重新雙擊這個檔案。
+    echo.
+    start "" "https://git-scm.com/download/win"
+    pause
+    exit /b 1
+)
+
+REM ── 檢查 3：.env 是否已建立 ────────────────────────────────
 if not exist ".env" (
     echo   [!] 還沒有設定你的帳號密碼
     echo.
@@ -74,7 +111,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM ── 檢查 3：.mcp.json 是否存在 ─────────────────────────────
+REM ── 檢查 4：.mcp.json 是否存在 ─────────────────────────────
 if not exist ".mcp.json" (
     echo   [X] 這份工具包不完整（缺少 .mcp.json）
     echo.

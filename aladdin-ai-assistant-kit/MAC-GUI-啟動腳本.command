@@ -75,8 +75,10 @@ if ! command -v node > /dev/null 2>&1; then
     echo ""
     echo "  這份 kit 的登入與上傳圖片功能需要 Node.js 才能執行。"
     echo ""
-    echo "  請到 https://nodejs.org 下載安裝「LTS」版本，安裝檔一路下一步"
-    echo "  到底即可，不需要額外設定。"
+    open "https://nodejs.org" 2>/dev/null
+    echo "  已經幫你用瀏覽器打開 Node.js 官網，請下載安裝「LTS」版本，"
+    echo "  安裝檔一路下一步到底即可，不需要額外設定。"
+    echo "  （如果瀏覽器沒有打開，自己前往 https://nodejs.org 也可以。）"
     echo ""
     echo "  安裝完成後，請重新雙擊這個檔案。"
     echo ""
@@ -85,7 +87,31 @@ if ! command -v node > /dev/null 2>&1; then
     exit 1
 fi
 
-# ── 檢查 2：.env 是否已建立並填寫 ───────────────────────────────
+# ── 檢查 2：Git 是否已安裝 ─────────────────────────────────
+# 偵測用 command -v 而不是直接執行 git：command -v 只查 PATH、沒有任何副作
+# 用；確認真的沒裝之後，才主動執行 xcode-select --install 幫使用者跳出
+# macOS 官方的 Command Line Tools 圖形化安裝視窗（裡面就含 git），使用者
+# 照著點「安裝」即可，不用自己開終端機打指令。這個指令是非同步的——跳出
+# 視窗後立刻返回、不會卡住腳本；若 CLT 其實已裝過，它只會往 stderr 印一行
+# 「已安裝」，導掉即可，exit code 不用管。
+if ! command -v git > /dev/null 2>&1; then
+    echo "  ❌ 找不到 Git"
+    echo ""
+    echo "  Claude 執行這份 kit 的功能需要 Git 才能正常運作。"
+    echo ""
+    xcode-select --install 2>/dev/null
+    echo "  已經幫你跳出 macOS 官方的安裝視窗（Command Line Tools，裡面"
+    echo "  就含 git），照視窗指示點「安裝」、等它跑完即可。"
+    echo "  （如果沒有看到安裝視窗，到 https://git-scm.com 下載安裝也可以。）"
+    echo ""
+    echo "  安裝完成後，請重新雙擊這個檔案。"
+    echo ""
+    echo "  按 Enter 關閉這個視窗。"
+    read -r _
+    exit 1
+fi
+
+# ── 檢查 3：.env 是否已建立並填寫 ───────────────────────────────
 if [ ! -f .env ]; then
     echo "  ⚠️  還沒有設定你的帳號密碼"
     echo ""
@@ -112,7 +138,7 @@ if ! grep -qE '^[A-Z0-9_]+_(USER|PASSWORD)=.+' .env 2>/dev/null; then
     exit 1
 fi
 
-# ── 檢查 3：.mcp.json 是否存在 ─────────────────────────────────
+# ── 檢查 4：.mcp.json 是否存在 ─────────────────────────────────
 if [ ! -f .mcp.json ]; then
     echo "  ❌ 這份工具包不完整（缺少 .mcp.json）"
     echo ""
@@ -123,7 +149,7 @@ if [ ! -f .mcp.json ]; then
     exit 1
 fi
 
-# ── 檢查 4：檔案權限（憑證檔不該被其他使用者讀到）──────────────
+# ── 檢查 5：檔案權限（憑證檔不該被其他使用者讀到）──────────────
 for f in .env .mcp.json; do
     perm="$(stat -f '%Lp' "$f" 2>/dev/null)"
     if [ -n "$perm" ] && [ "$perm" != "600" ]; then
