@@ -21,6 +21,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerCreateOrUpdateItemTool } from './create_or_update_item.ts';
 import { registerListItemsTool } from './list_items.ts';
 import { registerListEnabledItemsAllTool } from './list_enabled_items_all.ts';
+import { registerGetItemNamesByIdTool } from './get_item_names_by_id.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -47,4 +48,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerCreateOrUpdateItemTool(server);
     registerListItemsTool(server);
     registerListEnabledItemsAllTool(server);
+    registerGetItemNamesByIdTool(server);
 }
