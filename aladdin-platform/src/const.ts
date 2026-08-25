@@ -33,6 +33,12 @@ export const UPLOAD_TYPE_VENDOR = 4;
 // GameLocalizationTargetEnum（rajah/services/game.rajah:40-47，用於 GameVendorPlatform.GetLocalizations）
 export const GAME_LOCALIZATION_TARGET_MAP = { gameName: 101, gameVendorName: 131, gameBrandTitle: 141 } as const;
 
+// CustomerCategoryEnum（rajah/services/customer_back_office.rajah:250-258），客服連線類型（三方客服系統）
+export const CUSTOMER_CATEGORY_MAP = { komi: 1, wbgcorp: 2, dotcloud: 3 } as const;
+
+// CustomerConfigJumpEnum（common.rajah:1591-1596）
+export const CUSTOMER_CONFIG_JUMP_MAP = { external: 0, internal: 1 } as const;
+
 // H7：hosted 模式下 JWT 過期或尚未登入時回給 agent 的重登信號文字（plan.md D4/D11）。
 // D11 要求 harness 只陳述事實、不引導跨後台操作，措辭止於此，不建議改用其他帳號或後台。
 // stdio 模式不會用到這個常數——stdio 用 env 帳密自動重登，不會走到需要對外顯示訊號的分支。
