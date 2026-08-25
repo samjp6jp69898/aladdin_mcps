@@ -58,6 +58,30 @@ export const GLOBAL_PIN_MODE_MAP = { off: 1, permanent: 2, timed: 3 } as const;
 // PostsChangeUserDetailChargeTimesEnum（message_board_back_office.rajah:336-343）
 export const CHANGE_USER_DETAIL_CHARGE_TIMES_MAP = { noNeed: 0, minChargeTimesOne: 1, minChargeTimesTwo: 2 } as const;
 
+// RiskLimitItemEnum（risk_back_office.rajah:92-97），限制遊戲 IP/地區功能的「黑名單/白名單」，
+// 供 aladdin_platform_risk_platform_ip_region_get_ip_region_list（search）與
+// aladdin_platform_risk_platform_ip_region_create_or_update_ip_region 共用。
+export const RISK_LIMIT_ITEM_MAP = { gameBlack: 1, gameWhite: 2 } as const;
+
+// RiskLimitMethodEnum（risk_back_office.rajah:100-105），限制方式是 IP 還是國家代碼。
+export const RISK_LIMIT_METHOD_MAP = { ip: 1, countryCode: 2 } as const;
+
+// RiskGameTypeEnum（risk_back_office.rajah:108-113），限制作用範圍是廠商還是指定遊戲。
+export const RISK_GAME_TYPE_MAP = { provider: 1, specified: 2 } as const;
+
+// PageSizeEnum（common.rajah:2442-2450）——固定選項，非任意 i32；serverDefault=0 由後端轉成
+// DefaultPageSize=100。供任何吃 @Validate pageSize PageSizeEnum 參數的 list method 共用。
+export const PAGE_SIZE_KEYS = [ 'serverDefault', 'size10', 'size20', 'size30', 'size50', 'size100', 'size200' ] as const;
+export const PAGE_SIZE_MAP: Record<(typeof PAGE_SIZE_KEYS)[number], number> = {
+    serverDefault: 0,
+    size10: 10,
+    size20: 20,
+    size30: 30,
+    size50: 50,
+    size100: 100,
+    size200: 200,
+};
+
 /**
  * i64 欄位（如 MessageBoardPostSetting 的 postsChangeUserDetailMinChargeTotal/
  * postsGiftReceiveTotalAmount）經 protobufjs decode 後是 Long 物件
