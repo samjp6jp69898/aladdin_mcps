@@ -23,6 +23,7 @@ import { registerListPointTransactionsTool } from './list_point_transactions.ts'
 import { registerListAppUserTotalPointsTool } from './list_app_user_total_points.ts';
 import { registerListVipPointSettingsTool } from './list_vip_point_settings.ts';
 import { registerGetPointSettingTool } from './get_point_setting.ts';
+import { registerUpdatePointSettingTool } from './update_point_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -51,4 +52,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListAppUserTotalPointsTool(server);
     registerListVipPointSettingsTool(server);
     registerGetPointSettingTool(server);
+    registerUpdatePointSettingTool(server);
 }

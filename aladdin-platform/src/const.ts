@@ -68,6 +68,13 @@ export const CHANGE_USER_DETAIL_CHARGE_TIMES_MAP = { noNeed: 0, minChargeTimesOn
  * （大舞台基本設置），實測數值都在 52 bit 安全整數範圍內，先用最小作法處理，
  * 之後若有第二組 i64 欄位需要同樣處理再考慮要不要抽更通用的版本。
  */
+// TimeLimitTypeEnum（common.rajah:1597-1606），供 PointPlatform.GetPointSetting/UpdatePointSetting 的
+// dueType 使用。unknown=0 不收錄——後端驗證只接受 absoluteTime（需 dueAtTimestamp）或 relativeTime（需 dueDay）。
+export const TIME_LIMIT_TYPE_KEYS = [ 'unlimitedTime', 'absoluteTime', 'relativeTime' ] as const;
+export const TIME_LIMIT_TYPE_MAP: Record<(typeof TIME_LIMIT_TYPE_KEYS)[number], number> = {
+    unlimitedTime: 1, absoluteTime: 2, relativeTime: 3,
+};
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
