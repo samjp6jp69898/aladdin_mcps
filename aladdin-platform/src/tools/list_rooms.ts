@@ -15,9 +15,13 @@
  *   見 `agrabah/src/generated/services.gen.ts:29446-29449`），呼叫必定失敗——此建議已錯誤，撤回。
  *   目前 `RoomPlatform` service 底下**沒有**任何可用的「依 roomId 查單一房間」方法；若呼叫端需要
  *   定位特定房間，只能對這支清單做有界的逐頁掃描（比對回傳的 roomId），沒有更好的替代方案。
- * - `pageSize` 雖然 rajah 型別是 `PageSizeEnum`（合法值 10/20/30/50/100/200，見
- *   common.rajah:2438-2446），但 manager 端只檢查 `pageSize > 0`（真，否則用預設值 100），
- *   沒有夾限在這個列舉範圍——這支工具仍只開放這幾個合法值，避免呼叫端傳入列舉外的數字。
+ * - `pageSize` 型別是 `PageSizeEnum`（合法值 10/20/30/50/100/200，見 common.rajah:2438-2446）。
+ *   **2026-08-25 review 修正**：先前這裡誤寫「manager 端只檢查 pageSize > 0，沒有夾限」——這只讀了
+ *   manager 層（room_manager.ts，確實只有 `pageSize > 0` 判斷），漏看了 jasmine 生成的 handler 層
+ *   （agrabah/src/generated/services.gen.ts:29414）其實有做 `PageSizeEnum` 成員驗證
+ *   （`request.pageSize === 0 || PageSizeEnum.hasOwnProperty(request.pageSize)`，非法值在進到
+ *   `methodGetRoomList` 之前就被拒絕）。後端其實有夾限，這支工具開放的合法值本來就與後端一致，
+ *   行為沒有變化，只是文件描述改正（同款誤判當時也寫進了 get_room_mute_list.ts，已一併修正）。
  * - 排序固定 `sort_order ASC`，`totalPage` 是真的 `COUNT(*)` 算出來的，不是猜的，可放心用
  *   `page > totalPage` 判斷是否翻到底。
  * - `moduleResult` 需要額外查 `DbRoomModules` + `roomFeatureManager.batchFetch` 才能組出，
