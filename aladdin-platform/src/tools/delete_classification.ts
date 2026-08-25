@@ -33,7 +33,7 @@ export function registerDeleteClassificationTool(server: McpServer): void {
             description:
                 '刪除本平台的一個「運營歸類」（rajah: WalletPlatform.DeleteClassification）。' +
                 '**硬刪除**，無法復原；同時會刪除該歸類底下的子分類關聯。' +
-                '**不冪等**：對已刪除或不存在的 id 再呼叫一次會回錯誤（objectNotFound 類），不是靜默成功。' +
+                '**不冪等**：對已刪除或不存在的 id 再呼叫一次會回錯誤（ErrorCode.idNotExists），不是靜默成功。' +
                 'id 來自 aladdin_platform_wallet_platform_list_classification_categories。' +
                 'prod 執行前確認：當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion' +
                 '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +

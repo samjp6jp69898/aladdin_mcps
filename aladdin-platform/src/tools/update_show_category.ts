@@ -60,9 +60,16 @@ export function registerUpdateShowCategoryTool(server: McpServer): void {
             if (r.failed) return asErrorResult(r);
 
             const checkR = await withAutoRelogin(() => remote.walletBackOffice.walletPlatform.GetShowCategory());
-            const readBack = checkR.failed ? undefined : (checkR.data?.categories ?? []).map(transactionCategoryNumberToKey);
+            if (checkR.failed) {
+                return asTextResult({
+                    success: true,
+                    message: '顯示分類已更新，但讀回驗證失敗，無法確認最終結果',
+                    warning: '讀回清單失敗，categories 為 null 不代表已清空，請自行呼叫 aladdin_platform_wallet_platform_get_show_category 確認',
+                    categories: null,
+                });
+            }
 
-            return asTextResult({ success: true, message: '顯示分類已更新', categories: readBack ?? null });
+            return asTextResult({ success: true, message: '顯示分類已更新', categories: (checkR.data?.categories ?? []).map(transactionCategoryNumberToKey) });
         },
     );
 }

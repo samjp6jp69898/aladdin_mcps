@@ -120,14 +120,15 @@ export function registerCreateOrUpdateClassificationTool(server: McpServer): voi
             }
 
             const candidates = rows.filter((row) => row.name === finalName).map(formatRow);
-            return asTextResult({
-                success: true,
-                message: '建立成功',
-                note: candidates.length > 1
-                    ? '後端未回傳新 id，且清單中有多筆同名歸類，以下列出全部同名候選，請人工判斷哪一筆是剛建立的'
-                    : '後端未回傳新 id，以下是依 name 比對到的候選（唯一命中）',
-                candidates,
-            });
+            let note: string;
+            if (candidates.length === 0) {
+                note = '後端未回傳新 id，且讀回清單中找不到任何同名歸類，非預期（可能剛好被同時刪除），請人工確認';
+            } else if (candidates.length > 1) {
+                note = '後端未回傳新 id，且清單中有多筆同名歸類，以下列出全部同名候選，請人工判斷哪一筆是剛建立的';
+            } else {
+                note = '後端未回傳新 id，以下是依 name 比對到的候選（唯一命中）';
+            }
+            return asTextResult({ success: true, message: '建立成功', note, candidates });
         },
     );
 }
