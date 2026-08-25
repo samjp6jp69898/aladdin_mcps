@@ -73,6 +73,32 @@ export const GLOBAL_PIN_MODE_MAP = { off: 1, permanent: 2, timed: 3 } as const;
 // PostsChangeUserDetailChargeTimesEnum（message_board_back_office.rajah:336-343）
 export const CHANGE_USER_DETAIL_CHARGE_TIMES_MAP = { noNeed: 0, minChargeTimesOne: 1, minChargeTimesTwo: 2 } as const;
 
+// ItemCategoryEnum（inventory_common.rajah:225-246），用於 InventoryPlatform.CreateOrUpdateItem/ListItems。
+// unknown（0）與 realStuff（9）刻意不列入這裡：後端 ItemDetailLogicClasses（agrabah
+// servers/inventory_back_office/logics/index.ts:18-28）都沒有對應的 logic class，
+// 呼叫 CreateOrUpdateItem 帶這兩個值一定回 invalidItemCategory，結構性不可用。
+// roomMount（4）同樣刻意不列入：後端 RoomMount.validateOtherDetail()（agrabah
+// logics/item_common_detail.ts:75-91）與 ItemDetailBase.validate()（item_detail_base.ts:99-105）
+// 互相呼叫形成同步無窮遞迴，帶這個 category 呼叫必定 stack overflow（2026-08-25 fable5
+// reviewer-b 發現、複驗證實的後端既有 bug，非本工具限制）。
+// 見 create_or_update_item.ts 檔頭註解。
+export const ITEM_CATEGORY_MAP = {
+    roomGift: 1,
+    messageBoardGift: 2,
+    roomGuardGift: 3,
+    roomGuard: 5,
+    rename: 6,
+    broadcast: 7,
+    depositAndWithdrawCoupon: 8,
+    lotteryTicket: 10,
+} as const;
+
+// PaymentTypeEnum（common.rajah:2197-2202），ItemDepositWithdrawDetail.paymentType 用。
+export const PAYMENT_TYPE_MAP = { deposit: 1, withdraw: 2 } as const;
+
+// DiscountModeEnum（inventory_common.rajah:121-126），ItemDepositWithdrawDetail.discountMode 用。
+export const DISCOUNT_MODE_MAP = { bonus: 1, percent: 2 } as const;
+
 /**
  * i64 欄位（如 MessageBoardPostSetting 的 postsChangeUserDetailMinChargeTotal/
  * postsGiftReceiveTotalAmount）經 protobufjs decode 後是 Long 物件
@@ -91,4 +117,15 @@ export function toPlainNumber(value: unknown): number | undefined {
         return (value as { toNumber: () => number }).toNumber();
     }
     return Number(value);
+}
+
+/**
+ * 第二組需要 toPlainNumber 的 i64 欄位：CurrencyLink.value（common.rajah:1171-1174），
+ * ItemDepositWithdrawDetail 的 discountAmount/discountPercent/discountMax/paymentMin/
+ * paymentMax/wageringMultiplier 都是 [CurrencyLink]，逐筆把 value 轉成一般數字，
+ * 其餘欄位（code）原樣保留。輸入不是陣列（未設定/null）時原樣回傳。
+ */
+export function formatCurrencyLinks(links: unknown): unknown {
+    if (!Array.isArray(links)) return links;
+    return links.map((link) => ({ ...(link as Record<string, unknown>), value: toPlainNumber((link as { value?: unknown }).value) }));
 }

@@ -52,6 +52,11 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_customer_platform_get_customer_config_restrict` | `CustomerPlatform.GetCustomerConfigRestrict` | 讀「客服設置」通用設定的「訪問受限制」選項清單；無參數，本平台全部客服連線類型不分頁一次回傳 |
 | `aladdin_platform_customer_platform_set_customer_config_restrict` | `CustomerPlatform.SetCustomerConfigRestrict` | 設定「訪問受限制」目前選中的連線項目；同 platformId 單選語意（設某筆 enabled 會讓其餘全部 disabled），id=0 為清除選擇，寫入後自動回讀驗證 |
 | `aladdin_platform_customer_platform_get_customer_tickets` | `CustomerPlatform.GetCustomerTickets` | 查詢「問題處理」→「客服工單」列表；受登入角色所屬部門可視範圍限制，未指定的篩選欄位一律送 -1（不誤篩成該欄位的 0 值） |
+| `aladdin_platform_inventory_platform_create_or_update_item` | `InventoryPlatform.CreateOrUpdateItem` | 新增/編輯「商城 → 道具」，upsert 語意（id=0 新增／id>0 更新），先讀現值（逐頁掃描 `ListItems`，無 id 篩選欄位可用）、只覆寫有帶到的欄位（含 commonDetail/depositWithdrawDetail 巢狀物件內部），category 決定要不要帶哪個 detail、兩者互斥；**category 選項刻意排除 unknown/realStuff（後端無對應實作）與 roomMount（後端 validate 邏輯有無窮遞迴 bug，帶此值必定 stack overflow，2026-08-25 fable5 獨立審查發現並複驗證實，非本工具限制）**；icon 走 `GetUploadItemImageToken`（支援 filePath/fileId 二選一），commonDetail.lottie 走 `GetUploadLottieToken`（**只支援 filePath**，hosted 模式的 `POST /files` 型別白名單不接受 lottie 的 JSON 格式）；2026-08-25 dev 實測含新增/改名 round-trip、category 變更攔截、分類必填欄位缺漏、更新不存在 id 四種情境 |
+| `aladdin_platform_inventory_platform_list_items` | `InventoryPlatform.ListItems` | 查「商城 → 道具」總表，依 category/name（模糊）/status 篩選分頁；**method-category-checklist B 級**——搜尋條件沒有 id 欄位，無法精確鎖定單一道具；`pageSize` 是 `PageSizeEnum` 只接受 10/20/30/50/100/200（2026-08-25 dev 實測帶 1 會回 errorCode=9，已用 zod enum 收斂輸入避免呼叫端帶出未定義行為）；2026-08-25 dev 實測含分頁翻到底、category 篩選正確性、不存在名稱回空陣列三種情境 |
+| `aladdin_platform_inventory_platform_list_enabled_items_all` | `InventoryPlatform.ListEnabledItemsAll` | 取得本平台啟用中道具全集，無參數、不分頁；**回傳不含 commonDetail/depositWithdrawDetail**（底層查詢只查道具本體表，讀 agrabah 原始碼證實），需要完整細項請改用 list_items；2026-08-25 dev 實測（33 筆）含全部 enabled、不含 detail 欄位、與 list_items(status=enabled) 交叉比對 id 集合一致三種情境 |
+| `aladdin_platform_inventory_platform_get_item_names_by_id` | `InventoryPlatform.GetItemNamesById` | 依道具 id 陣列批次查名稱；回傳與輸入 ids **同長度、同順序**（讀 agrabah 原始碼證實，先用輸入 id 建骨架列再補 name，非查到才回傳），不存在的 id 該筆 name 為空陣列、不報錯；2026-08-25 dev 實測含混合真實/不存在 id 情境 |
+| `aladdin_platform_inventory_platform_update_item_status` | `InventoryPlatform.UpdateItemStatus` | 切換道具啟用/停用狀態；只接受 enabled/disabled（後端拒絕其他值）；**目標狀態與現值相同時必須短路不呼叫後端**（後端對同值呼叫回 needRefresh 錯誤，非可有可無的最佳化，2026-08-25 dev 實測證實）；讀現值/讀回驗證共用 create_or_update_item.ts 的 findItemById；2026-08-25 dev 實測含同值短路、切換+復原 round-trip、不存在 id 三種情境 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -87,6 +92,11 @@ src/
     onboard_vendor_game.ts  — 含圖片上傳邏輯（uploadLocalizedImages）
     get_message_board_setting.ts     — 另外 export formatMessageBoardSetting()，update 工具的回傳共用同一支格式化函式
     update_message_board_setting.ts  — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，比照 onboard_vendor_game.ts 的模式
+    create_or_update_item.ts  — 另外 export formatItemRow()（CurrencyLink i64 欄位轉一般數字），list_items.ts 共用同一支格式化函式
+    list_items.ts              — B 級清單（無 id 篩選欄位），pageSize 用 zod enum 收斂為合法 PageSizeEnum 離散值
+    list_enabled_items_all.ts  — 無分頁全撈，回傳不含 commonDetail/depositWithdrawDetail
+    get_item_names_by_id.ts    — 批次查名稱，回傳與輸入 ids 同長度同順序（讀原始碼證實的特例）
+    update_item_status.ts      — 同值短路是必要邏輯（後端同值回錯誤），非最佳化；共用 create_or_update_item.ts 的 findItemById
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。

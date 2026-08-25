@@ -49,6 +49,11 @@ import { registerUpdateCustomerCategoryStatusTool } from './update_customer_cate
 import { registerGetCustomerConfigRestrictTool } from './get_customer_config_restrict.ts';
 import { registerSetCustomerConfigRestrictTool } from './set_customer_config_restrict.ts';
 import { registerGetCustomerTicketsTool } from './get_customer_tickets.ts';
+import { registerCreateOrUpdateItemTool } from './create_or_update_item.ts';
+import { registerListItemsTool } from './list_items.ts';
+import { registerListEnabledItemsAllTool } from './list_enabled_items_all.ts';
+import { registerGetItemNamesByIdTool } from './get_item_names_by_id.ts';
+import { registerUpdateItemStatusTool } from './update_item_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -103,4 +108,9 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetCustomerConfigRestrictTool(server);
     registerSetCustomerConfigRestrictTool(server);
     registerGetCustomerTicketsTool(server);
+    registerCreateOrUpdateItemTool(server);
+    registerListItemsTool(server);
+    registerListEnabledItemsAllTool(server);
+    registerGetItemNamesByIdTool(server);
+    registerUpdateItemStatusTool(server);
 }
