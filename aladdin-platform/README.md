@@ -33,6 +33,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_room_gift_platform_get_room_gift_statistic_summary` | `RoomGiftPlatform.GetRoomGiftStatisticSummary` | 讀取送禮整體統計摘要，無參數；2026-08-25 dev 實測（本 dev 站台目前無資料） |
 | `aladdin_platform_room_gift_platform_list_records` | `RoomGiftPlatform.ListRecords` | 查詢送禮紀錄；**status 省略時內部固定送 "all"**（後端把「省略」與「明確傳 pending」在協定層視為同一件事，皆等於 0，省略若不處理會被誤判成只篩 pending，見程式碼註解）；2026-08-25 dev 實測 RPC 呼叫與非法輸入正確不出錯（本 dev 站台目前無送禮紀錄資料，無法實測驗證 all/pending 篩選結果確實不同，此限制已誠實記錄在程式碼註解） |
 | `aladdin_platform_room_gift_platform_get_anchor_statistic_summary` | `RoomGiftPlatform.GetAnchorStatisticSummary` | 查詢主播月度送禮收益統計（依主播維度聚合），searchStartDate/currencyCode 皆必填；2026-08-25 dev 實測含合法月份、非法格式（回 errorCode=7 requestNotValid）兩種情境 |
+| `aladdin_platform_room_gift_platform_get_platform_statistic_summary` | `RoomGiftPlatform.GetPlatformStatisticSummary` | 查詢平台月度送禮收入統計（依月份+幣別聚合，不分主播），searchStartDate/currencyCode 皆必填；2026-08-25 dev 實測含 "YYYY-MM"/"YYYY/MM" 兩種日期格式 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 

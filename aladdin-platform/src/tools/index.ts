@@ -30,6 +30,7 @@ import { registerListRoomGiftsTool } from './list_room_gifts.ts';
 import { registerGetRoomGiftStatisticSummaryTool } from './get_room_gift_statistic_summary.ts';
 import { registerListRecordsTool } from './list_records.ts';
 import { registerGetAnchorStatisticSummaryTool } from './get_anchor_statistic_summary.ts';
+import { registerGetPlatformStatisticSummaryTool } from './get_platform_statistic_summary.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -60,5 +61,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerDeleteClassificationTool(server);
     registerGetCategoriesByClassificationTool(server);
     registerListUserTransactionsTool(server);
-    registerGetAnchorStatisticSummaryTool(server);
+    registerGetPlatformStatisticSummaryTool(server);
 }
