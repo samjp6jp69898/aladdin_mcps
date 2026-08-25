@@ -20,6 +20,7 @@ import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_p
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 import { registerListHomePagePopupsTool } from './list_home_page_popups.ts';
 import { registerCreateHomePagePopupTool } from './create_home_page_popup.ts';
+import { registerSetHomePagePopupStatusTool } from './set_home_page_popup_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -45,4 +46,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorStatusTool(server);
     registerListHomePagePopupsTool(server);
     registerCreateHomePagePopupTool(server);
+    registerSetHomePagePopupStatusTool(server);
 }
