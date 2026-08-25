@@ -31,6 +31,8 @@ import { registerGetRoomGiftStatisticSummaryTool } from './get_room_gift_statist
 import { registerListRecordsTool } from './list_records.ts';
 import { registerGetAnchorStatisticSummaryTool } from './get_anchor_statistic_summary.ts';
 import { registerGetPlatformStatisticSummaryTool } from './get_platform_statistic_summary.ts';
+import { registerGetCurrenciesTool } from './get_currencies.ts';
+import { registerUpdateCurrencyStatusTool } from './update_currency_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -67,4 +69,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListRecordsTool(server);
     registerGetAnchorStatisticSummaryTool(server);
     registerGetPlatformStatisticSummaryTool(server);
+    registerGetCurrenciesTool(server);
+    registerUpdateCurrencyStatusTool(server);
 }
