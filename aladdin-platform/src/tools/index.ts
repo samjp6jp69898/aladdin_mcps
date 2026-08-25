@@ -26,6 +26,7 @@ import { registerGetPointSettingTool } from './get_point_setting.ts';
 import { registerUpdatePointSettingTool } from './update_point_setting.ts';
 import { registerGetVipPointSettingTool } from './get_vip_point_setting.ts';
 import { registerUpdateVipPointSettingTool } from './update_vip_point_setting.ts';
+import { registerGetPointSignInSettingTool } from './get_point_sign_in_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -57,4 +58,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdatePointSettingTool(server);
     registerGetVipPointSettingTool(server);
     registerUpdateVipPointSettingTool(server);
+    registerGetPointSignInSettingTool(server);
 }
