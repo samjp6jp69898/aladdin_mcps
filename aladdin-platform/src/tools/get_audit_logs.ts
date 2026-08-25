@@ -65,7 +65,10 @@ export function registerGetAuditLogsTool(server: McpServer): void {
                 '前先驗證 actionId 是否為合法 key，打錯字會直接回錯誤，不會靜默送出無效值。省略 actionId ' +
                 '代表不篩選。' +
                 'pageSize 只接受 10/20/30/50/100/200（後端型別是 PageSizeEnum，非任意數字），省略時後端' +
-                '套用伺服器預設值。before/after 是後端已格式化好的人類可讀字串（變更前後內容）。' +
+                '套用伺服器預設值。before/after 是後端已格式化好的人類可讀字串（變更前後內容）；若被稽核的操作' +
+                '本身涉及會員資料（如編輯會員真實姓名、提款帳戶），before/after 內可能包含這類真實個資（本 codebase' +
+                'realName/銀行卡號未在既有 SensitiveFieldEnum 遮罩範圍內，格式化字串屬不透明內容，本工具無法逐欄' +
+                '遮罩），請留意勿把回傳內容原樣寫入任何持久化 log。' +
                 '純讀取查詢，可安全重複呼叫。',
             inputSchema: {
                 systemId: z.enum(SYSTEM_ID_KEYS).optional().describe('依系統項目篩選；省略代表不篩選全部系統'),
@@ -86,8 +89,14 @@ export function registerGetAuditLogsTool(server: McpServer): void {
         async (input) => {
             let actionId = 0;
             if (input.actionId !== undefined) {
-                const resolved = (PlatformActionIdEnum as unknown as Record<string, number>)[ input.actionId ];
-                if (resolved === undefined) {
+                // 2026-08-25 review 發現的繞過：TS 數字 enum 有反向映射，數字字串 key（如 "2"）
+                // 會命中反向映射拿到「字串」而非 undefined；"toString"/"constructor" 等原型繼承鍵
+                // 也會拿到 function 而非 undefined。只檢查 `=== undefined` 兩者都會通過驗證，
+                // 之後被當成合法值送進 protobuf i32 欄位，encode 時靜默變成 0（=不篩選），
+                // 呼叫端卻以為已經照 actionId 篩選成功。改成明確檢查 `typeof === 'number'`，
+                // 只有真正的正向 enum 成員（key 對應到數字值）才會通過。
+                const resolved = (PlatformActionIdEnum as unknown as Record<string, unknown>)[ input.actionId ];
+                if (typeof resolved !== 'number') {
                     return asTextResult({
                         success: false,
                         message: `actionId="${ input.actionId }" 不是 PlatformActionIdEnum 的合法 key，請用 rajah-query skill 的 find-enum PlatformActionIdEnum 確認正確拼字`,

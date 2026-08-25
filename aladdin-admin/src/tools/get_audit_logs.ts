@@ -63,7 +63,10 @@ export function registerGetAuditLogsTool(server: McpServer): void {
                 '選 systemId="core" 才會真的篩選出 core 系統的紀錄。' +
                 'actionId 是 AdminActionIdEnum 的字串 key，省略代表不篩選。' +
                 'pageSize 只接受 10/20/30/50/100/200（後端型別是 PageSizeEnum，非任意數字），省略時後端' +
-                '套用伺服器預設值。before/after 是後端已格式化好的人類可讀字串（變更前後內容）。' +
+                '套用伺服器預設值。before/after 是後端已格式化好的人類可讀字串（變更前後內容）；若被稽核的操作' +
+                '本身涉及會員資料（如編輯會員真實姓名、提款帳戶），before/after 內可能包含這類真實個資（本 codebase' +
+                'realName/銀行卡號未在既有 SensitiveFieldEnum 遮罩範圍內，格式化字串屬不透明內容，本工具無法逐欄' +
+                '遮罩），請留意勿把回傳內容原樣寫入任何持久化 log。' +
                 '純讀取查詢，可安全重複呼叫。',
             inputSchema: {
                 systemId: z.enum(SYSTEM_ID_KEYS).optional().describe('依系統項目篩選；省略代表不篩選全部系統'),
