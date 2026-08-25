@@ -36,6 +36,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_point_platform_create_or_update_point_holiday_bonus` | `PointPlatform.CreateOrUpdatePointHolidayBonus` | 新增/編輯一筆節假日設置（id=0 新增、id>0 編輯）；期間僅精確到天、不可與其他設置重疊；回傳值是 Empty，新增後改用 name 比對 round-trip，找不到精準匹配時如實回報非失敗 |
 | `aladdin_platform_point_platform_delete_point_holiday_bonus` | `PointPlatform.DeletePointHolidayBonus` | 刪除一筆節假日設置（軟刪除，非冪等，重複刪除回 pointHolidayBonusNotFound） |
 | `aladdin_platform_vip_level_platform_get_vip_setting_equity_icons` | `VipLevelPlatform.GetVipSettingEquityIcons` | 列出本平台全部「VIP 權益圖標」選項（新版 VIP 體系，需權限 AppUser.Vip），無參數、固定小量列舉；⚠️ 回傳的 isSelect 恆為 disabled（此公開 API 不會帶 vipLevelSettingId，無法用來判斷某等級是否已勾選某圖標） |
+| `aladdin_platform_vip_level_platform_get_vip_level_settings` | `VipLevelPlatform.GetVipLevelSettings` | 列出本平台全部啟用中的 VIP 等級設定（新版 VIP 體系，此 method 無 @Permission），無參數、走快取、固定小量列舉；⚠️ 舊版體系 `VipPlatform.GetVipLevelConfigs` 資料已無人維護（dev 實測 0 筆），本 tool 才是現行來源 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
