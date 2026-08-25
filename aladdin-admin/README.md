@@ -33,6 +33,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_in_house_game_back_office_get_play_group_edit` | `InHouseGameBackOffice.GetPlayGroupEdit` | 取得單一自研遊戲玩法組的完整編輯詳情；**注意**後端對 playGroupId 不存在回傳的是 RPC 成功但資料為空（非一般業務錯誤碼），本 tool 已攔截轉換為明確的 `notFound` 訊號，2026-08-25 dev 實測驗證此陷阱屬實 |
 | `aladdin_admin_in_house_game_back_office_get_two_eight_odds_setting` | `InHouseGameBackOffice.GetTwoEightOddsSetting` | 取得指定玩法組的二八槓賠率設定；**注意**傳入不存在的 playGroupId 會觸發後端 null pointer 例外回傳 errorCode=1（unknown，非乾淨的 objectNotFound），已知後端邊界 bug，本 tool 在 hint 提示呼叫端先查證 playGroupId 是否存在，2026-08-25 dev 實測驗證 |
 | `aladdin_admin_in_house_game_back_office_get_two_eight_bet_limit_setting` | `InHouseGameBackOffice.GetTwoEightBetLimitSetting` | 取得指定玩法組的二八槓下注限額設定；與 get_two_eight_odds_setting 共用同一後端 helper，有一樣的 errorCode=1 陷阱；金額欄位是 stored 值（非顯示金額），2026-08-25 dev 實測驗證 |
+| `aladdin_admin_in_house_game_back_office_get_two_eight_hedge_setting` | `InHouseGameBackOffice.GetTwoEightHedgeSetting` | 取得指定玩法組的二八槓對沖策略設定；與兩個 sibling 不同，這支不查廠商幣別，playGroupId 不存在會靜默回預設值（maxItems=10）而不報錯，2026-08-25 dev 實測驗證 |
 
 ## src/ 結構
 
