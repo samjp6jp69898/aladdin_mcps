@@ -22,6 +22,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_get_game_ids_by_in_house_play_group_ids` | `GameVendorPlatform.GetGameIdsByInHousePlayGroupIds` | 把 in-house 遊戲的 playGroupId 批次回推成 game_vendor_games.id（gameVendorGameId）與 brandId；查不到的 id 列在回傳的 `unresolvedPlayGroupIds`，2026-08-25 dev 實測涵蓋存在/不存在/混合/重複輸入四種情境 |
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
 | `aladdin_platform_in_house_game_back_office_get_vendor_list` | `InHouseGameBackOffice.GetVendorList` | 分頁查詢自研遊戲廠商清單，可用 gameId（精確比對但非唯一，一個遊戲可對應多個廠商）或 vendorName（模糊比對）篩選；與 aladdin-admin 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（9 筆） |
+| `aladdin_platform_in_house_game_back_office_get_play_group_list` | `InHouseGameBackOffice.GetPlayGroupList` | 分頁查詢自研遊戲「玩法組」清單，可用 vendorId（精確但非唯一）、name（模糊）、status（enabled/disabled）篩選；與 aladdin-admin 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（25 筆） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
