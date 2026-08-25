@@ -30,6 +30,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_in_house_game_back_office_get_play_group_list` | `InHouseGameBackOffice.GetPlayGroupList` | 分頁查詢自研遊戲「玩法組」清單，可用 vendorId（精確但非唯一）、name（模糊）、status（enabled/disabled）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（25 筆） |
 | `aladdin_admin_in_house_game_back_office_get_game_edit` | `InHouseGameBackOffice.GetGameEdit` | 取得單一自研遊戲的完整編輯詳情（含二八槓開盤設定、開獎結果來源 apiUrl），gameId 不存在回 errorCode=14；apiUrl 已評估不含憑證但無權限節點保護，2026-08-25 dev 實測含存在/不存在 id 邊界案例 |
 | `aladdin_admin_in_house_game_back_office_get_vendor_edit` | `InHouseGameBackOffice.GetVendorEdit` | 取得單一自研遊戲廠商的完整編輯詳情，含 7 個多語富文本說明欄位（前台展示文案，非敏感資料），vendorId 不存在回 errorCode=14，2026-08-25 dev 實測含存在/不存在 id 邊界案例 |
+| `aladdin_admin_in_house_game_back_office_get_play_group_edit` | `InHouseGameBackOffice.GetPlayGroupEdit` | 取得單一自研遊戲玩法組的完整編輯詳情；**注意**後端對 playGroupId 不存在回傳的是 RPC 成功但資料為空（非一般業務錯誤碼），本 tool 已攔截轉換為明確的 `notFound` 訊號，2026-08-25 dev 實測驗證此陷阱屬實 |
 
 ## src/ 結構
 
