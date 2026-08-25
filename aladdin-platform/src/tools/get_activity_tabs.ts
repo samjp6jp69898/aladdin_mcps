@@ -54,9 +54,10 @@ export function registerGetActivityTabsTool(server: McpServer): void {
                 '「優惠中心 > 活動管理」的活動欄目管理彈窗——頁籤用於前台活動列表的分類展示' +
                 '（如「熱門活動」「每日任務」），已排除軟刪除項目（status=deleted），依' +
                 'sortOrder 由小到大排序。不帶任何參數，一次回傳全部（此為小型設定表，非會持續' +
-                '成長的歷史類資料，全撈是安全的）。回傳每筆含 id（供' +
-                'CreateOrUpdateActivityTabs/ToggleActivityTab 定位用，本 MCP 未提供這兩支寫入' +
-                'tool）、status（數值 1=enabled/2=disabled，不會出現 deleted）、sortOrder、name' +
+                '成長的歷史類資料，全撈是安全的）。回傳每筆含 id（供新增/修改用的 ' +
+                'aladdin_platform_activity_platform_create_or_update_activity_tabs 定位用；' +
+                'ToggleActivityTab 本 MCP 未提供對應 tool）、' +
+                'status（數值 1=enabled/2=disabled，不會出現 deleted）、sortOrder、name' +
                 '（多語系陣列，不保證涵蓋全部語系）；另外會附帶 platformId（本平台內部 id，' +
                 '僅供參考，呼叫端通常不需要用到）。純讀取查詢，不修改任何資料，可安全重複呼叫。',
             inputSchema: {},
