@@ -8,9 +8,13 @@
  * - `search`（rajah `GetRoomListSearch`）是空 model，一個欄位都沒有；service 層收到後直接丟棄，
  *   根本沒有傳進 manager（`room_platform.ts:82` 呼叫 `getBackOfficeLiveRoomList(context, page,
  *   pageSize)`，參數就只有 page/pageSize）——這支 method 沒有任何篩選能力，純粹是「本平台全部
- *   房間」的分頁列表，對應後台「房間列表」頁面。若已知 roomId 要查單一房間細節，改用同 service
- *   的 `RoomPlatform.GetRoomSettings(roomId)`（另一支 tool 的職責），不要對這支清單做逐頁掃描
- *   去定位特定房間。
+ *   房間」的分頁列表，對應後台「房間列表」頁面。
+ * - 2026-08-25 修正：原本這裡建議「已知 roomId 要查單一房間細節改用 `RoomPlatform.GetRoomSettings`」，
+ *   後來查證發現 `GetRoomSettings` 目前完全沒有後端實作（`agrabah/src/servers/room_back_office/
+ *   services/room_platform.ts` 沒有 override，落回 base class 的 `GenieResult.error(notImplemented)`，
+ *   見 `agrabah/src/generated/services.gen.ts:29446-29449`），呼叫必定失敗——此建議已錯誤，撤回。
+ *   目前 `RoomPlatform` service 底下**沒有**任何可用的「依 roomId 查單一房間」方法；若呼叫端需要
+ *   定位特定房間，只能對這支清單做有界的逐頁掃描（比對回傳的 roomId），沒有更好的替代方案。
  * - `pageSize` 雖然 rajah 型別是 `PageSizeEnum`（合法值 10/20/30/50/100/200，見
  *   common.rajah:2438-2446），但 manager 端只檢查 `pageSize > 0`（真，否則用預設值 100），
  *   沒有夾限在這個列舉範圍——這支工具仍只開放這幾個合法值，避免呼叫端傳入列舉外的數字。
@@ -39,8 +43,9 @@ export function registerListRoomsTool(server: McpServer): void {
             description:
                 '列出本平台全部房間的分頁清單（rajah: RoomPlatform.GetRoomList）。' +
                 '**沒有任何篩選欄位**——後端 search 參數是空 model 且 service 層完全沒使用它，' +
-                '不支援依 roomId/title/ownerUserId 篩選；若已知 roomId 要查單一房間細節，改用查詢' +
-                '單一房間設定的方法，不要用這支工具逐頁掃描找特定房間。' +
+                '不支援依 roomId/title/ownerUserId 篩選。RoomPlatform 底下沒有任何「依 roomId 查單一房間」' +
+                '的可用方法（GetRoomSettings 存在於 rajah 定義但後端完全未實作，呼叫必定回 notImplemented）——' +
+                '若需要定位特定房間，目前只能對這支清單做有界的逐頁掃描比對 roomId，沒有更好的替代方案。' +
                 '固定依 sort_order 排序，totalPage 是真實 COUNT(*) 算出來的，可用 page > totalPage 判斷是否已翻完。' +
                 'moduleResult 是額外查詢組出來的巢狀結構（依房間啟用的模組而定，可能為空）；' +
                 'realMemberCount 目前只計算連到本平台的即時人數，跨平台情境可能不準確（後端已知限制）。' +
