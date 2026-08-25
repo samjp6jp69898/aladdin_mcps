@@ -14,6 +14,8 @@ export const ACTIVE_STATUS_MAP = { enabled: 1, disabled: 2 } as const;
 // GameImageShapeEnum（game_back_office.rajah:266-272）；PlatformUploadGameImageEnum.game=1（game_back_office.rajah:627-633）
 export const IMAGE_SHAPE_MAP = { square: 1, rectangle: 2, banner: 3 } as const;
 export const UPLOAD_TYPE_GAME = 1;
+// PlatformUploadGameImageEnum.vendor=4（game_back_office.rajah:644），供 UpdateGameVendor 的廠商方形圖上傳使用
+export const UPLOAD_TYPE_VENDOR = 4;
 
 // GameLocalizationTargetEnum（rajah/services/game.rajah:40-47，用於 GameVendorPlatform.GetLocalizations）
 export const GAME_LOCALIZATION_TARGET_MAP = { gameName: 101, gameVendorName: 131, gameBrandTitle: 141 } as const;
