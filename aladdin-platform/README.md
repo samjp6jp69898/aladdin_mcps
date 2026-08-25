@@ -22,6 +22,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_get_game_ids_by_in_house_play_group_ids` | `GameVendorPlatform.GetGameIdsByInHousePlayGroupIds` | 把 in-house 遊戲的 playGroupId 批次回推成 game_vendor_games.id（gameVendorGameId）與 brandId；查不到的 id 列在回傳的 `unresolvedPlayGroupIds`，2026-08-25 dev 實測涵蓋存在/不存在/混合/重複輸入四種情境 |
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
 | `aladdin_platform_otp_code_setting_platform_get_sms_settings` | `OtpCodeSettingPlatform.GetSmsSettings` | 讀取本平台簡訊驗證碼（OTP SMS）發送限制設定（單例，無參數）；設定不存在時後端自動建立預設值，不會回空值 |
+| `aladdin_platform_otp_code_setting_platform_update_sms_settings` | `OtpCodeSettingPlatform.GetSmsSettings` + `UpdateSmsSettings` | 修改本平台 OTP SMS 發送限制設定，所有欄位皆 optional，先讀現值、只覆蓋有帶到的欄位、寫入後 round-trip 驗證；2026-08-25 dev 實測 limitCount round-trip 成功且其餘欄位不受影響 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -58,6 +59,7 @@ src/
     get_message_board_setting.ts     — 另外 export formatMessageBoardSetting()，update 工具的回傳共用同一支格式化函式
     update_message_board_setting.ts  — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，比照 onboard_vendor_game.ts 的模式
     get_otp_sms_settings.ts          — 另外 export formatOtpSmsSettings()，update 工具的回傳共用同一支格式化函式
+    update_otp_sms_settings.ts       — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，同 update_message_board_setting.ts 的模式
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
@@ -73,7 +75,7 @@ src/
 | `ALADDIN_PLATFORM_API_URL` | platform 後台 dev 站台，例如 `https://pk-platform.alddev.com` |
 | `ALADDIN_PLATFORM_USER` | 預設測試帳號 |
 | `ALADDIN_PLATFORM_PASSWORD` | 預設測試密碼 |
-| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，所有寫入型 tool（`aladdin_platform_game_vendor_platform_update_game_vendor_game`、`aladdin_platform_message_board_platform_set_message_board_post_setting`）都會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
+| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，所有寫入型 tool（`aladdin_platform_game_vendor_platform_update_game_vendor_game`、`aladdin_platform_message_board_platform_set_message_board_post_setting`、`aladdin_platform_otp_code_setting_platform_update_sms_settings`）都會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 ## 已知限制
 
