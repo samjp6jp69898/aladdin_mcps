@@ -86,6 +86,13 @@ import { registerGetVipLevelSettingsTool } from './get_vip_level_settings.ts';
 import { registerDeleteVipLevelSettingTool } from './delete_vip_level_setting.ts';
 import { registerGetVipSettingTool } from './get_vip_setting.ts';
 import { registerUpdateVipSettingTool } from './update_vip_setting.ts';
+import { registerGetChatSpeechSettingTool } from './get_chat_speech_setting.ts';
+import { registerUpdateChatSpeechSettingTool } from './update_chat_speech_setting.ts';
+import { registerGetPlatformVerificationConfigTool } from './get_platform_verification_config.ts';
+import { registerUpdatePlatformVerificationCaptchaTypeTool } from './update_platform_verification_captcha_type.ts';
+import { registerListInformationConfigsTool } from './list_information_configs.ts';
+import { registerGetInformationReadCountTool } from './get_information_read_count.ts';
+import { registerCreateUrgentInfoConfigTool } from './create_urgent_info_config.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -177,4 +184,11 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerDeleteVipLevelSettingTool(server);
     registerGetVipSettingTool(server);
     registerUpdateVipSettingTool(server);
+    registerGetChatSpeechSettingTool(server);
+    registerUpdateChatSpeechSettingTool(server);
+    registerGetPlatformVerificationConfigTool(server);
+    registerUpdatePlatformVerificationCaptchaTypeTool(server);
+    registerListInformationConfigsTool(server);
+    registerGetInformationReadCountTool(server);
+    registerCreateUrgentInfoConfigTool(server);
 }

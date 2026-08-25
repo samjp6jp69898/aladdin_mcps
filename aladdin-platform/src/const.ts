@@ -47,6 +47,26 @@ export const CUSTOMER_ISSUE_MAP = { player: 0, deposit: 1, withdraw: 2, other: 3
 export const CUSTOMER_FROM_TYPE_MAP = { aladdin: 0, komi: 1 } as const;
 // CustomerDepartmentEnum（customer_back_office.rajah:996-1005）
 export const CUSTOMER_DEPARTMENT_MAP = { ai: 1, risk: 2, finance: 3, manual: 5 } as const;
+// CaptchaTypeEnum（verification_code_common.rajah:7-12）——AdminCaptchaConfig（aladdin-admin）/
+// PlatformCaptchaConfig（本 server）共用同一組值。
+export const CAPTCHA_TYPE_MAP = { off: 0, numeral: 1, arithmetic: 2, geetest: 3 } as const;
+
+// InformationTypeEnum（rajah/services/information.rajah:2-13）——information_back_office domain
+// 底下 CommonInfoPlatform（查詢跨全部類型）與各 type 專屬 service（UrgentInfoPlatform 等）的
+// CreateConfig/UpdateConfig 都會用到同一組值，集中在此避免各 tool 各自重複宣告。
+export const INFORMATION_TYPE_MAP = {
+    urgent: 1,
+    announcement: 2,
+    news: 3,
+    mustRead: 4,
+    systemNotification: 5,
+    inSiteMail: 6,
+    recurringAward: 7,
+    liveNotification: 8,
+    notification: 9,
+    marquee: 10,
+    agentAnnouncement: 11,
+} as const;
 
 // H7：hosted 模式下 JWT 過期或尚未登入時回給 agent 的重登信號文字（plan.md D4/D11）。
 // D11 要求 harness 只陳述事實、不引導跨後台操作，措辭止於此，不建議改用其他帳號或後台。
@@ -110,6 +130,10 @@ export const DISCOUNT_MODE_MAP = { bonus: 1, percent: 2 } as const;
  * createdAtTimestamp——連伺服器端來源本身是一般 JS number 的欄位，client 解碼後仍是 Long/
  * 字串，不能只看伺服器端型別就跳過轉換），實測數值都在 52 bit 安全整數範圍內，維持最小作法
  * 即可，之後若出現更多組再考慮要不要抽更通用的版本。
+ * （物件或十進位字串）。這個 codebase 目前有兩組 i64 欄位需要這樣轉換
+ * （大舞台基本設置的 postsChangeUserDetailMinChargeTotal/postsGiftReceiveTotalAmount、
+ * 聊天室發言設定的 rechargeAmount），實測數值都在 52 bit 安全整數範圍內，先用最小作法
+ * 處理，之後若有更多欄位需要同樣處理再考慮要不要抽更通用的版本。
  */
 // TimeLimitTypeEnum（common.rajah:1597-1606），供 PointPlatform.GetPointSetting/UpdatePointSetting 的
 // dueType 使用。unknown=0 不收錄——後端驗證只接受 absoluteTime（需 dueAtTimestamp）或 relativeTime（需 dueDay）。

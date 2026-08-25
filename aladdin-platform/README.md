@@ -89,6 +89,13 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_vip_level_platform_delete_vip_level_setting` | `VipLevelPlatform.DeleteVipLevelSetting` | 軟刪除一筆 VIP 等級設定，等級仍有真實會員時會擋下（errorCode=vipLevelSettingHasUsers）；⚠️ 對不存在/已刪除的 id 重複呼叫都回成功，需用回傳的 readBack 欄位（read_back_failed/still_present/confirmed_removed）判斷實際狀態，讀回走快取可能有極短暫假陰性 |
 | `aladdin_platform_vip_level_platform_get_vip_setting` | `VipLevelPlatform.GetVipSetting` | 取得本平台 VIP 全域設定（單例），無參數、內部用 context.platformId（無跨租戶風險）；⚠️ 五個 `*AuditMultiple` 欄位原始值為實際倍數 ×10000，`*ValidityTime` 單位是小時 |
 | `aladdin_platform_vip_level_platform_update_vip_setting` | `VipLevelPlatform.GetVipSetting` + `UpdateVipSetting` | 更新 VIP 全域設定，先讀現值、只覆蓋帶到的欄位；⚠️ 刻意不開放編輯 equityIcons（後端對它是「未在傳入清單即軟刪」）一律原樣帶回；userLevels 整批覆蓋且會額外 round-trip 比對（後端 SyncTargetIdsForSource 失敗時會被吞掉，見程式內註解） |
+| `aladdin_platform_chat_speech_setting_platform_get_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` | 讀取「房間管理」→「房間限制設定」→「房間功能設定」→「聊天室發言設定」目前的設定內容（單例設定，無參數，不吃 platformId；查無資料時回傳全 0／空陣列預設值，不是錯誤） |
+| `aladdin_platform_chat_speech_setting_platform_save_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` + `SaveChatSpeechSetting` | 修改聊天室發言設定並儲存，所有欄位皆 optional，只覆蓋有帶到的欄位，其餘先讀現值原樣帶回；memberLevels 陣列為整包覆蓋（後端整批刪除重建關聯表），非差異運算 |
+| `aladdin_platform_platform_captcha_config_get_platform_verification_config` | `PlatformCaptchaConfig.GetPlatformVerificationConfig` | 讀取本平台的驗證碼設定（可用類型清單 + 目前類型），無參數，平台由連線本身判定 |
+| `aladdin_platform_platform_captcha_config_set_platform_verification_captcha_type` | `PlatformCaptchaConfig.SetPlatformVerificationCaptchaType` | 切換本平台目前使用的驗證碼類型（須屬於 availableCaptchaTypes 清單），後端自己會保留清單不受影響，工具直接單參數呼叫 |
+| `aladdin_platform_common_info_platform_get_configs` | `CommonInfoPlatform.GetConfigs` | 分頁查詢本平台後台信息系統（公告/緊急通知/最新消息/必讀……共用同一支查詢），A 級（`ids` 可精準查找）；`status`/`pageSize` 不帶時工具內部分別改送 `-1`/`50`，不能直接不帶（送 `undefined` 會分別落到「精準比對 status=0」「LIMIT 0,0」兩個地雷，見工具檔頭說明），2026-08-25 dev 實測含 156 筆真實資料、A 級目標記錄不在第一頁情境 |
+| `aladdin_platform_common_info_platform_get_read_count` | `CommonInfoPlatform.GetReadCount` | 批次查詢多筆信息各自的已讀人數，回傳陣列與輸入 `infoIds` 陣列結構性保證同長度同順序（不需自行比對 id），不存在/0已讀/別平台的 id 皆回 0（三者不可區分，但不會洩漏別平台數字），`infoIds` 上限 1000 筆（工具自加防呆） |
+| `aladdin_platform_urgent_info_platform_create_config` | `UrgentInfoPlatform.CreateConfig` | 新增一筆緊急通知，新建立的紀錄一律強制 disabled（要生效需另外呼叫 EnableConfig，尚未包裝成 tool），只寫操作日誌不觸發背景 job/快取；RPC 不回傳 id，工具改用 title 完全比對做 best-effort 讀回（title 非唯一鍵，找不到不代表失敗） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -129,6 +136,10 @@ src/
     list_enabled_items_all.ts  — 無分頁全撈，回傳不含 commonDetail/depositWithdrawDetail
     get_item_names_by_id.ts    — 批次查名稱，回傳與輸入 ids 同長度同順序（讀原始碼證實的特例）
     update_item_status.ts      — 同值短路是必要邏輯（後端同值回錯誤），非最佳化；共用 create_or_update_item.ts 的 findItemById
+    get_chat_speech_setting.ts       — 另外 export formatChatSpeechSetting()，同 get_message_board_setting.ts 模式
+    update_chat_speech_setting.ts    — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，同 update_message_board_setting.ts 模式
+    get_platform_verification_config.ts            — 單例設定，platformId 隱式帶入，查無資料回預設值
+    update_platform_verification_captcha_type.ts    — 後端自己保留 availableCaptchaTypes，工具直接單參數呼叫，不需自己讀現值合併
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。

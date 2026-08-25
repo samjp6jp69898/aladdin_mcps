@@ -27,6 +27,10 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_module_admin_get_platform_modules` | `ModuleAdmin.GetPlatformModules` | 查詢指定平台的模組清單，含每個模組目前啟用/停用狀態；platformId 不存在時回 `platformNotExists`（不是空陣列） |
 | `aladdin_admin_module_admin_enable_platform_module` | `ModuleAdmin.EnablePlatformModule` | 啟用/停用平台的單一模組（加入/移除單一元素，非整批覆蓋），冪等（已是目標狀態時直接成功），寫入後用 `GetPlatformModules` 讀回驗證 |
 | `aladdin_admin_module_admin_enable_platform_modules` | `ModuleAdmin.EnablePlatformModules` | **整批覆蓋**平台應啟用的完整模組清單（不是增量新增，空陣列會清空該平台所有啟用模組）；若只想切換單一模組請改用單數版本 `enable_platform_module`，避免誤刪其他已啟用模組 |
+| `aladdin_admin_admin_captcha_config_get_captcha_config` | `AdminCaptchaConfig.GetCaptchaConfig` | 讀取系統層級某一驗證碼類型（numeral/arithmetic/geetest，不含 off——off 沒有對應 adapter 必回錯）的設定，geetestKey 預設遮罩尾 4 碼 |
+| `aladdin_admin_admin_captcha_config_set_captcha_config` | `AdminCaptchaConfig.GetCaptchaConfig` + `SetCaptchaConfig` | 修改系統層級驗證碼類型設定，先讀現值只覆蓋有帶到的欄位；**高風險副作用**：停用某類型會級聯把選用該類型的所有平台改成 numeral/off，且無自動復原，詳見工具說明 |
+| `aladdin_admin_admin_captcha_config_get_platform_verification_configs` | `AdminCaptchaConfig.GetPlatformVerificationConfigs` | 列出各平台的驗證碼設定；帶 `platformId` 會內部逐頁掃描到底找該平台那一筆 |
+| `aladdin_admin_admin_captcha_config_set_platform_verification_config` | `AdminCaptchaConfig.GetPlatformVerificationConfigs`（找現值）+ `SetPlatformVerificationConfig` | 修改指定平台的可用驗證碼類型清單/目前類型；因後端 proto3 空陣列地雷（見工具說明），工具每次都送完整 `availableCaptchaTypes` 陣列，不依賴後端做欄位級保護 |
 
 ## src/ 結構
 
@@ -52,6 +56,10 @@ src/
     list_platforms.ts
     list_platform_game_vendors.ts
     update_platform_game_vendor_status.ts
+    get_captcha_config.ts                    — 另外 export formatCaptchaConfigResult()，update 工具的回傳共用同一支格式化函式
+    update_captcha_config.ts                 — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回；高風險副作用見檔頭註解
+    get_platform_verification_configs.ts     — 另外 export findPlatformVerificationConfigRow()，update 工具的讀現值步驟共用
+    update_platform_verification_config.ts   — 每次都送完整 availableCaptchaTypes 陣列，規避 proto3 空陣列地雷（見檔頭註解）
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。

@@ -24,6 +24,10 @@ import { registerCreatePlatformTool } from './create_platform.ts';
 import { registerListPlatformModulesTool } from './list_platform_modules.ts';
 import { registerEnablePlatformModuleTool } from './enable_platform_module.ts';
 import { registerEnablePlatformModulesTool } from './enable_platform_modules.ts';
+import { registerGetCaptchaConfigTool } from './get_captcha_config.ts';
+import { registerUpdateCaptchaConfigTool } from './update_captcha_config.ts';
+import { registerGetPlatformVerificationConfigsTool } from './get_platform_verification_configs.ts';
+import { registerUpdatePlatformVerificationConfigTool } from './update_platform_verification_config.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -55,4 +59,8 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerListPlatformModulesTool(server);
     registerEnablePlatformModuleTool(server);
     registerEnablePlatformModulesTool(server);
+    registerGetCaptchaConfigTool(server);
+    registerUpdateCaptchaConfigTool(server);
+    registerGetPlatformVerificationConfigsTool(server);
+    registerUpdatePlatformVerificationConfigTool(server);
 }
