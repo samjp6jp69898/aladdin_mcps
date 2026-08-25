@@ -104,6 +104,8 @@ import { registerUpdateIpRegionStatusTool } from './update_ip_region_status.ts';
 import { registerBatchUpdateIpRegionStatusTool } from './batch_update_ip_region_status.ts';
 import { registerDeleteIpRegionTool } from './delete_ip_region.ts';
 import { registerBatchDeleteIpRegionTool } from './batch_delete_ip_region.ts';
+import { registerGetInHouseVendorListTool } from './get_in_house_vendor_list.ts';
+import { registerGetInHousePlayGroupListTool } from './get_in_house_play_group_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -213,4 +215,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerBatchUpdateIpRegionStatusTool(server);
     registerDeleteIpRegionTool(server);
     registerBatchDeleteIpRegionTool(server);
+    registerGetInHouseVendorListTool(server);
+    registerGetInHousePlayGroupListTool(server);
 }
