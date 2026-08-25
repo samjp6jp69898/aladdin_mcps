@@ -23,6 +23,7 @@ import { registerUpdateShowCategoryTool } from './update_show_category.ts';
 import { registerListClassificationCategoriesTool } from './list_classification_categories.ts';
 import { registerCreateOrUpdateClassificationTool } from './create_or_update_classification.ts';
 import { registerDeleteClassificationTool } from './delete_classification.ts';
+import { registerGetCategoriesByClassificationTool } from './get_categories_by_classification.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -51,4 +52,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListClassificationCategoriesTool(server);
     registerCreateOrUpdateClassificationTool(server);
     registerDeleteClassificationTool(server);
+    registerGetCategoriesByClassificationTool(server);
 }

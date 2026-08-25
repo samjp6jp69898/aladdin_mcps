@@ -26,6 +26,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_wallet_platform_list_classification_categories` | `WalletPlatform.ListClassificationCategories` | 列出本平台已建立的「運營歸類」（交易類型分組），無參數、不分頁、一次回傳全部；2026-08-25 dev 實測 |
 | `aladdin_platform_wallet_platform_create_or_update_classification` | `WalletPlatform.CreateOrUpdateClassification` | 新增/更新歸類，`id` 省略或 0 走新增；更新時 name/remark/categories 皆整包覆蓋，但省略欄位會先讀現值沿用（要清空 categories 需明確傳 `[]`）；新增時後端不回 id，改用 name 比對清單找出新建的那筆（同名多筆會如實列出全部候選）；2026-08-25 dev 實測含新增/更新/欄位沿用/明確清空四種情境 |
 | `aladdin_platform_wallet_platform_delete_classification` | `WalletPlatform.DeleteClassification` | 刪除歸類，**硬刪除、不冪等**（對已刪除 id 再刪一次會回錯誤），刪除前先確認記錄存在；2026-08-25 dev 實測含正常刪除與重複刪除兩種情境 |
+| `aladdin_platform_wallet_platform_get_categories_by_classification` | `WalletPlatform.GetCategoriesByClassification` | 把一批歸類 id 解析成涵蓋的交易類型去重聯集，純讀取；2026-08-25 dev 實測 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
