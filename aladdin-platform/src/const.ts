@@ -224,20 +224,14 @@ export const OTP_CODE_MAX_EXPIRY_SECONDS = 600;
  * （{low,high,unsigned} + toNumber()，genie/src/common/index.ts 的
  * fixObjectInteger 就是處理同一件事，但 genie/client 目前沒有自動套用，見該檔案
  * 註解），直接 JSON.stringify 會印出難以閱讀、且依呼叫路徑不同而不一致的形狀
- * （物件或十進位字串）。2026-08-25 起已有多組 i64 欄位使用這支（大舞台基本設置；
- * list_rooms.ts 的 roomCreatedAt/moduleResult.chat.chatRoomId；get_room_announcements.ts 的
- * createdAtTimestamp——連伺服器端來源本身是一般 JS number 的欄位，client 解碼後仍是 Long/
- * 字串，不能只看伺服器端型別就跳過轉換），實測數值都在 52 bit 安全整數範圍內，維持最小作法
- * 即可，之後若出現更多組再考慮要不要抽更通用的版本。
- * （物件或十進位字串）。這個 codebase 目前有兩組 i64 欄位需要這樣轉換
- * （大舞台基本設置的 postsChangeUserDetailMinChargeTotal/postsGiftReceiveTotalAmount、
- * 聊天室發言設定的 rechargeAmount），實測數值都在 52 bit 安全整數範圍內，先用最小作法
- * 處理，之後若有更多欄位需要同樣處理再考慮要不要抽更通用的版本。
- * （物件或十進位字串）。目前有兩組欄位用到這個函式（大舞台基本設置；
- * list_user_transactions.ts 的 UserTransaction.amount/beforeBalance/afterBalance/
- * createdAtTimestamp/registerTimestamp，2026-08-25 dev 實測發現同款陷阱），實測數值都在
- * 52 bit 安全整數範圍內，先用最小作法處理，之後若有更多欄位需要同樣處理再考慮要不要抽更
- * 通用的版本。
+ * （物件或十進位字串）。2026-08-25 起已有多組 i64 欄位使用這支：大舞台基本設置的
+ * postsChangeUserDetailMinChargeTotal/postsGiftReceiveTotalAmount；聊天室發言設定的
+ * rechargeAmount；list_rooms.ts 的 roomCreatedAt/moduleResult.chat.chatRoomId；
+ * get_room_announcements.ts 的 createdAtTimestamp；list_user_transactions.ts 的
+ * UserTransaction.amount/beforeBalance/afterBalance/createdAtTimestamp/registerTimestamp
+ * ——連伺服器端來源本身是一般 JS number 的欄位，client 解碼後仍可能是 Long/字串，不能只看
+ * 伺服器端型別就跳過轉換，實測數值都在 52 bit 安全整數範圍內，維持最小作法即可，之後若出現
+ * 更多組再考慮要不要抽更通用的版本。
  */
 // TimeLimitTypeEnum（common.rajah:1597-1606），供 PointPlatform.GetPointSetting/UpdatePointSetting 的
 // dueType 使用。unknown=0 不收錄——後端驗證只接受 absoluteTime（需 dueAtTimestamp）或 relativeTime（需 dueDay）。
@@ -274,6 +268,8 @@ export function formatCurrencyLinks(links: unknown): unknown {
     if (!Array.isArray(links)) return links;
     return links.map((link) => ({ ...(link as Record<string, unknown>), value: toPlainNumber((link as { value?: unknown }).value) }));
 }
+
+/**
  * 遞迴把回傳物件裡任何 protobufjs Long 實例（i64 欄位解出來的原始型別，鴨子定型判斷式
  * 同 toPlainNumber：有 low/high 兩個 number 欄位 + toNumber() 方法）轉成一般 number，
  * 其餘型別（string/boolean/null/一般 number）原樣通過。
@@ -310,6 +306,8 @@ export const POINT_TRANSACTION_CATEGORY_KEYS = [
 export const POINT_TRANSACTION_CATEGORY_MAP: Record<(typeof POINT_TRANSACTION_CATEGORY_KEYS)[number], number> = {
     turnover: 1, checkIn: 2, exchangeProduct: 3, expired: 4, manualAdd: 5, manualDeduct: 6, roulette: 7,
 };
+
+/**
  * CurrencyLink（`{code, value}`，rajah model 的 `value` 是 i64）陣列轉換：`value` 經
  * protobufjs decode 同樣可能是 Long 物件，套用 toPlainNumber()。2026-08-25 review 發現
  * list_room_gifts.ts/get_room_gift_statistic_summary.ts/list_records.ts 對巢狀在
