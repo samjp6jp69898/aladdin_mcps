@@ -27,6 +27,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_wallet_platform_create_or_update_classification` | `WalletPlatform.CreateOrUpdateClassification` | 新增/更新歸類，`id` 省略或 0 走新增；更新時 name/remark/categories 皆整包覆蓋，但省略欄位會先讀現值沿用（要清空 categories 需明確傳 `[]`）；新增時後端不回 id，改用 name 比對清單找出新建的那筆（同名多筆會如實列出全部候選）；2026-08-25 dev 實測含新增/更新/欄位沿用/明確清空四種情境 |
 | `aladdin_platform_wallet_platform_delete_classification` | `WalletPlatform.DeleteClassification` | 刪除歸類，**硬刪除、不冪等**（對已刪除 id 再刪一次會回錯誤），刪除前先確認記錄存在；2026-08-25 dev 實測含正常刪除與重複刪除兩種情境 |
 | `aladdin_platform_wallet_platform_get_categories_by_classification` | `WalletPlatform.GetCategoriesByClassification` | 把一批歸類 id 解析成涵蓋的交易類型去重聯集，純讀取；2026-08-25 dev 實測 |
+| `aladdin_platform_wallet_platform_list_user_transactions` | `WalletPlatform.ListUserTransactions` | 查詢會員錢包交易紀錄，搜尋區間上限 93 天（未帶時預設查最久可查區間）；金額欄位為 stored 整數（依 currencyCode 換算，本工具不做正規化）；**`status` 不支援 "pending"**（後端 `searchNotEmpty()` 對數字 0 視為未帶，篩選會被靜默忽略，2026-08-25 review 發現並修正）；i64 欄位（amount/beforeBalance/afterBalance/createdAtTimestamp/registerTimestamp）已轉成一般 number，避免印出 protobufjs 內部 Long 物件；2026-08-25 dev 實測含預設查詢、超過 93 天區間報錯、空結果集三種情境 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
