@@ -59,11 +59,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
+import { ErrorCode } from '/Users/user/aladdin/genie/src/common/index.ts';
 import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { STATUS_MAP } from '../const.ts';
-
-const OBJECT_NOT_FOUND = 14;
 
 export function registerToggleActivityTabTool(server: McpServer): void {
     server.registerTool(
@@ -75,8 +74,9 @@ export function registerToggleActivityTabTool(server: McpServer): void {
                 '權限節點 BonusCenter.Activity.Config.ActTab.Status.Toggle）。這不是無參數的' +
                 '反轉開關，一定要帶明確的目標 status。' +
                 'id 從 aladdin_platform_activity_platform_get_activity_tabs 取得。' +
-                '合法 status 值：unknown/enabled/disabled/frozen/deleted，一般啟停只會用到' +
-                'enabled/disabled；deleted 是這組 method 唯一能軟刪除頁籤的方式（沒有獨立的' +
+                '本工具接受 enabled/disabled/deleted（後端 RPC 另接受 unknown/frozen，但本產品' +
+                '從未對這個 method 使用過這兩個值，刻意不開放，見 status 欄位說明）；deleted' +
+                '是這組 method 唯一能軟刪除頁籤的方式（沒有獨立的' +
                 'Delete tool）——設成 deleted 後該頁籤會從 get_activity_tabs 的清單消失（該' +
                 'query 排除 deleted）。對已經是目標狀態的頁籤重複呼叫（含對已軟刪除的頁籤再次' +
                 '設為 deleted，或把它改回 enabled/disabled 等同復原軟刪除）本工具天生冪等，' +
@@ -101,7 +101,7 @@ export function registerToggleActivityTabTool(server: McpServer): void {
 
             const r = await withAutoRelogin(() => remote.activityBackOffice.activityPlatform.ToggleActivityTab(id, targetStatus));
             if (r.failed) {
-                if (r.errorCode === OBJECT_NOT_FOUND) {
+                if (r.errorCode === ErrorCode.objectNotFound) {
                     return asTextResult({ success: false, message: `id=${ id } 不存在，或不屬於目前這個平台` });
                 }
                 return asErrorResult(r);
