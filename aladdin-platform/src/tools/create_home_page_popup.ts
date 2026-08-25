@@ -142,7 +142,7 @@ export const adForwardSchema = z.object({
     announce: z.object({ announcementId: z.number().int(), name: z.string() }).optional().describe('跳轉公告'),
     games: z.array(z.object({ gameId: z.number().int(), name: z.string() })).optional().describe('跳轉遊戲清單'),
     live: z.array(z.object({ liveId: z.string(), name: z.string() })).optional().describe('跳轉直播間清單'),
-    fission: z.string().optional().describe('裂變活動 key（來自平台 settings fission.activity.list，可用 aladdin_platform_ad_home_page_pop_up_platform_get_configs 的相鄰 tool GetFissionActivityOptions 查詢，本 server 目前未包裝該查詢 tool）'),
+    fission: z.string().optional().describe('裂變活動 key，來自 aladdin_platform_ad_home_page_pop_up_platform_get_fission_activity_options 回傳的 rows[].key'),
     // customer/roulette 刻意不開放，見檔頭「已知限制」——abu/platform 目前生成的 types.gen.json 缺這兩個
     // 欄位（前端 codegen 落後於 rajah 源碼），帶了會被協定層靜默丟棄、造成後端回「Only one forward type
     // must be specified」這種誤導性錯誤，不如直接不開放，避免呼叫端誤用。

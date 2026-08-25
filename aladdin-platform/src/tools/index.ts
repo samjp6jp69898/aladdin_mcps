@@ -22,6 +22,7 @@ import { registerListHomePagePopupsTool } from './list_home_page_popups.ts';
 import { registerCreateHomePagePopupTool } from './create_home_page_popup.ts';
 import { registerSetHomePagePopupStatusTool } from './set_home_page_popup_status.ts';
 import { registerEditHomePagePopupTool } from './edit_home_page_popup.ts';
+import { registerListHomePagePopupFissionActivitiesTool } from './list_home_page_popup_fission_activities.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +50,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerCreateHomePagePopupTool(server);
     registerSetHomePagePopupStatusTool(server);
     registerEditHomePagePopupTool(server);
+    registerListHomePagePopupFissionActivitiesTool(server);
 }
