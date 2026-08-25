@@ -65,9 +65,20 @@ export const CHANGE_USER_DETAIL_CHARGE_TIMES_MAP = { noNeed: 0, minChargeTimesOn
 // 直接從已生成的 remote.gen.ts 匯入真正的 TS enum，用 Object.keys 動態推導出
 // 字串 key 清單給 zod z.enum() 用（agent 傳字串 key，如 "paymentDeposit"，不傳數字碼），
 // forward/reverse mapping 都用該 enum 物件本身的內建能力（TS 數字 enum 自動有雙向映射）。
-import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
+import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum, SystemIdEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
 
 export { TransactionCategoryEnum };
+
+// SystemIdEnum（common.rajah，49 個值），get_audit_logs.ts 用；同款動態推導模式。
+export const SYSTEM_ID_KEYS = Object.keys(SystemIdEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function systemIdKeyToNumber(key: string): number {
+    return (SystemIdEnum as unknown as Record<string, number>)[ key ];
+}
+export function systemIdNumberToKey(value: number): string | number {
+    return (SystemIdEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
 
 /** TransactionCategoryEnum 的字串 key 清單（過濾掉數字 enum 反向映射多出來的純數字 key）。 */
 export const TRANSACTION_CATEGORY_KEYS = Object.keys(TransactionCategoryEnum).filter(
