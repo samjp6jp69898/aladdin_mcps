@@ -24,6 +24,13 @@ import { registerToggleActivityTabTool } from './toggle_activity_tab.ts';
 import { registerGetActivityConfigsTool } from './get_activity_configs.ts';
 import { registerGetUserIdByIdentifierTool } from './get_user_id_by_identifier.ts';
 import { registerGetFissionActivityOptionsTool } from './get_fission_activity_options.ts';
+import { registerListHomePagePopupsTool } from './list_home_page_popups.ts';
+import { registerCreateHomePagePopupTool } from './create_home_page_popup.ts';
+import { registerSetHomePagePopupStatusTool } from './set_home_page_popup_status.ts';
+import { registerEditHomePagePopupTool } from './edit_home_page_popup.ts';
+import { registerListHomePagePopupFissionActivitiesTool } from './list_home_page_popup_fission_activities.ts';
+import { registerListFloatingWindowsTool } from './list_floating_windows.ts';
+import { registerCreateFloatingWindowTool } from './create_floating_window.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -53,4 +60,11 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetActivityConfigsTool(server);
     registerGetUserIdByIdentifierTool(server);
     registerGetFissionActivityOptionsTool(server);
+    registerListHomePagePopupsTool(server);
+    registerCreateHomePagePopupTool(server);
+    registerSetHomePagePopupStatusTool(server);
+    registerEditHomePagePopupTool(server);
+    registerListHomePagePopupFissionActivitiesTool(server);
+    registerListFloatingWindowsTool(server);
+    registerCreateFloatingWindowTool(server);
 }
