@@ -22,6 +22,7 @@ import { registerListPlatformRiskStrategiesTool } from './list_platform_risk_str
 import { registerGetPlatformRiskStrategiesTool } from './get_platform_risk_strategies.ts';
 import { registerGetPlatformRiskStrategyForEditTool } from './get_platform_risk_strategy_for_edit.ts';
 import { registerUpdatePlatformRiskStrategyStatusTool } from './update_platform_risk_strategy_status.ts';
+import { registerListPlatformRiskEventsTool } from './list_platform_risk_events.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +50,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetPlatformRiskStrategiesTool(server);
     registerGetPlatformRiskStrategyForEditTool(server);
     registerUpdatePlatformRiskStrategyStatusTool(server);
+    registerListPlatformRiskEventsTool(server);
 }
