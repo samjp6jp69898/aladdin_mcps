@@ -46,6 +46,11 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_in_house_game_back_office_get_two_eight_hedge_setting` | `InHouseGameBackOffice.GetTwoEightHedgeSetting` | 取得指定玩法組的二八槓對沖策略設定；與兩個 sibling 不同，這支不查廠商幣別，playGroupId 不存在會靜默回預設值（maxItems=10）而不報錯，2026-08-25 dev 實測驗證 |
 | `aladdin_admin_in_house_game_back_office_update_vendor_status` | `InHouseGameBackOffice.UpdateVendorStatus` | 切換自研遊戲廠商啟用/停用狀態；**注意**停用會連鎖停用該廠商底下所有玩法組（不對稱，重新啟用不會恢復），呼叫前務必先查證影響範圍；同值呼叫不會誤報找不到（mysql2 FOUND_ROWS flag），2026-08-25 dev round-trip 實測驗證且測試環境已還原乾淨 |
 | `aladdin_admin_in_house_game_back_office_update_play_group_status` | `InHouseGameBackOffice.UpdatePlayGroupStatus` | 切換自研遊戲玩法組啟用/停用狀態；**注意**啟用前會檢查賠率/限額設定是否完整（不完整回 errorCode=1313，讀原始碼確認但 dev 未實測觸發過）、啟用會立即讓前台玩家可下注（機器人下一局才生效）、每次呼叫都會留下稽核日誌，2026-08-25 dev round-trip 實測驗證且測試環境已還原乾淨（業務狀態，稽核紀錄依設計保留） |
+| `aladdin_admin_audit_admin_get_audit_logs` | `AuditAdmin.GetAuditLogs` | 查詢系統管理後台（跨平台）的操作紀錄；`systemId` 省略內部固定送 -1（0 是合法值 core，不能當不篩選）；`actionId` 是 AdminActionIdEnum 字串 key（122 個值，完整列舉）；`pageSize` 只接受 10/20/30/50/100/200；2026-08-25 dev 實測 |
+| `aladdin_admin_currency_admin_get_currencies` | `CurrencyAdmin.GetCurrencies` | 列出全域幣別清單，無 @Permission；不分頁一次全撈（小型列舉表）；2026-08-25 dev 實測 |
+| `aladdin_admin_currency_admin_update_currency` | `CurrencyAdmin.UpdateCurrency` | 更新既有全域幣別的 name/symbol/displayDigits；code/type/decimalPlaces 不可改；寫入成功會全平台廣播（ReloadCurrency）；name 最長 20 字元、symbol 最長 10 字元（比照 DB VARCHAR 上限）；三值皆與現值相同時後端回 nothingChanged（本工具視為非失敗）；先讀現值合併未帶欄位、寫入後 round-trip 逐欄比對；2026-08-25 dev 實測含正常更新、nothingChanged、超長欄位、id 不存在四種情境 |
+| `aladdin_admin_core_admin_get_platform_domains` | `CoreAdmin.GetPlatformDomains` | 列出指定平台的 platform/agent gate 域名清單（不含 App 端域名，那是另一支公開但本輪未包裝的 method）；totalPage 恆為 1（無真正分頁）；不存在的 platformId 回空陣列非錯誤；2026-08-25 dev 實測 |
+| `aladdin_admin_core_admin_create_or_update_platform_domain` | `CoreAdmin.CreateOrUpdatePlatformDomain` | 新增/更新平台域名；**後端更新時完全不驗證 id 是否屬於指定的 platformId**（會把域名記錄改隸到別的平台），本工具在更新前強制先查 ownership 擋下；domain 欄位有全域 UNIQUE 約束；沒有刪除/停用 method；2026-08-25 dev 實測含正常更新 round-trip、跨平台 id 誤用防護（直呼 RPC 證實後端真的不擋）、新增、platformId 不存在四種情境，全程復原無殘留（測試新建的一筆域名因無刪除能力保留在 dev，字串已標示為測試用途） |
 
 ## src/ 結構
 

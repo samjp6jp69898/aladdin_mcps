@@ -43,6 +43,11 @@ import { registerGetTwoEightBetLimitSettingTool } from './get_two_eight_bet_limi
 import { registerGetTwoEightHedgeSettingTool } from './get_two_eight_hedge_setting.ts';
 import { registerUpdateInHouseVendorStatusTool } from './update_in_house_vendor_status.ts';
 import { registerUpdateInHousePlayGroupStatusTool } from './update_in_house_play_group_status.ts';
+import { registerGetAuditLogsTool } from './get_audit_logs.ts';
+import { registerGetCurrenciesTool } from './get_currencies.ts';
+import { registerUpdateCurrencyTool } from './update_currency.ts';
+import { registerGetPlatformDomainsTool } from './get_platform_domains.ts';
+import { registerCreateOrUpdatePlatformDomainTool } from './create_or_update_platform_domain.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -93,4 +98,9 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetTwoEightHedgeSettingTool(server);
     registerUpdateInHouseVendorStatusTool(server);
     registerUpdateInHousePlayGroupStatusTool(server);
+    registerGetAuditLogsTool(server);
+    registerGetCurrenciesTool(server);
+    registerUpdateCurrencyTool(server);
+    registerGetPlatformDomainsTool(server);
+    registerCreateOrUpdatePlatformDomainTool(server);
 }

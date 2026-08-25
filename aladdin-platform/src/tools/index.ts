@@ -106,6 +106,21 @@ import { registerDeleteIpRegionTool } from './delete_ip_region.ts';
 import { registerBatchDeleteIpRegionTool } from './batch_delete_ip_region.ts';
 import { registerGetInHouseVendorListTool } from './get_in_house_vendor_list.ts';
 import { registerGetInHousePlayGroupListTool } from './get_in_house_play_group_list.ts';
+import { registerGetShowCategoryTool } from './get_show_category.ts';
+import { registerUpdateShowCategoryTool } from './update_show_category.ts';
+import { registerListClassificationCategoriesTool } from './list_classification_categories.ts';
+import { registerCreateOrUpdateClassificationTool } from './create_or_update_classification.ts';
+import { registerDeleteClassificationTool } from './delete_classification.ts';
+import { registerGetCategoriesByClassificationTool } from './get_categories_by_classification.ts';
+import { registerListUserTransactionsTool } from './list_user_transactions.ts';
+import { registerGetAuditLogsTool } from './get_audit_logs.ts';
+import { registerListRoomGiftsTool } from './list_room_gifts.ts';
+import { registerGetRoomGiftStatisticSummaryTool } from './get_room_gift_statistic_summary.ts';
+import { registerListRecordsTool } from './list_records.ts';
+import { registerGetAnchorStatisticSummaryTool } from './get_anchor_statistic_summary.ts';
+import { registerGetPlatformStatisticSummaryTool } from './get_platform_statistic_summary.ts';
+import { registerGetCurrenciesTool } from './get_currencies.ts';
+import { registerUpdateCurrencyStatusTool } from './update_currency_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -217,4 +232,19 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerBatchDeleteIpRegionTool(server);
     registerGetInHouseVendorListTool(server);
     registerGetInHousePlayGroupListTool(server);
+    registerGetShowCategoryTool(server);
+    registerUpdateShowCategoryTool(server);
+    registerListClassificationCategoriesTool(server);
+    registerCreateOrUpdateClassificationTool(server);
+    registerDeleteClassificationTool(server);
+    registerGetCategoriesByClassificationTool(server);
+    registerListUserTransactionsTool(server);
+    registerGetAuditLogsTool(server);
+    registerListRoomGiftsTool(server);
+    registerGetRoomGiftStatisticSummaryTool(server);
+    registerListRecordsTool(server);
+    registerGetAnchorStatisticSummaryTool(server);
+    registerGetPlatformStatisticSummaryTool(server);
+    registerGetCurrenciesTool(server);
+    registerUpdateCurrencyStatusTool(server);
 }

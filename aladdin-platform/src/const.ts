@@ -141,6 +141,64 @@ export const PAGE_SIZE_MAP: Record<(typeof PAGE_SIZE_KEYS)[number], number> = {
     size100: 100,
     size200: 200,
 };
+// WalletPlatform 系列 tool 共用（get_show_category/update_show_category/
+// list_classification_categories/create_or_update_classification/
+// get_categories_by_classification/list_user_transactions）：TransactionCategoryEnum
+// 有 100+ 值（wallet_back_office.rajah），不手動謄寫一份對照表（容易漂移），
+// 直接從已生成的 remote.gen.ts 匯入真正的 TS enum，用 Object.keys 動態推導出
+// 字串 key 清單給 zod z.enum() 用（agent 傳字串 key，如 "paymentDeposit"，不傳數字碼），
+// forward/reverse mapping 都用該 enum 物件本身的內建能力（TS 數字 enum 自動有雙向映射）。
+import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum, SystemIdEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
+
+export { TransactionCategoryEnum };
+
+// SystemIdEnum（rajah/services/service_common.rajah:3，43 個值），get_audit_logs.ts 用；同款動態推導模式。
+export const SYSTEM_ID_KEYS = Object.keys(SystemIdEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function systemIdKeyToNumber(key: string): number {
+    return (SystemIdEnum as unknown as Record<string, number>)[ key ];
+}
+export function systemIdNumberToKey(value: number): string | number {
+    return (SystemIdEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/** TransactionCategoryEnum 的字串 key 清單（過濾掉數字 enum 反向映射多出來的純數字 key）。 */
+export const TRANSACTION_CATEGORY_KEYS = Object.keys(TransactionCategoryEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+
+export function transactionCategoryKeyToNumber(key: string): number {
+    return (TransactionCategoryEnum as unknown as Record<string, number>)[ key ];
+}
+/** 數字 → key 字串；查不到（未知碼）時原樣回傳數字，不讓 undefined 流入回應文案。 */
+export function transactionCategoryNumberToKey(value: number): string | number {
+    return (TransactionCategoryEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+// TransactionStatusEnum（wallet_back_office.rajah，pending/success/failed/unknown=100）
+export const TRANSACTION_STATUS_KEYS = Object.keys(TransactionStatusEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function transactionStatusKeyToNumber(key: string): number {
+    return (TransactionStatusEnum as unknown as Record<string, number>)[ key ];
+}
+export function transactionStatusNumberToKey(value: number): string | number {
+    return (TransactionStatusEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+// AgentModeForSearchAgentMemberEnum（搜尋專用：none=不篩選/generalAgent/ventureAgent/noAgent）
+export const AGENT_MODE_FOR_SEARCH_KEYS = Object.keys(AgentModeForSearchAgentMemberEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function agentModeForSearchKeyToNumber(key: string): number {
+    return (AgentModeForSearchAgentMemberEnum as unknown as Record<string, number>)[ key ];
+}
+
+// AgentModeEnum（UserTransaction.agentMode 回傳欄位用：all/none/generalAgent/ventureAgent）
+export function agentModeNumberToKey(value: number): string | number {
+    return (AgentModeEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
 
 /**
  * i64 欄位（如 MessageBoardPostSetting 的 postsChangeUserDetailMinChargeTotal/
@@ -157,6 +215,11 @@ export const PAGE_SIZE_MAP: Record<(typeof PAGE_SIZE_KEYS)[number], number> = {
  * （大舞台基本設置的 postsChangeUserDetailMinChargeTotal/postsGiftReceiveTotalAmount、
  * 聊天室發言設定的 rechargeAmount），實測數值都在 52 bit 安全整數範圍內，先用最小作法
  * 處理，之後若有更多欄位需要同樣處理再考慮要不要抽更通用的版本。
+ * （物件或十進位字串）。目前有兩組欄位用到這個函式（大舞台基本設置；
+ * list_user_transactions.ts 的 UserTransaction.amount/beforeBalance/afterBalance/
+ * createdAtTimestamp/registerTimestamp，2026-08-25 dev 實測發現同款陷阱），實測數值都在
+ * 52 bit 安全整數範圍內，先用最小作法處理，之後若有更多欄位需要同樣處理再考慮要不要抽更
+ * 通用的版本。
  */
 // TimeLimitTypeEnum（common.rajah:1597-1606），供 PointPlatform.GetPointSetting/UpdatePointSetting 的
 // dueType 使用。unknown=0 不收錄——後端驗證只接受 absoluteTime（需 dueAtTimestamp）或 relativeTime（需 dueDay）。
@@ -229,3 +292,14 @@ export const POINT_TRANSACTION_CATEGORY_KEYS = [
 export const POINT_TRANSACTION_CATEGORY_MAP: Record<(typeof POINT_TRANSACTION_CATEGORY_KEYS)[number], number> = {
     turnover: 1, checkIn: 2, exchangeProduct: 3, expired: 4, manualAdd: 5, manualDeduct: 6, roulette: 7,
 };
+ * CurrencyLink（`{code, value}`，rajah model 的 `value` 是 i64）陣列轉換：`value` 經
+ * protobufjs decode 同樣可能是 Long 物件，套用 toPlainNumber()。2026-08-25 review 發現
+ * list_room_gifts.ts/get_room_gift_statistic_summary.ts/list_records.ts 對巢狀在
+ * CurrencyLink[] 元素內的 value 原本全部漏轉（只轉了頂層/row 層的裸 i64 欄位），
+ * 抽成共用函式避免重複遺漏。
+ */
+export function toPlainCurrencyLinks(
+    links: { code?: string | null; value?: unknown }[] | null | undefined,
+): { code: string | null | undefined; value: number | undefined }[] {
+    return (links ?? []).map((l) => ({ code: l.code, value: toPlainNumber(l.value) }));
+}
