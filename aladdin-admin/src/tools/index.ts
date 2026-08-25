@@ -25,6 +25,7 @@ import { registerGetAuditLogsTool } from './get_audit_logs.ts';
 import { registerGetCurrenciesTool } from './get_currencies.ts';
 import { registerUpdateCurrencyTool } from './update_currency.ts';
 import { registerGetPlatformDomainsTool } from './get_platform_domains.ts';
+import { registerCreateOrUpdatePlatformDomainTool } from './create_or_update_platform_domain.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -57,4 +58,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetCurrenciesTool(server);
     registerUpdateCurrencyTool(server);
     registerGetPlatformDomainsTool(server);
+    registerCreateOrUpdatePlatformDomainTool(server);
 }

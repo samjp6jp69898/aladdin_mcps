@@ -28,6 +28,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_currency_admin_get_currencies` | `CurrencyAdmin.GetCurrencies` | 列出全域幣別清單，無 @Permission；不分頁一次全撈（小型列舉表）；2026-08-25 dev 實測 |
 | `aladdin_admin_currency_admin_update_currency` | `CurrencyAdmin.UpdateCurrency` | 更新既有全域幣別的 name/symbol/displayDigits；code/type/decimalPlaces 不可改；寫入成功會全平台廣播（ReloadCurrency）；name 最長 20 字元、symbol 最長 10 字元（比照 DB VARCHAR 上限）；三值皆與現值相同時後端回 nothingChanged（本工具視為非失敗）；先讀現值合併未帶欄位、寫入後 round-trip 逐欄比對；2026-08-25 dev 實測含正常更新、nothingChanged、超長欄位、id 不存在四種情境 |
 | `aladdin_admin_core_admin_get_platform_domains` | `CoreAdmin.GetPlatformDomains` | 列出指定平台的 platform/agent gate 域名清單（不含 App 端域名，那是另一支公開但本輪未包裝的 method）；totalPage 恆為 1（無真正分頁）；不存在的 platformId 回空陣列非錯誤；2026-08-25 dev 實測 |
+| `aladdin_admin_core_admin_create_or_update_platform_domain` | `CoreAdmin.CreateOrUpdatePlatformDomain` | 新增/更新平台域名；**後端更新時完全不驗證 id 是否屬於指定的 platformId**（會把域名記錄改隸到別的平台），本工具在更新前強制先查 ownership 擋下；domain 欄位有全域 UNIQUE 約束；沒有刪除/停用 method；2026-08-25 dev 實測含正常更新 round-trip、跨平台 id 誤用防護（直呼 RPC 證實後端真的不擋）、新增、platformId 不存在四種情境，全程復原無殘留（測試新建的一筆域名因無刪除能力保留在 dev，字串已標示為測試用途） |
 
 ## src/ 結構
 
