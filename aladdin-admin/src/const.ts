@@ -40,7 +40,7 @@ export const STATUS_KEYS = Object.keys(STATUS_MAP) as [ keyof typeof STATUS_MAP,
 export const GAME_TAG_TYPE_MAP = { vendorFee: 1, appDisplay: 2, rebate: 3, frontendGroup: 4 } as const;
 export const GAME_TAG_TYPE_KEYS = Object.keys(GAME_TAG_TYPE_MAP) as [ keyof typeof GAME_TAG_TYPE_MAP, ...(keyof typeof GAME_TAG_TYPE_MAP)[] ];
 
-// SystemIdEnum（common.rajah，49 個值）+ AdminActionIdEnum（122 個值，數量可控，直接完整
+// SystemIdEnum（rajah/services/service_common.rajah:3，43 個值）+ AdminActionIdEnum（122 個值，數量可控，直接完整
 // z.enum，不像 platform 端 PlatformActionIdEnum 723 個值那麼誇張），get_audit_logs.ts 用；
 // 動態從已生成的 remote.gen.ts 匯入真正的 TS enum、用 Object.keys 推導字串 key 清單，
 // 不手動謄寫對照表（容易漂移），跟 aladdin-platform 端同款模式。

@@ -69,7 +69,7 @@ import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgent
 
 export { TransactionCategoryEnum };
 
-// SystemIdEnum（common.rajah，49 個值），get_audit_logs.ts 用；同款動態推導模式。
+// SystemIdEnum（rajah/services/service_common.rajah:3，43 個值），get_audit_logs.ts 用；同款動態推導模式。
 export const SYSTEM_ID_KEYS = Object.keys(SystemIdEnum).filter(
     (k) => Number.isNaN(Number(k)),
 ) as [ string, ...string[] ];

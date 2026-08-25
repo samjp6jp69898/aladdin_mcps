@@ -16,7 +16,8 @@
  * - 與 aladdin-platform 的 aladdin_platform_audit_platform_get_audit_logs 是同一張
  *   `audit_logs` 表、幾乎相同的實作骨架，差異：這支不查會員帳號（identifier）、
  *   不支援 identifier 搜尋，改用 `targetId` 直接篩內部 id；查詢的是「Admin 端」操作
- *   （跨平台的系統管理操作），操作人帳號透過 `admin.admin.GetUsersByIds` 取得（非平台使用者）。
+ *   （跨平台的系統管理操作），操作人帳號透過 `admin.main.GetUsersByIds` 取得（非平台使用者；後端
+ *   docstring 與另一段註解誤寫成 admin.admin，實際呼叫見 audit_admin.ts:48 為 admin.main）。
  * - `pageSize` 型別是 `PageSizeEnum`（非裸 i32），合法值 0/10/20/30/50/100/200
  *   （0=serverDefault），伺服器端有強制上限，非 B 級高風險情境。
  * - **systemId 的「不篩選」語意特殊**：後端 `if (search.systemId >= 0)` 才加入篩選，

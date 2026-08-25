@@ -3,7 +3,7 @@
  *
  * rajah: AuditPlatform.GetAuditLogs(search PlatformAuditLogSearch 1, page i32 2,
  * pageSize PageSizeEnum 3) (rows [PlatformAuditLogListItem] 1, totalPage i32 2)
- * （rajah/services/audit_back_office.rajah:92，service 定義於同檔 89-93 行，非 @NoPublic，
+ * （rajah/services/audit_back_office.rajah:92，service 定義於同檔 90-93 行，非 @NoPublic，
  * @Permission "AdminManagement.AuditLog"）
  *
  * method-category-checklist.md 第 0 節排除規則已過：非 Placeholder、非 @NoPublic；agrabah
