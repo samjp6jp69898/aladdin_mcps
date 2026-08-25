@@ -25,6 +25,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_chat_speech_setting_platform_save_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` + `SaveChatSpeechSetting` | 修改聊天室發言設定並儲存，所有欄位皆 optional，只覆蓋有帶到的欄位，其餘先讀現值原樣帶回；memberLevels 陣列為整包覆蓋（後端整批刪除重建關聯表），非差異運算 |
 | `aladdin_platform_platform_captcha_config_get_platform_verification_config` | `PlatformCaptchaConfig.GetPlatformVerificationConfig` | 讀取本平台的驗證碼設定（可用類型清單 + 目前類型），無參數，平台由連線本身判定 |
 | `aladdin_platform_platform_captcha_config_set_platform_verification_captcha_type` | `PlatformCaptchaConfig.SetPlatformVerificationCaptchaType` | 切換本平台目前使用的驗證碼類型（須屬於 availableCaptchaTypes 清單），後端自己會保留清單不受影響，工具直接單參數呼叫 |
+| `aladdin_platform_common_info_platform_get_configs` | `CommonInfoPlatform.GetConfigs` | 分頁查詢本平台後台信息系統（公告/緊急通知/最新消息/必讀……共用同一支查詢），A 級（`ids` 可精準查找）；`status`/`pageSize` 不帶時工具內部分別改送 `-1`/`50`，不能直接不帶（送 `undefined` 會分別落到「精準比對 status=0」「LIMIT 0,0」兩個地雷，見工具檔頭說明），2026-08-25 dev 實測含 156 筆真實資料、A 級目標記錄不在第一頁情境 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
