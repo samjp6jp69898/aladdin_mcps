@@ -23,6 +23,7 @@ import { registerCreateOrUpdateActivityTabTool } from './create_or_update_activi
 import { registerToggleActivityTabTool } from './toggle_activity_tab.ts';
 import { registerGetActivityConfigsTool } from './get_activity_configs.ts';
 import { registerGetUserIdByIdentifierTool } from './get_user_id_by_identifier.ts';
+import { registerGetFissionActivityOptionsTool } from './get_fission_activity_options.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -51,4 +52,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerToggleActivityTabTool(server);
     registerGetActivityConfigsTool(server);
     registerGetUserIdByIdentifierTool(server);
+    registerGetFissionActivityOptionsTool(server);
 }
