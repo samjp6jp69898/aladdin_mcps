@@ -40,7 +40,8 @@ export function registerGetRoomChatRecordsTool(server: McpServer): void {
             title: 'Get paginated chat history for a room',
             description:
                 '分頁查詢指定房間的完整聊天訊息歷史（rajah: RoomPlatform.GetChatRecords），直查 DB，不是快取快照——' +
-                '要查近期即時快照改用 get_room_chat_history（那支無分頁但不用等 DB）。' +
+                '要查近期即時快照改用 get_room_chat_history（那支無分頁但不用等 DB）；只想查曬單類型訊息' +
+                '改用 aladdin_platform_room_platform_get_show_order_records（同一套分頁機制，固定篩 messageKind）。' +
                 `pageSize 上限 ${ MAX_PAGE_SIZE }（工具層自行收斂，後端本身無上限）。` +
                 '**totalPage 只有 page=1 的回應才是真的算出來的**，其餘頁固定回 0，要知道總頁數請以第一頁為準。' +
                 'roomId 不存在會直接報錯，不回空陣列。這支回傳的 bypassSensitiveWord 一律是預設值，不反映實際狀況，不要依賴它判斷任何事。' +
