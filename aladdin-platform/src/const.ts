@@ -77,3 +77,41 @@ export function toPlainNumber(value: unknown): number | undefined {
     }
     return Number(value);
 }
+
+/**
+ * 遞迴把回傳物件裡任何 protobufjs Long 實例（i64 欄位解出來的原始型別，鴨子定型判斷式
+ * 同 toPlainNumber：有 low/high 兩個 number 欄位 + toNumber() 方法）轉成一般 number，
+ * 其餘型別（string/boolean/null/一般 number）原樣通過。
+ *
+ * 為什麼跟 toPlainNumber 分開一支：toPlainNumber 是「呼叫端已經知道這個特定欄位是 i64」時的
+ * 精確轉換（含字串輸入也轉數字，適合單一已知欄位）；deepFixLongs 是「不確定整包物件裡哪些欄位
+ * 是 i64」時的保守 catch-all（只轉真正還是 Long 實例的值，不對字串亂猜），用於 point_back_office
+ * 系列 tool 直接透傳 rajah model 全部欄位（rebateMax/quantity/各種 timestamp/CurrencyLink.value
+ * 等 i64 散落在巢狀結構各處）的情境——在呼叫端把讀回的值原樣傳回寫入 method 時，若停留在
+ * Long 實例會被 JSON.stringify 自動呼叫 toJSON() 轉成十進位字串，導致這個值不再滿足 zod
+ * `z.number()` schema（2026-08-25 dev 實測 UpdateVipPointSetting 復現：GetVipPointSetting 讀回的
+ * rebateMax 字串化後直接餵回 UpdateVipPointSetting 觸發 zod 驗證錯誤）。在回傳給呼叫端前先在這裡
+ * 攔截轉換，才能讓「讀回值直接餵回寫入 tool」這個 agent 最自然的操作模式正常運作。
+ */
+export function deepFixLongs<T>(value: T): T {
+    if (value === null || typeof value !== 'object') return value;
+    const maybeLong = value as unknown as { low?: unknown; high?: unknown; toNumber?: () => number };
+    if (typeof maybeLong.low === 'number' && typeof maybeLong.high === 'number' && typeof maybeLong.toNumber === 'function') {
+        return maybeLong.toNumber() as unknown as T;
+    }
+    if (Array.isArray(value)) return value.map((item) => deepFixLongs(item)) as unknown as T;
+    const result: Record<string, unknown> = {};
+    for (const [ key, item ] of Object.entries(value as Record<string, unknown>)) {
+        result[ key ] = deepFixLongs(item);
+    }
+    return result as T;
+}
+
+// PointTransactionCategoryEnum（common.rajah:2282-2298），供 PointPlatform.ListPointTransactions 的
+// search.category 篩選使用。unknown=0 在後端語意是「不篩選」，不收錄成可選值。
+export const POINT_TRANSACTION_CATEGORY_KEYS = [
+    'turnover', 'checkIn', 'exchangeProduct', 'expired', 'manualAdd', 'manualDeduct', 'roulette',
+] as const;
+export const POINT_TRANSACTION_CATEGORY_MAP: Record<(typeof POINT_TRANSACTION_CATEGORY_KEYS)[number], number> = {
+    turnover: 1, checkIn: 2, exchangeProduct: 3, expired: 4, manualAdd: 5, manualDeduct: 6, roulette: 7,
+};
