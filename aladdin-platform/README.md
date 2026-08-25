@@ -23,6 +23,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
 | `aladdin_platform_wallet_platform_get_show_category` | `WalletPlatform.GetShowCategory` | 讀取本平台「錢包交易紀錄」列表要顯示哪些交易分類（TransactionCategoryEnum 字串 key 陣列），純讀取；2026-08-25 dev 實測 |
 | `aladdin_platform_wallet_platform_update_show_category` | `WalletPlatform.UpdateShowCategory` | 設定要顯示的交易分類，**整批覆蓋**（後端先 DELETE 再 INSERT，非增量 diff），完成後自動讀回驗證；2026-08-25 dev 實測完整 round-trip（改值→驗證→復原→驗證已復原） |
+| `aladdin_platform_wallet_platform_list_classification_categories` | `WalletPlatform.ListClassificationCategories` | 列出本平台已建立的「運營歸類」（交易類型分組），無參數、不分頁、一次回傳全部；2026-08-25 dev 實測 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 

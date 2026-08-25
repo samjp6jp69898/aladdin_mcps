@@ -20,6 +20,7 @@ import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_p
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 import { registerGetShowCategoryTool } from './get_show_category.ts';
 import { registerUpdateShowCategoryTool } from './update_show_category.ts';
+import { registerListClassificationCategoriesTool } from './list_classification_categories.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -45,4 +46,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorStatusTool(server);
     registerGetShowCategoryTool(server);
     registerUpdateShowCategoryTool(server);
+    registerListClassificationCategoriesTool(server);
 }
