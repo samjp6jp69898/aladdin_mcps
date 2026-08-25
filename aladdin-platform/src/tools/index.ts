@@ -20,6 +20,7 @@ import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_p
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 import { registerUpdateRoomSortOrderTool } from './update_room_sort_order.ts';
 import { registerGetMuteHistoryTool } from './get_mute_history.ts';
+import { registerCreateOrUpdateRoomMuteTool } from './create_or_update_room_mute.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -45,4 +46,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorStatusTool(server);
     registerUpdateRoomSortOrderTool(server);
     registerGetMuteHistoryTool(server);
+    registerCreateOrUpdateRoomMuteTool(server);
 }
