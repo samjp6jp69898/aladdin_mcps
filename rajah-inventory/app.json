@@ -1,0 +1,55 @@
+{
+  "rajah_file": "rajah/services/app.rajah",
+  "generated_at": "2026-08-25T00:59:58.617Z",
+  "services": [
+    "Hub",
+    "ExternalHub"
+  ],
+  "tasks": [
+    {
+      "id": "app__Hub__Enter",
+      "service": "Hub",
+      "method": "Enter",
+      "rajah_ref": "rajah/services/app.rajah:210",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "app__Hub__GetDownloadLinks",
+      "service": "Hub",
+      "method": "GetDownloadLinks",
+      "rajah_ref": "rajah/services/app.rajah:212",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "app__Hub__GetMaintenanceInfo",
+      "service": "Hub",
+      "method": "GetMaintenanceInfo",
+      "rajah_ref": "rajah/services/app.rajah:215",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

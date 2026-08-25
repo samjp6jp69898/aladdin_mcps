@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/sensitive_word_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.630Z",
+  "services": [
+    "SensitiveWordPlatform"
+  ],
+  "tasks": [
+    {
+      "id": "sensitive_word_back_office__SensitiveWordPlatform__GetSensitiveWordGroups",
+      "service": "SensitiveWordPlatform",
+      "method": "GetSensitiveWordGroups",
+      "rajah_ref": "rajah/services/sensitive_word_back_office.rajah:5",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "sensitive_word_back_office__SensitiveWordPlatform__CreateOrUpdateSensitiveWordGroup",
+      "service": "SensitiveWordPlatform",
+      "method": "CreateOrUpdateSensitiveWordGroup",
+      "rajah_ref": "rajah/services/sensitive_word_back_office.rajah:7",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "sensitive_word_back_office__SensitiveWordPlatform__GetSensitiveWords",
+      "service": "SensitiveWordPlatform",
+      "method": "GetSensitiveWords",
+      "rajah_ref": "rajah/services/sensitive_word_back_office.rajah:12",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "sensitive_word_back_office__SensitiveWordPlatform__CreateOrUpdateSensitiveWord",
+      "service": "SensitiveWordPlatform",
+      "method": "CreateOrUpdateSensitiveWord",
+      "rajah_ref": "rajah/services/sensitive_word_back_office.rajah:14",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "sensitive_word_back_office__SensitiveWordPlatform__BatchRemoveSensitiveWord",
+      "service": "SensitiveWordPlatform",
+      "method": "BatchRemoveSensitiveWord",
+      "rajah_ref": "rajah/services/sensitive_word_back_office.rajah:17",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

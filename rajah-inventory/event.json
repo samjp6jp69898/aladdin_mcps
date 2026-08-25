@@ -1,0 +1,24 @@
+{
+  "rajah_file": "rajah/services/event.rajah",
+  "generated_at": "2026-08-25T00:59:58.620Z",
+  "services": [
+    "Event"
+  ],
+  "tasks": [
+    {
+      "id": "event__Event__TrackEvent",
+      "service": "Event",
+      "method": "TrackEvent",
+      "rajah_ref": "rajah/services/event.rajah:19",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

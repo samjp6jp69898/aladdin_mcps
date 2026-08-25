@@ -1,0 +1,54 @@
+{
+  "rajah_file": "rajah/services/advertisement.rajah",
+  "generated_at": "2026-08-25T00:59:58.615Z",
+  "services": [
+    "Advertisement"
+  ],
+  "tasks": [
+    {
+      "id": "advertisement__Advertisement__GetAdHomePagePopUpList",
+      "service": "Advertisement",
+      "method": "GetAdHomePagePopUpList",
+      "rajah_ref": "rajah/services/advertisement.rajah:169",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "advertisement__Advertisement__GetAdFloatingWindowList",
+      "service": "Advertisement",
+      "method": "GetAdFloatingWindowList",
+      "rajah_ref": "rajah/services/advertisement.rajah:176",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "advertisement__Advertisement__GetAdCarouselList",
+      "service": "Advertisement",
+      "method": "GetAdCarouselList",
+      "rajah_ref": "rajah/services/advertisement.rajah:183",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

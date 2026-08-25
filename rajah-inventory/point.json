@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/point.rajah",
+  "generated_at": "2026-08-25T00:59:58.627Z",
+  "services": [
+    "Point"
+  ],
+  "tasks": [
+    {
+      "id": "point__Point__ListPointTransactions",
+      "service": "Point",
+      "method": "ListPointTransactions",
+      "rajah_ref": "rajah/services/point.rajah:55",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "point__Point__GetUserTotalPoint",
+      "service": "Point",
+      "method": "GetUserTotalPoint",
+      "rajah_ref": "rajah/services/point.rajah:57",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "point__Point__GetExpiredPointTotal",
+      "service": "Point",
+      "method": "GetExpiredPointTotal",
+      "rajah_ref": "rajah/services/point.rajah:59",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "point__Point__GetSignInStatus",
+      "service": "Point",
+      "method": "GetSignInStatus",
+      "rajah_ref": "rajah/services/point.rajah:61",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "point__Point__SignIn",
+      "service": "Point",
+      "method": "SignIn",
+      "rajah_ref": "rajah/services/point.rajah:63",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

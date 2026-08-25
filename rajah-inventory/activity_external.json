@@ -1,0 +1,71 @@
+{
+  "rajah_file": "rajah/services/activity_external.rajah",
+  "generated_at": "2026-08-25T00:59:58.615Z",
+  "services": [
+    "Fission",
+    "ActivityApi",
+    "FissionApp"
+  ],
+  "tasks": [
+    {
+      "id": "activity_external__FissionApp__FissionLogin",
+      "service": "FissionApp",
+      "method": "FissionLogin",
+      "rajah_ref": "rajah/services/activity_external.rajah:81",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "activity_external__FissionApp__GetFissionLoginApi",
+      "service": "FissionApp",
+      "method": "GetFissionLoginApi",
+      "rajah_ref": "rajah/services/activity_external.rajah:83",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "activity_external__FissionApp__FissionLoginAndGetUrl",
+      "service": "FissionApp",
+      "method": "FissionLoginAndGetUrl",
+      "rajah_ref": "rajah/services/activity_external.rajah:85",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "activity_external__FissionApp__NbaActivityLoginAndGetUrl",
+      "service": "FissionApp",
+      "method": "NbaActivityLoginAndGetUrl",
+      "rajah_ref": "rajah/services/activity_external.rajah:87",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

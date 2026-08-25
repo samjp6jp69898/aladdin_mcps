@@ -1,0 +1,99 @@
+{
+  "rajah_file": "rajah/services/control_center.rajah",
+  "generated_at": "2026-08-25T00:59:58.619Z",
+  "services": [
+    "ControlCenter"
+  ],
+  "tasks": [
+    {
+      "id": "control_center__ControlCenter__GetServerStatus",
+      "service": "ControlCenter",
+      "method": "GetServerStatus",
+      "rajah_ref": "rajah/services/control_center.rajah:29",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__Ping",
+      "service": "ControlCenter",
+      "method": "Ping",
+      "rajah_ref": "rajah/services/control_center.rajah:32",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__RequestGarbageCollection",
+      "service": "ControlCenter",
+      "method": "RequestGarbageCollection",
+      "rajah_ref": "rajah/services/control_center.rajah:35",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__ListDebugRoutes",
+      "service": "ControlCenter",
+      "method": "ListDebugRoutes",
+      "rajah_ref": "rajah/services/control_center.rajah:38",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__AddDebugRoute",
+      "service": "ControlCenter",
+      "method": "AddDebugRoute",
+      "rajah_ref": "rajah/services/control_center.rajah:41",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__DeleteDebugRoute",
+      "service": "ControlCenter",
+      "method": "DeleteDebugRoute",
+      "rajah_ref": "rajah/services/control_center.rajah:44",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

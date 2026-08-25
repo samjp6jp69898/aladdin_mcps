@@ -1,0 +1,99 @@
+{
+  "rajah_file": "rajah/services/health.rajah",
+  "generated_at": "2026-08-25T00:59:58.622Z",
+  "services": [
+    "Health"
+  ],
+  "tasks": [
+    {
+      "id": "health__Health__Ping",
+      "service": "Health",
+      "method": "Ping",
+      "rajah_ref": "rajah/services/health.rajah:3",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "health__Health__GetMemoryUsage",
+      "service": "Health",
+      "method": "GetMemoryUsage",
+      "rajah_ref": "rajah/services/health.rajah:4",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "health__Health__GetCpuUsage",
+      "service": "Health",
+      "method": "GetCpuUsage",
+      "rajah_ref": "rajah/services/health.rajah:5",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "health__Health__GetHeapSnapshot",
+      "service": "Health",
+      "method": "GetHeapSnapshot",
+      "rajah_ref": "rajah/services/health.rajah:6",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "health__Health__RequestGarbageCollection",
+      "service": "Health",
+      "method": "RequestGarbageCollection",
+      "rajah_ref": "rajah/services/health.rajah:7",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "health__Health__GetInfo",
+      "service": "Health",
+      "method": "GetInfo",
+      "rajah_ref": "rajah/services/health.rajah:8",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

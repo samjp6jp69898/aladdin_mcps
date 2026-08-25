@@ -1,0 +1,54 @@
+{
+  "rajah_file": "rajah/services/vip.rajah",
+  "generated_at": "2026-08-25T00:59:58.633Z",
+  "services": [
+    "VipLevel"
+  ],
+  "tasks": [
+    {
+      "id": "vip__VipLevel__GetVipDetails",
+      "service": "VipLevel",
+      "method": "GetVipDetails",
+      "rajah_ref": "rajah/services/vip.rajah:348",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "vip__VipLevel__ClaimRewardById",
+      "service": "VipLevel",
+      "method": "ClaimRewardById",
+      "rajah_ref": "rajah/services/vip.rajah:351",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "vip__VipLevel__GetRewardCenterList",
+      "service": "VipLevel",
+      "method": "GetRewardCenterList",
+      "rajah_ref": "rajah/services/vip.rajah:354",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

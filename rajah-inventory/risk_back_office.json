@@ -1,0 +1,99 @@
+{
+  "rajah_file": "rajah/services/risk_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.628Z",
+  "services": [
+    "RiskPlatformIpRegion"
+  ],
+  "tasks": [
+    {
+      "id": "risk_back_office__RiskPlatformIpRegion__GetIpRegionList",
+      "service": "RiskPlatformIpRegion",
+      "method": "GetIpRegionList",
+      "rajah_ref": "rajah/services/risk_back_office.rajah:19",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "risk_back_office__RiskPlatformIpRegion__CreateOrUpdateIpRegion",
+      "service": "RiskPlatformIpRegion",
+      "method": "CreateOrUpdateIpRegion",
+      "rajah_ref": "rajah/services/risk_back_office.rajah:22",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "risk_back_office__RiskPlatformIpRegion__UpdateIpRegionStatus",
+      "service": "RiskPlatformIpRegion",
+      "method": "UpdateIpRegionStatus",
+      "rajah_ref": "rajah/services/risk_back_office.rajah:25",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "risk_back_office__RiskPlatformIpRegion__BatchUpdateIpRegionStatus",
+      "service": "RiskPlatformIpRegion",
+      "method": "BatchUpdateIpRegionStatus",
+      "rajah_ref": "rajah/services/risk_back_office.rajah:28",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "risk_back_office__RiskPlatformIpRegion__DeleteIpRegion",
+      "service": "RiskPlatformIpRegion",
+      "method": "DeleteIpRegion",
+      "rajah_ref": "rajah/services/risk_back_office.rajah:31",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "risk_back_office__RiskPlatformIpRegion__BatchDeleteIpRegion",
+      "service": "RiskPlatformIpRegion",
+      "method": "BatchDeleteIpRegion",
+      "rajah_ref": "rajah/services/risk_back_office.rajah:34",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

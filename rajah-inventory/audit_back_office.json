@@ -1,0 +1,40 @@
+{
+  "rajah_file": "rajah/services/audit_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.618Z",
+  "services": [
+    "AuditPlatform",
+    "AuditAdmin"
+  ],
+  "tasks": [
+    {
+      "id": "audit_back_office__AuditPlatform__GetAuditLogs",
+      "service": "AuditPlatform",
+      "method": "GetAuditLogs",
+      "rajah_ref": "rajah/services/audit_back_office.rajah:92",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "audit_back_office__AuditAdmin__GetAuditLogs",
+      "service": "AuditAdmin",
+      "method": "GetAuditLogs",
+      "rajah_ref": "rajah/services/audit_back_office.rajah:98",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

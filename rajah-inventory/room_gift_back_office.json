@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/room_gift_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.629Z",
+  "services": [
+    "RoomGiftPlatform"
+  ],
+  "tasks": [
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__ListRecords",
+      "service": "RoomGiftPlatform",
+      "method": "ListRecords",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:250",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__ListRoomGifts",
+      "service": "RoomGiftPlatform",
+      "method": "ListRoomGifts",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:253",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__GetRoomGiftStatisticSummary",
+      "service": "RoomGiftPlatform",
+      "method": "GetRoomGiftStatisticSummary",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:256",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__GetAnchorStatisticSummary",
+      "service": "RoomGiftPlatform",
+      "method": "GetAnchorStatisticSummary",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:259",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__GetPlatformStatisticSummary",
+      "service": "RoomGiftPlatform",
+      "method": "GetPlatformStatisticSummary",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:262",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

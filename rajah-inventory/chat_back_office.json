@@ -1,0 +1,39 @@
+{
+  "rajah_file": "rajah/services/chat_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.619Z",
+  "services": [
+    "ChatSpeechSettingPlatform"
+  ],
+  "tasks": [
+    {
+      "id": "chat_back_office__ChatSpeechSettingPlatform__GetChatSpeechSetting",
+      "service": "ChatSpeechSettingPlatform",
+      "method": "GetChatSpeechSetting",
+      "rajah_ref": "rajah/services/chat_back_office.rajah:29",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "chat_back_office__ChatSpeechSettingPlatform__SaveChatSpeechSetting",
+      "service": "ChatSpeechSettingPlatform",
+      "method": "SaveChatSpeechSetting",
+      "rajah_ref": "rajah/services/chat_back_office.rajah:32",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

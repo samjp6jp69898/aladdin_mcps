@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/user.rajah",
+  "generated_at": "2026-08-25T00:59:58.631Z",
+  "services": [
+    "User"
+  ],
+  "tasks": [
+    {
+      "id": "user__User__GetSelfInfo",
+      "service": "User",
+      "method": "GetSelfInfo",
+      "rajah_ref": "rajah/services/user.rajah:95",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "user__User__GetSelfInfoDetail",
+      "service": "User",
+      "method": "GetSelfInfoDetail",
+      "rajah_ref": "rajah/services/user.rajah:97",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "user__User__LuckyBetReceive",
+      "service": "User",
+      "method": "LuckyBetReceive",
+      "rajah_ref": "rajah/services/user.rajah:99",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "user__User__ChessRescueReceive",
+      "service": "User",
+      "method": "ChessRescueReceive",
+      "rajah_ref": "rajah/services/user.rajah:101",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "user__User__ActiveAllowanceReceive",
+      "service": "User",
+      "method": "ActiveAllowanceReceive",
+      "rajah_ref": "rajah/services/user.rajah:103",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

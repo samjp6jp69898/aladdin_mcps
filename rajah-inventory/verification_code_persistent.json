@@ -1,0 +1,24 @@
+{
+  "rajah_file": "rajah/services/verification_code_persistent.rajah",
+  "generated_at": "2026-08-25T00:59:58.633Z",
+  "services": [
+    "VerificationCodePersistent"
+  ],
+  "tasks": [
+    {
+      "id": "verification_code_persistent__VerificationCodePersistent__InitialCaptcha",
+      "service": "VerificationCodePersistent",
+      "method": "InitialCaptcha",
+      "rajah_ref": "rajah/services/verification_code_persistent.rajah:5",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

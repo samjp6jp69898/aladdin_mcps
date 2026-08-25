@@ -1,0 +1,86 @@
+{
+  "rajah_file": "rajah/services/module.rajah",
+  "generated_at": "2026-08-25T00:59:58.625Z",
+  "services": [
+    "Module",
+    "ModuleAdmin",
+    "ModulePlatform"
+  ],
+  "tasks": [
+    {
+      "id": "module__Module__GetAllPlatformModuleIds",
+      "service": "Module",
+      "method": "GetAllPlatformModuleIds",
+      "rajah_ref": "rajah/services/module.rajah:8",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModuleAdmin__GetPlatformModules",
+      "service": "ModuleAdmin",
+      "method": "GetPlatformModules",
+      "rajah_ref": "rajah/services/module.rajah:26",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModuleAdmin__EnablePlatformModule",
+      "service": "ModuleAdmin",
+      "method": "EnablePlatformModule",
+      "rajah_ref": "rajah/services/module.rajah:28",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModuleAdmin__EnablePlatformModules",
+      "service": "ModuleAdmin",
+      "method": "EnablePlatformModules",
+      "rajah_ref": "rajah/services/module.rajah:31",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModulePlatform__GetPlatformModules",
+      "service": "ModulePlatform",
+      "method": "GetPlatformModules",
+      "rajah_ref": "rajah/services/module.rajah:39",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}
