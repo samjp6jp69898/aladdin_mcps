@@ -199,6 +199,24 @@ export function agentModeForSearchKeyToNumber(key: string): number {
 export function agentModeNumberToKey(value: number): string | number {
     return (AgentModeEnum as unknown as Record<number, string>)[ value ] ?? value;
 }
+// OtpCodeSettingPlatform.GetSmsSettings/UpdateSmsSettings（otp_code_back_office.rajah:132-137）用到的 enum 對照表。
+// OtpSmsSettings 的 4 個 xxxStatus 開關欄位底層是 StatusEnum，數值與上面 ACTIVE_STATUS_MAP 相同，直接重用。
+
+// OtpCodeLimitConditionEnum（otp_code.rajah:189-194）
+export const OTP_LIMIT_CONDITION_MAP = { ip: 1, phone: 2 } as const;
+
+// RegistrationLimitPeriodTypeEnum（common.rajah:2185-2192）
+export const OTP_LIMIT_PERIOD_MAP = { day: 1, week: 2, permanent: 3 } as const;
+
+// Constants.OtpCodeMinExpirySeconds/MaxExpirySeconds（otp_code.rajah:305-306）。
+// 2026-08-25 讀 otp_sms_setting_manager.ts:118-124/148-150 查證：validate() 的錯誤
+// 訊息文字有引用這兩個常數（"must be between ... and ..."），但實際判斷式
+// isValidExpirySeconds() 只檢查 `expirySeconds > 0`，完全沒用到這兩個常數——後端
+// 目前並未真的強制 60~600 這個邊界（疑似後端既有 bug：訊息與檢查邏輯不一致）。
+// 這裡沿用 rajah 常數值，是 update_otp_sms_settings.ts 工具層自主收緊的保守預設，
+// 不是在轉述後端已強制的行為，詳見該檔案檔頭註解。
+export const OTP_CODE_MIN_EXPIRY_SECONDS = 60;
+export const OTP_CODE_MAX_EXPIRY_SECONDS = 600;
 
 /**
  * i64 欄位（如 MessageBoardPostSetting 的 postsChangeUserDetailMinChargeTotal/

@@ -48,6 +48,11 @@ import { registerGetCurrenciesTool } from './get_currencies.ts';
 import { registerUpdateCurrencyTool } from './update_currency.ts';
 import { registerGetPlatformDomainsTool } from './get_platform_domains.ts';
 import { registerCreateOrUpdatePlatformDomainTool } from './create_or_update_platform_domain.ts';
+import { registerListPlatformTotpModesTool } from './list_platform_totp_modes.ts';
+import { registerSetPlatformTotpModeTool } from './set_platform_totp_mode.ts';
+import { registerListTotpRouteSettingsTool } from './list_totp_route_settings.ts';
+import { registerUpdateTotpRouteSettingTool } from './update_totp_route_setting.ts';
+import { registerUpdateTotpRouteSettingStatusTool } from './update_totp_route_setting_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -103,4 +108,9 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdateCurrencyTool(server);
     registerGetPlatformDomainsTool(server);
     registerCreateOrUpdatePlatformDomainTool(server);
+    registerListPlatformTotpModesTool(server);
+    registerSetPlatformTotpModeTool(server);
+    registerListTotpRouteSettingsTool(server);
+    registerUpdateTotpRouteSettingTool(server);
+    registerUpdateTotpRouteSettingStatusTool(server);
 }

@@ -113,6 +113,8 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_room_gift_platform_get_platform_statistic_summary` | `RoomGiftPlatform.GetPlatformStatisticSummary` | 查詢平台月度送禮收入統計（依月份+幣別聚合，不分主播），searchStartDate/currencyCode 皆必填；2026-08-25 dev 實測含 "YYYY-MM"/"YYYY/MM" 兩種日期格式 |
 | `aladdin_platform_currency_platform_get_currencies` | `CurrencyPlatform.GetCurrencies` | 列出幣別清單（平台視角）；回傳的 `status` 是平台級啟停狀態，跟 aladdin-admin 那支的全域 `status` 是不同概念；被 admin 端全域停用的幣別會整批從清單消失（`enabledOnly=false` 也一樣查不到），兩端清單集合可能不同；2026-08-25 dev 實測 |
 | `aladdin_platform_currency_platform_update_currency_status` | `CurrencyPlatform.UpdateCurrencyStatus` | 切換某幣別在本平台底下的啟停狀態；平台目前的 defaultCurrencyCode 無法被停用（後端回 requestNotValid，特判給明確訊息）；先讀現值、同值短路不呼叫後端；2026-08-25 dev 實測含 defaultCurrencyCode 保護、round-trip、不存在 code 三種情境 |
+| `aladdin_platform_otp_code_setting_platform_get_sms_settings` | `OtpCodeSettingPlatform.GetSmsSettings` | 讀取本平台簡訊驗證碼（OTP SMS）發送限制設定（單例，無參數）；設定不存在時後端自動建立預設值，不會回空值 |
+| `aladdin_platform_otp_code_setting_platform_update_sms_settings` | `OtpCodeSettingPlatform.GetSmsSettings` + `UpdateSmsSettings` | 修改本平台 OTP SMS 發送限制設定，所有欄位皆 optional，先讀現值、只覆蓋有帶到的欄位、寫入後 round-trip 驗證；2026-08-25 dev 實測 limitCount round-trip 成功且其餘欄位不受影響 |
 
 | `aladdin_platform_risk_platform_list_platform_risk_strategies` | `RiskPlatform.ListPlatformRiskStrategies` | 分頁查詢當前登入平台的風控策略（含 status/riskLevel，不含 riskStrategyCode）；與 aladdin-admin 端超管版本回傳的欄位不對稱，見 tool description。**已知分頁陷阱**：`totalPage` 只有 `page=1` 才會真的計算，翻頁到底要改用 `rows.length < pageSize` |
 | `aladdin_platform_risk_platform_get_platform_risk_strategies` | `RiskPlatform.GetPlatformRiskStrategies` | 無參數、不分頁一次取回當前平台**全部**風控策略，設計用途是前端下拉選單/篩選器的 select option 來源（管理員維護的小型清單，可安全全撈）。欄位同分頁版 |
@@ -168,6 +170,8 @@ src/
     update_chat_speech_setting.ts    — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，同 update_message_board_setting.ts 模式
     get_platform_verification_config.ts            — 單例設定，platformId 隱式帶入，查無資料回預設值
     update_platform_verification_captcha_type.ts    — 後端自己保留 availableCaptchaTypes，工具直接單參數呼叫，不需自己讀現值合併
+    get_otp_sms_settings.ts          — 另外 export formatOtpSmsSettings()，update 工具的回傳共用同一支格式化函式
+    update_otp_sms_settings.ts       — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，同 update_message_board_setting.ts 的模式
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
@@ -183,7 +187,7 @@ src/
 | `ALADDIN_PLATFORM_API_URL` | platform 後台 dev 站台，例如 `https://pk-platform.alddev.com` |
 | `ALADDIN_PLATFORM_USER` | 預設測試帳號 |
 | `ALADDIN_PLATFORM_PASSWORD` | 預設測試密碼 |
-| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，所有寫入型 tool（`aladdin_platform_game_vendor_platform_update_game_vendor_game`、`aladdin_platform_message_board_platform_set_message_board_post_setting`）都會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
+| `ALADDIN_PLATFORM_IS_PROD` | H38：這個實例是否是正式環境，設計與 admin 端的 `ALADDIN_ADMIN_IS_PROD` 完全同構（見 `../aladdin-admin/README.md` 同一節）。prod 實例**必須**設為 `true`，其餘環境不設定或設 `false`——設為 `true` 時，所有寫入型 tool（`aladdin_platform_game_vendor_platform_update_game_vendor_game`、`aladdin_platform_message_board_platform_set_message_board_post_setting`、`aladdin_platform_otp_code_setting_platform_update_sms_settings`）都會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行；未設定或非 `true`/`false` 的值會讓行程啟動時直接失敗。`session.ts` 同時會交叉檢查 `ALADDIN_PLATFORM_API_URL` 是否符合已知非 prod 網域特徵，URL 看起來像 prod 卻沒設這個旗標一樣會啟動失敗，不會靜默放行。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 ## 已知限制
 

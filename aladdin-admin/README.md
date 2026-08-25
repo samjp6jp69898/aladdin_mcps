@@ -51,6 +51,11 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_currency_admin_update_currency` | `CurrencyAdmin.UpdateCurrency` | 更新既有全域幣別的 name/symbol/displayDigits；code/type/decimalPlaces 不可改；寫入成功會全平台廣播（ReloadCurrency）；name 最長 20 字元、symbol 最長 10 字元（比照 DB VARCHAR 上限）；三值皆與現值相同時後端回 nothingChanged（本工具視為非失敗）；先讀現值合併未帶欄位、寫入後 round-trip 逐欄比對；2026-08-25 dev 實測含正常更新、nothingChanged、超長欄位、id 不存在四種情境 |
 | `aladdin_admin_core_admin_get_platform_domains` | `CoreAdmin.GetPlatformDomains` | 列出指定平台的 platform/agent gate 域名清單（不含 App 端域名，那是另一支公開但本輪未包裝的 method）；totalPage 恆為 1（無真正分頁）；不存在的 platformId 回空陣列非錯誤；2026-08-25 dev 實測 |
 | `aladdin_admin_core_admin_create_or_update_platform_domain` | `CoreAdmin.CreateOrUpdatePlatformDomain` | 新增/更新平台域名；**後端更新時完全不驗證 id 是否屬於指定的 platformId**（會把域名記錄改隸到別的平台），本工具在更新前強制先查 ownership 擋下；domain 欄位有全域 UNIQUE 約束；沒有刪除/停用 method；2026-08-25 dev 實測含正常更新 round-trip、跨平台 id 誤用防護（直呼 RPC 證實後端真的不擋）、新增、platformId 不存在四種情境，全程復原無殘留（測試新建的一筆域名因無刪除能力保留在 dev，字串已標示為測試用途） |
+| `aladdin_admin_time_based_otp_admin_list_platform_totp_modes` | `TimeBasedOtpAdmin.ListPlatformTotpModes` | 列出 admin 後台全域（platformId=0）與每個平台目前的 TOTP 模式（normal/force）；尚未設定過的一律回傳 normal（後端預設值） |
+| `aladdin_admin_time_based_otp_admin_set_mode` | `TimeBasedOtpAdmin.SetMode` | 設定 admin 全域或指定平台的 TOTP 模式；切到 force 會強制該範圍下所有後台帳號下次登入綁定 TOTP，屬高影響變更，見工具 description 的風險提示；沒有單筆查詢 method，寫入後用 `ListPlatformTotpModes` 讀回驗證 |
+| `aladdin_admin_time_based_otp_list_route_settings` | `TimeBasedOtp.ListRouteSettings` | 列出 admin gate 自己（不涉及任何平台）目前所有可設定 TOTP 二次驗證的路由與設定；rajah 目前完全未掛 `@Permission`（歷史上曾掛 `AdminManagement.Setting.Totp`，2026-07-14 commit 33b6e2dd 移除），任何登入 admin 後台的帳號皆可呼叫 |
+| `aladdin_admin_time_based_otp_update_route_setting` | `TimeBasedOtp.UpdateRouteSetting` | 調整某路由的 TOTP 驗證有效分鐘數（0=每次都需驗證），只改 validMinutes 不影響是否啟用；寫入後讀回驗證 |
+| `aladdin_admin_time_based_otp_update_route_setting_status` | `TimeBasedOtp.UpdateRouteSettingStatus` | 啟用/停用某路由的 TOTP 驗證需求，只改 status 不影響 validMinutes；寫入後讀回驗證 |
 
 ## src/ 結構
 
@@ -80,6 +85,11 @@ src/
     update_captcha_config.ts                 — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回；高風險副作用見檔頭註解
     get_platform_verification_configs.ts     — 另外 export findPlatformVerificationConfigRow()，update 工具的讀現值步驟共用
     update_platform_verification_config.ts   — 每次都送完整 availableCaptchaTypes 陣列，規避 proto3 空陣列地雷（見檔頭註解）
+    list_platform_totp_modes.ts
+    set_platform_totp_mode.ts
+    list_totp_route_settings.ts
+    update_totp_route_setting.ts
+    update_totp_route_setting_status.ts
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
@@ -94,7 +104,7 @@ src/
 | `ALADDIN_ADMIN_API_URL` | admin 後台 dev 站台，例如 `https://admin.alddev.com` |
 | `ALADDIN_ADMIN_USER` | 預設測試帳號 |
 | `ALADDIN_ADMIN_PASSWORD` | 預設測試密碼 |
-| `ALADDIN_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，三支寫入 tool（`create_game_vendor`/`upsert_game`/`update_platform_game_vendor_status`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
+| `ALADDIN_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，寫入 tool（`create_game_vendor`/`upsert_game`/`update_platform_game_vendor_status`/`set_platform_totp_mode`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 TOTP：dev 環境目前不需要。若未來需要，`aladdin_admin_auth_login` 保留 `totpCode` 選填參數——由 agent 在對話中向操作者當場索取當下驗證碼再帶入，不寫死、不落地存檔。
 

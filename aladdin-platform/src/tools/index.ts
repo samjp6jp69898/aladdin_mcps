@@ -121,6 +121,8 @@ import { registerGetAnchorStatisticSummaryTool } from './get_anchor_statistic_su
 import { registerGetPlatformStatisticSummaryTool } from './get_platform_statistic_summary.ts';
 import { registerGetCurrenciesTool } from './get_currencies.ts';
 import { registerUpdateCurrencyStatusTool } from './update_currency_status.ts';
+import { registerGetOtpSmsSettingsTool } from './get_otp_sms_settings.ts';
+import { registerUpdateOtpSmsSettingsTool } from './update_otp_sms_settings.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -247,4 +249,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetPlatformStatisticSummaryTool(server);
     registerGetCurrenciesTool(server);
     registerUpdateCurrencyStatusTool(server);
+    registerGetOtpSmsSettingsTool(server);
+    registerUpdateOtpSmsSettingsTool(server);
 }
