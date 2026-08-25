@@ -28,6 +28,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_time_based_otp_admin_set_mode` | `TimeBasedOtpAdmin.SetMode` | 設定 admin 全域或指定平台的 TOTP 模式；切到 force 會強制該範圍下所有後台帳號下次登入綁定 TOTP，屬高影響變更，見工具 description 的風險提示；沒有單筆查詢 method，寫入後用 `ListPlatformTotpModes` 讀回驗證 |
 | `aladdin_admin_time_based_otp_list_route_settings` | `TimeBasedOtp.ListRouteSettings` | 列出 admin gate 自己（不涉及任何平台）目前所有可設定 TOTP 二次驗證的路由與設定；rajah 目前完全未掛 `@Permission`（歷史上曾掛 `AdminManagement.Setting.Totp`，2026-07-14 commit 33b6e2dd 移除），任何登入 admin 後台的帳號皆可呼叫 |
 | `aladdin_admin_time_based_otp_update_route_setting` | `TimeBasedOtp.UpdateRouteSetting` | 調整某路由的 TOTP 驗證有效分鐘數（0=每次都需驗證），只改 validMinutes 不影響是否啟用；寫入後讀回驗證 |
+| `aladdin_admin_time_based_otp_update_route_setting_status` | `TimeBasedOtp.UpdateRouteSettingStatus` | 啟用/停用某路由的 TOTP 驗證需求，只改 status 不影響 validMinutes；寫入後讀回驗證 |
 
 ## src/ 結構
 
@@ -57,6 +58,7 @@ src/
     set_platform_totp_mode.ts
     list_totp_route_settings.ts
     update_totp_route_setting.ts
+    update_totp_route_setting_status.ts
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
