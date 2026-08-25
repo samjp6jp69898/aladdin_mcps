@@ -16,6 +16,8 @@ import { registerListTwoEightGamesTool } from './list_two_eight_games.ts';
 import { registerListInHouseVendorsTool } from './list_in_house_vendors.ts';
 import { registerGetGameVendorTool } from './get_game_vendor.ts';
 import { registerUpdateGameVendorTool } from './update_game_vendor.ts';
+import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_play_group_game_ids.ts';
+import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -37,4 +39,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListInHouseVendorsTool(server);
     registerGetGameVendorTool(server);
     registerUpdateGameVendorTool(server);
+    registerResolveInHousePlayGroupGameIdsTool(server);
+    registerUpdateGameVendorStatusTool(server);
 }
