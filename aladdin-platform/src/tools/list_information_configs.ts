@@ -70,24 +70,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { InformationSearch } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { STATUS_KEYS, STATUS_MAP, toPlainNumber } from '../const.ts';
+import { STATUS_KEYS, STATUS_MAP, INFORMATION_TYPE_MAP, toPlainNumber } from '../const.ts';
 
-// InformationTypeEnum（rajah/services/information.rajah:2-13，非本 rajah 檔案內定義；數值已與
-// abu/platform/src/generated/remote.gen.ts:5379-5391 逐一比對一致）。目前只有本工具會用到，
-// 未跨檔重複，依 mcps/README.md 慣例留在檔案內，不放 const.ts。
-const INFORMATION_TYPE_MAP = {
-    urgent: 1,
-    announcement: 2,
-    news: 3,
-    mustRead: 4,
-    systemNotification: 5,
-    inSiteMail: 6,
-    recurringAward: 7,
-    liveNotification: 8,
-    notification: 9,
-    marquee: 10,
-    agentAnnouncement: 11,
-} as const;
+// INFORMATION_TYPE_MAP 現在也被 create_urgent_info_config.ts（及後續其他 type 專屬 service 的
+// tool）共用，已上移至 const.ts，這裡不再各自宣告一份。
 const INFORMATION_TYPE_KEYS = Object.keys(INFORMATION_TYPE_MAP) as [ keyof typeof INFORMATION_TYPE_MAP, ...(keyof typeof INFORMATION_TYPE_MAP)[] ];
 
 const PAGE_SIZE_VALUES = [ 10, 20, 30, 50, 100, 200 ] as const;

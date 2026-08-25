@@ -37,6 +37,23 @@ export const GAME_LOCALIZATION_TARGET_MAP = { gameName: 101, gameVendorName: 131
 // PlatformCaptchaConfig（本 server）共用同一組值。
 export const CAPTCHA_TYPE_MAP = { off: 0, numeral: 1, arithmetic: 2, geetest: 3 } as const;
 
+// InformationTypeEnum（rajah/services/information.rajah:2-13）——information_back_office domain
+// 底下 CommonInfoPlatform（查詢跨全部類型）與各 type 專屬 service（UrgentInfoPlatform 等）的
+// CreateConfig/UpdateConfig 都會用到同一組值，集中在此避免各 tool 各自重複宣告。
+export const INFORMATION_TYPE_MAP = {
+    urgent: 1,
+    announcement: 2,
+    news: 3,
+    mustRead: 4,
+    systemNotification: 5,
+    inSiteMail: 6,
+    recurringAward: 7,
+    liveNotification: 8,
+    notification: 9,
+    marquee: 10,
+    agentAnnouncement: 11,
+} as const;
+
 // H7：hosted 模式下 JWT 過期或尚未登入時回給 agent 的重登信號文字（plan.md D4/D11）。
 // D11 要求 harness 只陳述事實、不引導跨後台操作，措辭止於此，不建議改用其他帳號或後台。
 // stdio 模式不會用到這個常數——stdio 用 env 帳密自動重登，不會走到需要對外顯示訊號的分支。

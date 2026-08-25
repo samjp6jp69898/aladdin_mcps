@@ -27,6 +27,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_platform_captcha_config_set_platform_verification_captcha_type` | `PlatformCaptchaConfig.SetPlatformVerificationCaptchaType` | 切換本平台目前使用的驗證碼類型（須屬於 availableCaptchaTypes 清單），後端自己會保留清單不受影響，工具直接單參數呼叫 |
 | `aladdin_platform_common_info_platform_get_configs` | `CommonInfoPlatform.GetConfigs` | 分頁查詢本平台後台信息系統（公告/緊急通知/最新消息/必讀……共用同一支查詢），A 級（`ids` 可精準查找）；`status`/`pageSize` 不帶時工具內部分別改送 `-1`/`50`，不能直接不帶（送 `undefined` 會分別落到「精準比對 status=0」「LIMIT 0,0」兩個地雷，見工具檔頭說明），2026-08-25 dev 實測含 156 筆真實資料、A 級目標記錄不在第一頁情境 |
 | `aladdin_platform_common_info_platform_get_read_count` | `CommonInfoPlatform.GetReadCount` | 批次查詢多筆信息各自的已讀人數，回傳陣列與輸入 `infoIds` 陣列結構性保證同長度同順序（不需自行比對 id），不存在/0已讀/別平台的 id 皆回 0（三者不可區分，但不會洩漏別平台數字），`infoIds` 上限 1000 筆（工具自加防呆） |
+| `aladdin_platform_urgent_info_platform_create_config` | `UrgentInfoPlatform.CreateConfig` | 新增一筆緊急通知，新建立的紀錄一律強制 disabled（要生效需另外呼叫 EnableConfig，尚未包裝成 tool），只寫操作日誌不觸發背景 job/快取；RPC 不回傳 id，工具改用 title 完全比對做 best-effort 讀回（title 非唯一鍵，找不到不代表失敗） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 

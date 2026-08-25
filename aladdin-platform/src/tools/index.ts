@@ -24,6 +24,7 @@ import { registerGetPlatformVerificationConfigTool } from './get_platform_verifi
 import { registerUpdatePlatformVerificationCaptchaTypeTool } from './update_platform_verification_captcha_type.ts';
 import { registerListInformationConfigsTool } from './list_information_configs.ts';
 import { registerGetInformationReadCountTool } from './get_information_read_count.ts';
+import { registerCreateUrgentInfoConfigTool } from './create_urgent_info_config.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -53,4 +54,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdatePlatformVerificationCaptchaTypeTool(server);
     registerListInformationConfigsTool(server);
     registerGetInformationReadCountTool(server);
+    registerCreateUrgentInfoConfigTool(server);
 }
