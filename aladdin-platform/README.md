@@ -26,6 +26,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_customer_platform_update_category_status` | `CustomerPlatform.UpdateCategoryStatus` | 啟用/停用某個客服連線類型底下的一筆連線項目；冪等操作，寫入後掃描回讀驗證 |
 | `aladdin_platform_customer_platform_get_customer_config_restrict` | `CustomerPlatform.GetCustomerConfigRestrict` | 讀「客服設置」通用設定的「訪問受限制」選項清單；無參數，本平台全部客服連線類型不分頁一次回傳 |
 | `aladdin_platform_customer_platform_set_customer_config_restrict` | `CustomerPlatform.SetCustomerConfigRestrict` | 設定「訪問受限制」目前選中的連線項目；同 platformId 單選語意（設某筆 enabled 會讓其餘全部 disabled），id=0 為清除選擇，寫入後自動回讀驗證 |
+| `aladdin_platform_customer_platform_get_customer_tickets` | `CustomerPlatform.GetCustomerTickets` | 查詢「問題處理」→「客服工單」列表；受登入角色所屬部門可視範圍限制，未指定的篩選欄位一律送 -1（不誤篩成該欄位的 0 值） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
