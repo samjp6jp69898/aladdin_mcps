@@ -21,6 +21,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_update_game_vendor` | `GameVendorPlatform.GetGameVendorForEdit` + `UpdateGameVendor` | 更新單一廠商可編輯欄位（`localizedNames`/`sortOrder`/廠商方形圖），先讀現值、只覆寫有帶到的欄位、寫入後 round-trip 驗證；2026-08-24 dev 實測發現後端不會擋下超出宣告範圍的 `sortOrder`、對不存在 id 也會靜默回成功（不會真的寫入），description 已如實揭露此限制 |
 | `aladdin_platform_game_vendor_platform_get_game_ids_by_in_house_play_group_ids` | `GameVendorPlatform.GetGameIdsByInHousePlayGroupIds` | 把 in-house 遊戲的 playGroupId 批次回推成 game_vendor_games.id（gameVendorGameId）與 brandId；查不到的 id 列在回傳的 `unresolvedPlayGroupIds`，2026-08-25 dev 實測涵蓋存在/不存在/混合/重複輸入四種情境 |
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
+| `aladdin_platform_room_platform_update_room_sort_order` | `RoomPlatform.UpdateRoomSortOrder` | 把房間搬移到另一個房間目前的位置（插入式搬移，不是兩筆互換，會連帶位移區間內其他房間），寫入後改用 `GetRoomList` 讀回核對 fromId/toId 目前順位；2026-08-25 dev 實測含不存在 id（errorCode=11 idNotExists，AgrabahErrorCodeEnum 無此碼故 errorName 顯示未知）、fromId===toId 無動作、真實搬移呼叫三種情境——本平台當下 4 筆測試房間 sort_order 皆為預設值 1000，搬移呼叫成功但無實質變化，符合 description 揭露的「預設值皆 1000 時呼叫等同無效果」，未能在 dev 實測到真正產生位移的情境（該邏輯僅靠讀原始碼 + 兩輪獨立 review 交叉驗證，未經 runtime 實測） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
