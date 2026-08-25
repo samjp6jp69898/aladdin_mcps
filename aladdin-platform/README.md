@@ -28,6 +28,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_point_platform_get_point_setting` | `PointPlatform.GetPointSetting` | 取得本平台全局積分設定（單例），無參數 |
 | `aladdin_platform_point_platform_update_point_setting` | `PointPlatform.GetPointSetting` + `UpdatePointSetting` | 更新全局積分設定，先讀現值、只覆蓋帶到的欄位、round-trip 讀回；dueType=absoluteTime/relativeTime 分別要求搭配 dueAtTimestamp/dueDay |
 | `aladdin_platform_point_platform_get_vip_point_setting` | `PointPlatform.GetVipPointSetting` | 取得指定 VIP 層級的積分返利完整編輯資料，是 update_vip_point_setting 的讀現值搭配方法 |
+| `aladdin_platform_point_platform_update_vip_point_setting` | `PointPlatform.GetVipPointSetting` + `UpdateVipPointSetting` | 更新指定 VIP 層級的積分返利設定，先讀現值、只覆蓋帶到的欄位（displayTagPointRebates 依 displayTag 逐分類覆蓋，未帶到的分類沿用現值）、round-trip 讀回 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 

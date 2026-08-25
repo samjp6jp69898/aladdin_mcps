@@ -75,6 +75,14 @@ export const TIME_LIMIT_TYPE_MAP: Record<(typeof TIME_LIMIT_TYPE_KEYS)[number], 
     unlimitedTime: 1, absoluteTime: 2, relativeTime: 3,
 };
 
+// GameDisplayTagEnum（game.rajah:2-18），供 PointPlatform.UpdateVipPointSetting 的
+// displayTagPointRebates[].displayTag 使用。unknown=0 不收錄——GetVipPointSetting 固定回傳
+// 全部非 unknown 分類各一筆，寫入時同樣以此為準。
+export const GAME_DISPLAY_TAG_KEYS = [ 'slot', 'board', 'fish', 'live', 'sport', 'eSport', 'lottery' ] as const;
+export const GAME_DISPLAY_TAG_MAP: Record<(typeof GAME_DISPLAY_TAG_KEYS)[number], number> = {
+    slot: 1, board: 2, fish: 3, live: 4, sport: 5, eSport: 6, lottery: 7,
+};
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
