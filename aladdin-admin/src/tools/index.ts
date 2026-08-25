@@ -28,6 +28,9 @@ import { registerGetCaptchaConfigTool } from './get_captcha_config.ts';
 import { registerUpdateCaptchaConfigTool } from './update_captcha_config.ts';
 import { registerGetPlatformVerificationConfigsTool } from './get_platform_verification_configs.ts';
 import { registerUpdatePlatformVerificationConfigTool } from './update_platform_verification_config.ts';
+import { registerListPlatformRiskStrategiesTool } from './list_platform_risk_strategies.ts';
+import { registerGetPlatformRiskStrategyForEditTool } from './get_platform_risk_strategy_for_edit.ts';
+import { registerCreateOrUpdatePlatformRiskStrategyTool } from './create_or_update_platform_risk_strategy.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -63,4 +66,7 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdateCaptchaConfigTool(server);
     registerGetPlatformVerificationConfigsTool(server);
     registerUpdatePlatformVerificationConfigTool(server);
+    registerListPlatformRiskStrategiesTool(server);
+    registerGetPlatformRiskStrategyForEditTool(server);
+    registerCreateOrUpdatePlatformRiskStrategyTool(server);
 }

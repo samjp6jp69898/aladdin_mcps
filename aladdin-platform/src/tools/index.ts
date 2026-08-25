@@ -93,6 +93,17 @@ import { registerUpdatePlatformVerificationCaptchaTypeTool } from './update_plat
 import { registerListInformationConfigsTool } from './list_information_configs.ts';
 import { registerGetInformationReadCountTool } from './get_information_read_count.ts';
 import { registerCreateUrgentInfoConfigTool } from './create_urgent_info_config.ts';
+import { registerListPlatformRiskStrategiesTool } from './list_platform_risk_strategies.ts';
+import { registerGetPlatformRiskStrategiesTool } from './get_platform_risk_strategies.ts';
+import { registerGetPlatformRiskStrategyForEditTool } from './get_platform_risk_strategy_for_edit.ts';
+import { registerUpdatePlatformRiskStrategyStatusTool } from './update_platform_risk_strategy_status.ts';
+import { registerListPlatformRiskEventsTool } from './list_platform_risk_events.ts';
+import { registerGetIpRegionListTool } from './get_ip_region_list.ts';
+import { registerCreateOrUpdateIpRegionTool } from './create_or_update_ip_region.ts';
+import { registerUpdateIpRegionStatusTool } from './update_ip_region_status.ts';
+import { registerBatchUpdateIpRegionStatusTool } from './batch_update_ip_region_status.ts';
+import { registerDeleteIpRegionTool } from './delete_ip_region.ts';
+import { registerBatchDeleteIpRegionTool } from './batch_delete_ip_region.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -191,4 +202,15 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListInformationConfigsTool(server);
     registerGetInformationReadCountTool(server);
     registerCreateUrgentInfoConfigTool(server);
+    registerListPlatformRiskStrategiesTool(server);
+    registerGetPlatformRiskStrategiesTool(server);
+    registerGetPlatformRiskStrategyForEditTool(server);
+    registerUpdatePlatformRiskStrategyStatusTool(server);
+    registerListPlatformRiskEventsTool(server);
+    registerGetIpRegionListTool(server);
+    registerCreateOrUpdateIpRegionTool(server);
+    registerUpdateIpRegionStatusTool(server);
+    registerBatchUpdateIpRegionStatusTool(server);
+    registerDeleteIpRegionTool(server);
+    registerBatchDeleteIpRegionTool(server);
 }
