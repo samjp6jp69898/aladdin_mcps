@@ -26,6 +26,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_list_all_brands` | `GameVendorPlatform.ListAllBrands` | 查詢本平台遊戲品牌清單（廠商底下再細分的子分類），依 gameVendorId/tag/title 篩選、支援分頁；這支 method 沒有 `@Permission`（rajah 原始碼該行整行被註解掉，含 service 級 fallback 也一併被註解，確認過並非遺漏），任何已登入使用者皆可查詢；tag=-1 表全部、0 是合法值不可用 truthy 判斷；title 為 LIKE 模糊比對非精確查找，本工具直接暴露原始分頁不做內部掃描定位；純查詢無寫入；2026-08-25 已通過真正 MCP stdio Client 打 tools/call 實測 |
 | `aladdin_platform_game_vendor_platform_get_brand_for_edit` | `GameVendorPlatform.GetBrandForEdit` | 用品牌 id 讀取本平台單一遊戲品牌的編輯用資料（title/code/gameVendorId/tag/squareImage/rectangleImage/bannerImage，**沒有 status 欄位**）；後端查詢帶 `platform_id = ? AND id = ?`，SQL 層即有租戶隔離；id 不存在（含 id=0）回 `errorCode=11`（idNotExists）；純讀取，可安全重複呼叫；2026-08-25 已通過真正 MCP stdio Client 打 tools/call 實測（存在 id / 不存在 id / id=0） |
 | `aladdin_platform_game_vendor_platform_update_brand_status` | `GameVendorPlatform.ListAllBrands` + `UpdateBrandStatus` | 切換單一品牌啟用/停用狀態；後端有正確檢查存在性（`objectNotFound`）並用帶 platformId 的 `updateStatus()` helper（跟 service 內 `CreateOrUpdateBrands` 缺 null 檢查的問題不同，本方法沒有該風險）；`GetBrandForEdit` 無 status 欄位，改用 `ListAllBrands` 讀現值（品牌為小型列舉表，一次查全部不分頁）；2026-08-25 已通過真正 MCP stdio Client 打 tools/call 實測（不存在 brandId、同值短路、round-trip 切換 + 復原） |
+| `aladdin_platform_game_vendor_platform_list_all_game_display_tags` | `GameVendorPlatform.ListAllGameDisplayTags` | 查詢本平台前端遊戲分類標籤（如「熱門」「新遊戲」，非品牌分類），這支 method 沒有 `@Permission`；不帶 page（或帶 0）時後端回傳全部不分頁（原始碼明確支援）；status 篩選在後端 SQL WHERE 層過濾（僅 enabled/disabled 兩態），name 為應用層模糊比對；純查詢無寫入；2026-08-25 已通過真正 MCP stdio Client 打 tools/call 實測（不分頁全撈 30 筆、status 篩選、name 模糊比對、page>0 真分頁） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -80,7 +81,7 @@ src/
 
 ## 已知限制
 
-- `aladdin_platform_game_vendor_platform_list_games` 只開放 `gameVendorId`/`name`/`status` 三個篩選欄位；`displayTag`/`frontendGroupTag`/`rebateTag`/`badgeId` 這些下拉篩選需要另外查對應清單（`ListAllGameDisplayTags`/`ListAllGameRebateTags`/`GetBadgeList` 等），尚未實作。
+- `aladdin_platform_game_vendor_platform_list_games` 只開放 `gameVendorId`/`name`/`status` 三個篩選欄位；`displayTag`/`frontendGroupTag`/`rebateTag`/`badgeId` 這些下拉篩選需要另外查對應清單，其中 `ListAllGameDisplayTags` 已實作為 `aladdin_platform_game_vendor_platform_list_all_game_display_tags`；`ListAllGameRebateTags`/`GetBadgeList` 等仍尚未實作。
 - `aladdin_platform_game_vendor_platform_update_game_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，先呼叫 `POST /files` 上傳取得，見 `../README.md`「Hosted 模式」）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **H9：`onboard_vendor_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**，設計與實測方式與 `aladdin-admin` 的 `upsert_game.ts` 逐字相同，完整說明見 `../aladdin-admin/README.md` 同一段（D5/§4.3；`fileId → 本機路徑` 的三層防護：regex 格式白名單 + registry `Map` 精確比對 + realpath 二次確認）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
