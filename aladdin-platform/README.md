@@ -21,6 +21,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_update_game_vendor` | `GameVendorPlatform.GetGameVendorForEdit` + `UpdateGameVendor` | 更新單一廠商可編輯欄位（`localizedNames`/`sortOrder`/廠商方形圖），先讀現值、只覆寫有帶到的欄位、寫入後 round-trip 驗證；2026-08-24 dev 實測發現後端不會擋下超出宣告範圍的 `sortOrder`、對不存在 id 也會靜默回成功（不會真的寫入），description 已如實揭露此限制 |
 | `aladdin_platform_game_vendor_platform_get_game_ids_by_in_house_play_group_ids` | `GameVendorPlatform.GetGameIdsByInHousePlayGroupIds` | 把 in-house 遊戲的 playGroupId 批次回推成 game_vendor_games.id（gameVendorGameId）與 brandId；查不到的 id 列在回傳的 `unresolvedPlayGroupIds`，2026-08-25 dev 實測涵蓋存在/不存在/混合/重複輸入四種情境 |
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
+| `aladdin_platform_room_platform_get_room_list` | `RoomPlatform.GetRoomList` | 列出本平台全部房間的分頁清單，**無任何篩選欄位**（後端 search 參數是空 model 且完全未使用）；`pageSize` 只開放 10/20/30/50/100/200 這幾個 rajah `PageSizeEnum` 合法值（後端實際只檢查 `>0`，未強制夾限，工具層仍收斂範圍）；`totalPage` 為真實 `COUNT(*)`，`moduleResult`/`realMemberCount` 需額外查詢組出；`roomCreatedAt`/`moduleResult.chat.chatRoomId` 這兩個 i64 欄位已轉成一般數字（原始 protobuf 解碼會是字串/Long 物件）。2026-08-25 dev 實測：page=1/2 邊界、超出 totalPage、pageSize=200、非法 pageSize 均通過（dev 站台當下僅 4 筆房間，totalPage=1，未能實測「目標不在第一頁」的真實跨頁情境，但已用真實資料驗證翻頁機制本身正確） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
