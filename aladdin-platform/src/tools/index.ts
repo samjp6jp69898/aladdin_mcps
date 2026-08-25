@@ -18,6 +18,12 @@ import { registerGetGameVendorTool } from './get_game_vendor.ts';
 import { registerUpdateGameVendorTool } from './update_game_vendor.ts';
 import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_play_group_game_ids.ts';
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
+import { registerGetActivityTabsTool } from './get_activity_tabs.ts';
+import { registerCreateOrUpdateActivityTabTool } from './create_or_update_activity_tab.ts';
+import { registerToggleActivityTabTool } from './toggle_activity_tab.ts';
+import { registerGetActivityConfigsTool } from './get_activity_configs.ts';
+import { registerGetUserIdByIdentifierTool } from './get_user_id_by_identifier.ts';
+import { registerGetFissionActivityOptionsTool } from './get_fission_activity_options.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -41,4 +47,10 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorTool(server);
     registerResolveInHousePlayGroupGameIdsTool(server);
     registerUpdateGameVendorStatusTool(server);
+    registerGetActivityTabsTool(server);
+    registerCreateOrUpdateActivityTabTool(server);
+    registerToggleActivityTabTool(server);
+    registerGetActivityConfigsTool(server);
+    registerGetUserIdByIdentifierTool(server);
+    registerGetFissionActivityOptionsTool(server);
 }
