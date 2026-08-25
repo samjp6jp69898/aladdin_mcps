@@ -24,6 +24,7 @@ import { registerCreatePlatformTool } from './create_platform.ts';
 import { registerListPlatformTotpModesTool } from './list_platform_totp_modes.ts';
 import { registerSetPlatformTotpModeTool } from './set_platform_totp_mode.ts';
 import { registerListTotpRouteSettingsTool } from './list_totp_route_settings.ts';
+import { registerUpdateTotpRouteSettingTool } from './update_totp_route_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -55,4 +56,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerListPlatformTotpModesTool(server);
     registerSetPlatformTotpModeTool(server);
     registerListTotpRouteSettingsTool(server);
+    registerUpdateTotpRouteSettingTool(server);
 }
