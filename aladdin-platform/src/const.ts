@@ -11,6 +11,19 @@
 // ActiveStatusEnum（common.rajah:1073-1076）
 export const ACTIVE_STATUS_MAP = { enabled: 1, disabled: 2 } as const;
 
+// StatusEnum（common.rajah:1072-1080）；unknown=0 保留給呼叫端明確表達「設為未知狀態」這個
+// 合法列舉值；last=255 是內部 sentinel（非列舉語意上界），不收錄進可選值。
+// 2026-08-25 dev 實測（update_game_vendor_status.ts round-trip 測試）確認 enabled/disabled
+// 的數值與此處一致（分別讀回 1/2）。
+export const STATUS_KEYS = [ 'unknown', 'enabled', 'disabled', 'frozen', 'deleted' ] as const;
+export const STATUS_MAP: Record<(typeof STATUS_KEYS)[number], number> = {
+    unknown: 0,
+    enabled: 1,
+    disabled: 2,
+    frozen: 3,
+    deleted: 10,
+};
+
 // GameImageShapeEnum（game_back_office.rajah:266-272）；PlatformUploadGameImageEnum.game=1（game_back_office.rajah:627-633）
 export const IMAGE_SHAPE_MAP = { square: 1, rectangle: 2, banner: 3 } as const;
 export const UPLOAD_TYPE_GAME = 1;
