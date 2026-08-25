@@ -58,6 +58,15 @@ export const GLOBAL_PIN_MODE_MAP = { off: 1, permanent: 2, timed: 3 } as const;
 // PostsChangeUserDetailChargeTimesEnum（message_board_back_office.rajah:336-343）
 export const CHANGE_USER_DETAIL_CHARGE_TIMES_MAP = { noNeed: 0, minChargeTimesOne: 1, minChargeTimesTwo: 2 } as const;
 
+// OtpCodeSettingPlatform.GetSmsSettings/UpdateSmsSettings（otp_code_back_office.rajah:132-137）用到的 enum 對照表。
+// OtpSmsSettings 的 4 個 xxxStatus 開關欄位底層是 StatusEnum，數值與上面 ACTIVE_STATUS_MAP 相同，直接重用。
+
+// OtpCodeLimitConditionEnum（otp_code.rajah:189-194）
+export const OTP_LIMIT_CONDITION_MAP = { ip: 1, phone: 2 } as const;
+
+// RegistrationLimitPeriodTypeEnum（common.rajah:2185-2192）
+export const OTP_LIMIT_PERIOD_MAP = { day: 1, week: 2, permanent: 3 } as const;
+
 /**
  * i64 欄位（如 MessageBoardPostSetting 的 postsChangeUserDetailMinChargeTotal/
  * postsGiftReceiveTotalAmount）經 protobufjs decode 後是 Long 物件
