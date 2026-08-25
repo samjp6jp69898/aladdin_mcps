@@ -24,6 +24,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_activity_platform_get_activity_tabs` | `ActivityPlatform.GetActivityTabs` | 查詢當前平台的活動頁籤清單（後台「優惠中心 > 活動管理」的活動欄目管理彈窗），無參數、不分頁全撈（小型設定表），已排除軟刪除項目；2026-08-25 dev 實測回傳 16 筆真實資料，status 僅出現 1/2（enabled/disabled，不會出現 deleted） |
 | `aladdin_platform_activity_platform_create_or_update_activity_tabs` | `ActivityPlatform.CreateOrUpdateActivityTabs` | 新增或修改本平台一筆活動頁籤；先讀現值只覆蓋有帶到的欄位（含逐語系合併 name），id 不存在時客戶端先擋不送 RPC，新增因後端無回傳 id 靠寫入前後差異反推；2026-08-25 dev 實測 6 種情境（新增預設值、逐欄修改、逐語系合併、不存在 id、缺 name）全過，唯這組 service 無 Delete 方法，測試資料只能設 disabled 無法真正刪除 |
 | `aladdin_platform_activity_platform_toggle_activity_tab` | `ActivityPlatform.ToggleActivityTab` | 把單一活動頁籤設為明確目標狀態（enabled/disabled/deleted，deleted 是這組 method 唯一的軟刪除入口）；後端連線走 mysql2 預設 `CLIENT_FOUND_ROWS`，同值呼叫天生冪等成功、objectNotFound 可放心解讀為 id 不存在，工具因此不需要先讀現值再判斷；2026-08-25 dev 實測 8 種情境（含對已軟刪除的 id 重複刪除、復原軟刪除）全過，測試資料已用本工具設回 deleted 清理 |
+| `aladdin_platform_activity_platform_get_activity_configs` | `ActivityPlatform.GetActivityConfigs` | 查詢本平台活動配置清單（後台「優惠中心 > 活動管理 > 活動配置」），無 id 篩選欄位、靠 status/name/activityTabIds 三個條件組合縮小範圍，已排除軟刪除；pageSize 雖無 `@Validate` 但 jasmine 對 enum 參數自動生成成員檢查，2026-08-25 dev 實測繞過 zod 直打 RPC 確認非法值真的被後端拒絕（errorCode=9）；另發現並記錄一個後端分頁陷阱：`totalPage` 只有 page=1 才會計算，其餘頁一律回 0 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 

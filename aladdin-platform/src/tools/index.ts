@@ -21,6 +21,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerGetActivityTabsTool } from './get_activity_tabs.ts';
 import { registerCreateOrUpdateActivityTabTool } from './create_or_update_activity_tab.ts';
 import { registerToggleActivityTabTool } from './toggle_activity_tab.ts';
+import { registerGetActivityConfigsTool } from './get_activity_configs.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -47,4 +48,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetActivityTabsTool(server);
     registerCreateOrUpdateActivityTabTool(server);
     registerToggleActivityTabTool(server);
+    registerGetActivityConfigsTool(server);
 }
