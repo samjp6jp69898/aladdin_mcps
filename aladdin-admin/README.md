@@ -25,6 +25,8 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_set_game_vendor_maintenance` | 設定廠商場館（母表 game_vendors）的維護時間窗口（rajah: GameVendorAdmin.SetGameVendorMaintenance）；毫秒 epoch，無獨立開關（isMaintaining 是即時計算的衍生值），寫入後用 ListAllGameVendors 讀回驗證 |
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
 | `aladdin_admin_audit_admin_get_audit_logs` | `AuditAdmin.GetAuditLogs` | 查詢系統管理後台（跨平台）的操作紀錄；`systemId` 省略內部固定送 -1（0 是合法值 core，不能當不篩選）；`actionId` 是 AdminActionIdEnum 字串 key（122 個值，完整列舉）；`pageSize` 只接受 10/20/30/50/100/200；2026-08-25 dev 實測 |
+| `aladdin_admin_currency_admin_get_currencies` | `CurrencyAdmin.GetCurrencies` | 列出全域幣別清單，無 @Permission；不分頁一次全撈（小型列舉表）；2026-08-25 dev 實測 |
+| `aladdin_admin_currency_admin_update_currency` | `CurrencyAdmin.UpdateCurrency` | 更新既有全域幣別的 name/symbol/displayDigits；code/type/decimalPlaces 不可改；寫入成功會全平台廣播（ReloadCurrency）；name 最長 20 字元、symbol 最長 10 字元（比照 DB VARCHAR 上限）；三值皆與現值相同時後端回 nothingChanged（本工具視為非失敗）；先讀現值合併未帶欄位、寫入後 round-trip 逐欄比對；2026-08-25 dev 實測含正常更新、nothingChanged、超長欄位、id 不存在四種情境 |
 
 ## src/ 結構
 
