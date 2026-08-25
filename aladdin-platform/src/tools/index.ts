@@ -22,6 +22,7 @@ import { registerListCustomerCategoryDetailsTool } from './list_customer_categor
 import { registerUpdateCustomerCategorySortOrderTool } from './update_customer_category_sort_order.ts';
 import { registerUpdateCustomerCategoryStatusTool } from './update_customer_category_status.ts';
 import { registerGetCustomerConfigRestrictTool } from './get_customer_config_restrict.ts';
+import { registerSetCustomerConfigRestrictTool } from './set_customer_config_restrict.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +50,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateCustomerCategorySortOrderTool(server);
     registerUpdateCustomerCategoryStatusTool(server);
     registerGetCustomerConfigRestrictTool(server);
+    registerSetCustomerConfigRestrictTool(server);
 }

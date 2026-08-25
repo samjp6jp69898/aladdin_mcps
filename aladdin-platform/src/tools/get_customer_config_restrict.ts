@@ -38,8 +38,8 @@ export function registerGetCustomerConfigRestrictTool(server: McpServer): void {
                 '（同 platformId 全部連線項目裡最多一筆是 enabled，其餘皆 disabled）——' +
                 '這跟 aladdin_platform_customer_platform_list_details 回傳的 status（該連線項目本身的' +
                 '啟用/停用）是完全不同的兩個欄位，兩者恰好都渲染成 enabled/disabled 字串但語意不同，勿混用。' +
-                '要修改「同 platformId 只能選一個」的實際生效設定要改用 SetCustomerConfigRestrict' +
-                '（目前尚未包成 tool）。',
+                '要修改「同 platformId 只能選一個」的實際生效設定要改用 ' +
+                'aladdin_platform_customer_platform_set_customer_config_restrict。',
             inputSchema: {},
         },
         async () => {
