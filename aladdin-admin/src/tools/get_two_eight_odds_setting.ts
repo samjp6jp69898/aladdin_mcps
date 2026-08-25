@@ -68,7 +68,9 @@ export function registerGetTwoEightOddsSettingTool(server: McpServer): void {
             description:
                 '取得指定玩法組（playGroupId）的二八槓賠率設定（rajah: InHouseGameBackOffice.' +
                 'GetTwoEightOddsSetting），含 currency（該玩法組所屬廠商幣別）與 odds（各 betItem/' +
-                'resultCondition 組合的 threshold/ltOdds/geOdds 賠率明細）。' +
+                'resultCondition 組合的 threshold/ltOdds/geOdds 賠率明細）。odds[].threshold（@Type ' +
+                '"Currency"）回傳的是 stored 值（依幣別 decimalPlaces 放大過的整數，非顯示金額），' +
+                'ltOdds/geOdds（@Type "Rate"）同樣是放大過的整數倍率，皆不要直接當成使用者看到的數字使用。' +
                 '【重要陷阱，已 dev 實測驗證】若傳入不存在的 playGroupId，後端會因為內部 null pointer' +
                 '例外回傳 errorCode=1（unknown）——這是已知的後端邊界 bug（getPlayGroupCurrency 沒判斷' +
                 '查無資料的情況），不是本 tool 或網路問題；請先用 ' +
