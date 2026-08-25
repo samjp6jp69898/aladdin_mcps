@@ -21,6 +21,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerListCustomerCategoryDetailsTool } from './list_customer_category_details.ts';
 import { registerUpdateCustomerCategorySortOrderTool } from './update_customer_category_sort_order.ts';
 import { registerUpdateCustomerCategoryStatusTool } from './update_customer_category_status.ts';
+import { registerGetCustomerConfigRestrictTool } from './get_customer_config_restrict.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -47,4 +48,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListCustomerCategoryDetailsTool(server);
     registerUpdateCustomerCategorySortOrderTool(server);
     registerUpdateCustomerCategoryStatusTool(server);
+    registerGetCustomerConfigRestrictTool(server);
 }

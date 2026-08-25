@@ -46,7 +46,10 @@ export function registerListCustomerCategoryDetailsTool(server: McpServer): void
                 '只回傳 id/category/name/status/localizedName/displayIcon/jumpMethod/vipIds/sortOrder。' +
                 'category 只有 komi/wbgcorp/dotcloud 三種固定值，不是可鎖定單一目標的欄位——' +
                 '此 method 沒有以 id 直接查單筆的 sibling method，若要找特定一筆需自行翻頁比對，' +
-                'page/pageSize 原樣透傳、本 tool 不會自動掃描到底。',
+                'page/pageSize 原樣透傳、本 tool 不會自動掃描到底。' +
+                '這裡的 status 是該連線項目本身的啟用/停用，跟 ' +
+                'aladdin_platform_customer_platform_get_customer_config_restrict 回傳的 restrictStatus' +
+                '（該項目是否為本平台「訪問受限制」目前選中的那一筆）是完全不同的兩個欄位，勿混用。',
             inputSchema: {
                 category: z.enum([ 'komi', 'wbgcorp', 'dotcloud' ]).describe('客服連線類型（三方客服系統）'),
                 page: z.number().int().min(1).optional().describe('頁碼，從 1 開始，預設 1'),
