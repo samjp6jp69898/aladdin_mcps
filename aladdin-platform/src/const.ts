@@ -111,6 +111,21 @@ export const DISCOUNT_MODE_MAP = { bonus: 1, percent: 2 } as const;
  * 字串，不能只看伺服器端型別就跳過轉換），實測數值都在 52 bit 安全整數範圍內，維持最小作法
  * 即可，之後若出現更多組再考慮要不要抽更通用的版本。
  */
+// TimeLimitTypeEnum（common.rajah:1597-1606），供 PointPlatform.GetPointSetting/UpdatePointSetting 的
+// dueType 使用。unknown=0 不收錄——後端驗證只接受 absoluteTime（需 dueAtTimestamp）或 relativeTime（需 dueDay）。
+export const TIME_LIMIT_TYPE_KEYS = [ 'unlimitedTime', 'absoluteTime', 'relativeTime' ] as const;
+export const TIME_LIMIT_TYPE_MAP: Record<(typeof TIME_LIMIT_TYPE_KEYS)[number], number> = {
+    unlimitedTime: 1, absoluteTime: 2, relativeTime: 3,
+};
+
+// GameDisplayTagEnum（game.rajah:2-18），供 PointPlatform.UpdateVipPointSetting 的
+// displayTagPointRebates[].displayTag 使用。unknown=0 不收錄——GetVipPointSetting 固定回傳
+// 全部非 unknown 分類各一筆，寫入時同樣以此為準。
+export const GAME_DISPLAY_TAG_KEYS = [ 'slot', 'board', 'fish', 'live', 'sport', 'eSport', 'lottery' ] as const;
+export const GAME_DISPLAY_TAG_MAP: Record<(typeof GAME_DISPLAY_TAG_KEYS)[number], number> = {
+    slot: 1, board: 2, fish: 3, live: 4, sport: 5, eSport: 6, lottery: 7,
+};
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
@@ -131,3 +146,39 @@ export function formatCurrencyLinks(links: unknown): unknown {
     if (!Array.isArray(links)) return links;
     return links.map((link) => ({ ...(link as Record<string, unknown>), value: toPlainNumber((link as { value?: unknown }).value) }));
 }
+ * 遞迴把回傳物件裡任何 protobufjs Long 實例（i64 欄位解出來的原始型別，鴨子定型判斷式
+ * 同 toPlainNumber：有 low/high 兩個 number 欄位 + toNumber() 方法）轉成一般 number，
+ * 其餘型別（string/boolean/null/一般 number）原樣通過。
+ *
+ * 為什麼跟 toPlainNumber 分開一支：toPlainNumber 是「呼叫端已經知道這個特定欄位是 i64」時的
+ * 精確轉換（含字串輸入也轉數字，適合單一已知欄位）；deepFixLongs 是「不確定整包物件裡哪些欄位
+ * 是 i64」時的保守 catch-all（只轉真正還是 Long 實例的值，不對字串亂猜），用於 point_back_office
+ * 系列 tool 直接透傳 rajah model 全部欄位（rebateMax/quantity/各種 timestamp/CurrencyLink.value
+ * 等 i64 散落在巢狀結構各處）的情境——在呼叫端把讀回的值原樣傳回寫入 method 時，若停留在
+ * Long 實例會被 JSON.stringify 自動呼叫 toJSON() 轉成十進位字串，導致這個值不再滿足 zod
+ * `z.number()` schema（2026-08-25 dev 實測 UpdateVipPointSetting 復現：GetVipPointSetting 讀回的
+ * rebateMax 字串化後直接餵回 UpdateVipPointSetting 觸發 zod 驗證錯誤）。在回傳給呼叫端前先在這裡
+ * 攔截轉換，才能讓「讀回值直接餵回寫入 tool」這個 agent 最自然的操作模式正常運作。
+ */
+export function deepFixLongs<T>(value: T): T {
+    if (value === null || typeof value !== 'object') return value;
+    const maybeLong = value as unknown as { low?: unknown; high?: unknown; toNumber?: () => number };
+    if (typeof maybeLong.low === 'number' && typeof maybeLong.high === 'number' && typeof maybeLong.toNumber === 'function') {
+        return maybeLong.toNumber() as unknown as T;
+    }
+    if (Array.isArray(value)) return value.map((item) => deepFixLongs(item)) as unknown as T;
+    const result: Record<string, unknown> = {};
+    for (const [ key, item ] of Object.entries(value as Record<string, unknown>)) {
+        result[ key ] = deepFixLongs(item);
+    }
+    return result as T;
+}
+
+// PointTransactionCategoryEnum（common.rajah:2282-2298），供 PointPlatform.ListPointTransactions 的
+// search.category 篩選使用。unknown=0 在後端語意是「不篩選」，不收錄成可選值。
+export const POINT_TRANSACTION_CATEGORY_KEYS = [
+    'turnover', 'checkIn', 'exchangeProduct', 'expired', 'manualAdd', 'manualDeduct', 'roulette',
+] as const;
+export const POINT_TRANSACTION_CATEGORY_MAP: Record<(typeof POINT_TRANSACTION_CATEGORY_KEYS)[number], number> = {
+    turnover: 1, checkIn: 2, exchangeProduct: 3, expired: 4, manualAdd: 5, manualDeduct: 6, roulette: 7,
+};
