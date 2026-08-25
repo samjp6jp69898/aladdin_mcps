@@ -38,6 +38,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_vip_level_platform_get_vip_setting_equity_icons` | `VipLevelPlatform.GetVipSettingEquityIcons` | 列出本平台全部「VIP 權益圖標」選項（新版 VIP 體系，需權限 AppUser.Vip），無參數、固定小量列舉；⚠️ 回傳的 isSelect 恆為 disabled（此公開 API 不會帶 vipLevelSettingId，無法用來判斷某等級是否已勾選某圖標） |
 | `aladdin_platform_vip_level_platform_get_vip_level_settings` | `VipLevelPlatform.GetVipLevelSettings` | 列出本平台全部啟用中的 VIP 等級設定（新版 VIP 體系，此 method 無 @Permission），無參數、走快取、固定小量列舉；⚠️ 舊版體系 `VipPlatform.GetVipLevelConfigs` 資料已無人維護（dev 實測 0 筆），本 tool 才是現行來源 |
 | `aladdin_platform_vip_level_platform_delete_vip_level_setting` | `VipLevelPlatform.DeleteVipLevelSetting` | 軟刪除一筆 VIP 等級設定，等級仍有真實會員時會擋下（errorCode=vipLevelSettingHasUsers）；⚠️ 對不存在/已刪除的 id 重複呼叫都回成功，需用回傳的 readBack 欄位（read_back_failed/still_present/confirmed_removed）判斷實際狀態，讀回走快取可能有極短暫假陰性 |
+| `aladdin_platform_vip_level_platform_get_vip_setting` | `VipLevelPlatform.GetVipSetting` | 取得本平台 VIP 全域設定（單例），無參數、內部用 context.platformId（無跨租戶風險）；⚠️ 五個 `*AuditMultiple` 欄位原始值為實際倍數 ×10000，`*ValidityTime` 單位是小時 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
