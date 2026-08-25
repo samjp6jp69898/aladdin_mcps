@@ -28,6 +28,7 @@ import { registerGetInHousePlayGroupListTool } from './get_in_house_play_group_l
 import { registerGetInHouseGameEditTool } from './get_in_house_game_edit.ts';
 import { registerGetInHouseVendorEditTool } from './get_in_house_vendor_edit.ts';
 import { registerGetInHousePlayGroupEditTool } from './get_in_house_play_group_edit.ts';
+import { registerGetTwoEightOddsSettingTool } from './get_two_eight_odds_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -63,4 +64,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetInHouseGameEditTool(server);
     registerGetInHouseVendorEditTool(server);
     registerGetInHousePlayGroupEditTool(server);
+    registerGetTwoEightOddsSettingTool(server);
 }
