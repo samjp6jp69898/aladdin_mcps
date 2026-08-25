@@ -43,6 +43,12 @@ import { registerListAllGameDisplayTagsTool } from './list_all_game_display_tags
 import { registerUpdateGameTagStatusTool } from './update_game_tag_status.ts';
 import { registerUpdateGameTagSortOrderTool } from './update_game_tag_sort_order.ts';
 import { registerCreateOrUpdateGameDisplayTagTool } from './create_or_update_game_display_tag.ts';
+import { registerListCustomerCategoryDetailsTool } from './list_customer_category_details.ts';
+import { registerUpdateCustomerCategorySortOrderTool } from './update_customer_category_sort_order.ts';
+import { registerUpdateCustomerCategoryStatusTool } from './update_customer_category_status.ts';
+import { registerGetCustomerConfigRestrictTool } from './get_customer_config_restrict.ts';
+import { registerSetCustomerConfigRestrictTool } from './set_customer_config_restrict.ts';
+import { registerGetCustomerTicketsTool } from './get_customer_tickets.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -91,4 +97,10 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameTagStatusTool(server);
     registerUpdateGameTagSortOrderTool(server);
     registerCreateOrUpdateGameDisplayTagTool(server);
+    registerListCustomerCategoryDetailsTool(server);
+    registerUpdateCustomerCategorySortOrderTool(server);
+    registerUpdateCustomerCategoryStatusTool(server);
+    registerGetCustomerConfigRestrictTool(server);
+    registerSetCustomerConfigRestrictTool(server);
+    registerGetCustomerTicketsTool(server);
 }

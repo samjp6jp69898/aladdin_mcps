@@ -33,6 +33,21 @@ export const UPLOAD_TYPE_VENDOR = 4;
 // GameLocalizationTargetEnum（rajah/services/game.rajah:40-47，用於 GameVendorPlatform.GetLocalizations）
 export const GAME_LOCALIZATION_TARGET_MAP = { gameName: 101, gameVendorName: 131, gameBrandTitle: 141 } as const;
 
+// CustomerCategoryEnum（rajah/services/customer_back_office.rajah:250-258），客服連線類型（三方客服系統）
+export const CUSTOMER_CATEGORY_MAP = { komi: 1, wbgcorp: 2, dotcloud: 3 } as const;
+
+// CustomerConfigJumpEnum（common.rajah:1591-1596）
+export const CUSTOMER_CONFIG_JUMP_MAP = { external: 0, internal: 1 } as const;
+
+// CustomerTicketStatusEnum（customer_back_office.rajah:457-468）
+export const CUSTOMER_TICKET_STATUS_MAP = { pending: 0, enabled: 1, disabled: 2, inReview: 3, processing: 4 } as const;
+// CustomerIssueEnum（customer_back_office.rajah:446-455）
+export const CUSTOMER_ISSUE_MAP = { player: 0, deposit: 1, withdraw: 2, other: 3 } as const;
+// CustomerFromTypeEnum（customer_back_office.rajah:470-476）
+export const CUSTOMER_FROM_TYPE_MAP = { aladdin: 0, komi: 1 } as const;
+// CustomerDepartmentEnum（customer_back_office.rajah:996-1005）
+export const CUSTOMER_DEPARTMENT_MAP = { ai: 1, risk: 2, finance: 3, manual: 5 } as const;
+
 // H7：hosted 模式下 JWT 過期或尚未登入時回給 agent 的重登信號文字（plan.md D4/D11）。
 // D11 要求 harness 只陳述事實、不引導跨後台操作，措辭止於此，不建議改用其他帳號或後台。
 // stdio 模式不會用到這個常數——stdio 用 env 帳密自動重登，不會走到需要對外顯示訊號的分支。
