@@ -105,9 +105,11 @@ export const DISCOUNT_MODE_MAP = { bonus: 1, percent: 2 } as const;
  * （{low,high,unsigned} + toNumber()，genie/src/common/index.ts 的
  * fixObjectInteger 就是處理同一件事，但 genie/client 目前沒有自動套用，見該檔案
  * 註解），直接 JSON.stringify 會印出難以閱讀、且依呼叫路徑不同而不一致的形狀
- * （物件或十進位字串）。這個 codebase 目前只有一組 i64 欄位需要這樣轉換
- * （大舞台基本設置），實測數值都在 52 bit 安全整數範圍內，先用最小作法處理，
- * 之後若有第二組 i64 欄位需要同樣處理再考慮要不要抽更通用的版本。
+ * （物件或十進位字串）。2026-08-25 起已有多組 i64 欄位使用這支（大舞台基本設置；
+ * list_rooms.ts 的 roomCreatedAt/moduleResult.chat.chatRoomId；get_room_announcements.ts 的
+ * createdAtTimestamp——連伺服器端來源本身是一般 JS number 的欄位，client 解碼後仍是 Long/
+ * 字串，不能只看伺服器端型別就跳過轉換），實測數值都在 52 bit 安全整數範圍內，維持最小作法
+ * 即可，之後若出現更多組再考慮要不要抽更通用的版本。
  */
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;

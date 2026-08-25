@@ -54,6 +54,19 @@ import { registerListItemsTool } from './list_items.ts';
 import { registerListEnabledItemsAllTool } from './list_enabled_items_all.ts';
 import { registerGetItemNamesByIdTool } from './get_item_names_by_id.ts';
 import { registerUpdateItemStatusTool } from './update_item_status.ts';
+import { registerListRoomsTool } from './list_rooms.ts';
+import { registerGetRoomNamesTool } from './get_room_names.ts';
+import { registerGetRoomAnnouncementsTool } from './get_room_announcements.ts';
+import { registerGetRoomMembersTool } from './get_room_members.ts';
+import { registerGetMutedRoomMembersTool } from './get_muted_room_members.ts';
+import { registerKickRoomMemberTool } from './kick_room_member.ts';
+import { registerMuteRoomMemberTool } from './mute_room_member.ts';
+import { registerUnmuteRoomMemberTool } from './unmute_room_member.ts';
+import { registerGetRoomChatHistoryTool } from './get_room_chat_history.ts';
+import { registerGetRoomChatRecordsTool } from './get_room_chat_records.ts';
+import { registerGetRoomShowOrderRecordsTool } from './get_room_show_order_records.ts';
+import { registerGetRoomMonitorListTool } from './get_room_monitor_list.ts';
+import { registerGetRoomMuteListTool } from './get_room_mute_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -113,4 +126,17 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListEnabledItemsAllTool(server);
     registerGetItemNamesByIdTool(server);
     registerUpdateItemStatusTool(server);
+    registerListRoomsTool(server);
+    registerGetRoomNamesTool(server);
+    registerGetRoomAnnouncementsTool(server);
+    registerGetRoomMembersTool(server);
+    registerGetMutedRoomMembersTool(server);
+    registerKickRoomMemberTool(server);
+    registerMuteRoomMemberTool(server);
+    registerUnmuteRoomMemberTool(server);
+    registerGetRoomChatHistoryTool(server);
+    registerGetRoomChatRecordsTool(server);
+    registerGetRoomShowOrderRecordsTool(server);
+    registerGetRoomMonitorListTool(server);
+    registerGetRoomMuteListTool(server);
 }
