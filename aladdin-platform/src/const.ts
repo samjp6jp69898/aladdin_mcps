@@ -64,9 +64,10 @@ export const CHANGE_USER_DETAIL_CHARGE_TIMES_MAP = { noNeed: 0, minChargeTimesOn
  * （{low,high,unsigned} + toNumber()，genie/src/common/index.ts 的
  * fixObjectInteger 就是處理同一件事，但 genie/client 目前沒有自動套用，見該檔案
  * 註解），直接 JSON.stringify 會印出難以閱讀、且依呼叫路徑不同而不一致的形狀
- * （物件或十進位字串）。這個 codebase 目前只有一組 i64 欄位需要這樣轉換
- * （大舞台基本設置），實測數值都在 52 bit 安全整數範圍內，先用最小作法處理，
- * 之後若有第二組 i64 欄位需要同樣處理再考慮要不要抽更通用的版本。
+ * （物件或十進位字串）。這個 codebase 目前有兩組 i64 欄位需要這樣轉換
+ * （大舞台基本設置的 postsChangeUserDetailMinChargeTotal/postsGiftReceiveTotalAmount、
+ * 聊天室發言設定的 rechargeAmount），實測數值都在 52 bit 安全整數範圍內，先用最小作法
+ * 處理，之後若有更多欄位需要同樣處理再考慮要不要抽更通用的版本。
  */
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;

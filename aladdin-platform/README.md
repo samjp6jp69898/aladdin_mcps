@@ -21,6 +21,8 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_game_vendor_platform_update_game_vendor` | `GameVendorPlatform.GetGameVendorForEdit` + `UpdateGameVendor` | 更新單一廠商可編輯欄位（`localizedNames`/`sortOrder`/廠商方形圖），先讀現值、只覆寫有帶到的欄位、寫入後 round-trip 驗證；2026-08-24 dev 實測發現後端不會擋下超出宣告範圍的 `sortOrder`、對不存在 id 也會靜默回成功（不會真的寫入），description 已如實揭露此限制 |
 | `aladdin_platform_game_vendor_platform_get_game_ids_by_in_house_play_group_ids` | `GameVendorPlatform.GetGameIdsByInHousePlayGroupIds` | 把 in-house 遊戲的 playGroupId 批次回推成 game_vendor_games.id（gameVendorGameId）與 brandId；查不到的 id 列在回傳的 `unresolvedPlayGroupIds`，2026-08-25 dev 實測涵蓋存在/不存在/混合/重複輸入四種情境 |
 | `aladdin_platform_game_vendor_platform_update_game_vendor_status` | `GameVendorPlatform.ListAllGameVendors` + `UpdateGameVendorStatus` | 切換單一廠商狀態（enabled/disabled/frozen/deleted），先讀現值、同值短路不呼叫後端，寫入後 round-trip 驗證；2026-08-25 dev 實測含不存在 id（errorCode=14）、非法列舉值（errorCode=9）、同值呼叫（實測結果 errorCode=0 成功，非原先擔心的失敗）三種邊界情境 |
+| `aladdin_platform_chat_speech_setting_platform_get_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` | 讀取「房間管理」→「房間限制設定」→「房間功能設定」→「聊天室發言設定」目前的設定內容（單例設定，無參數，不吃 platformId；查無資料時回傳全 0／空陣列預設值，不是錯誤） |
+| `aladdin_platform_chat_speech_setting_platform_save_chat_speech_setting` | `ChatSpeechSettingPlatform.GetChatSpeechSetting` + `SaveChatSpeechSetting` | 修改聊天室發言設定並儲存，所有欄位皆 optional，只覆蓋有帶到的欄位，其餘先讀現值原樣帶回；memberLevels 陣列為整包覆蓋（後端整批刪除重建關聯表），非差異運算 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
@@ -56,6 +58,8 @@ src/
     onboard_vendor_game.ts  — 含圖片上傳邏輯（uploadLocalizedImages）
     get_message_board_setting.ts     — 另外 export formatMessageBoardSetting()，update 工具的回傳共用同一支格式化函式
     update_message_board_setting.ts  — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，比照 onboard_vendor_game.ts 的模式
+    get_chat_speech_setting.ts       — 另外 export formatChatSpeechSetting()，同 get_message_board_setting.ts 模式
+    update_chat_speech_setting.ts    — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回，同 update_message_board_setting.ts 模式
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
