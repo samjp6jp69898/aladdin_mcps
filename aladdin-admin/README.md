@@ -35,6 +35,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_in_house_game_back_office_get_two_eight_bet_limit_setting` | `InHouseGameBackOffice.GetTwoEightBetLimitSetting` | 取得指定玩法組的二八槓下注限額設定；與 get_two_eight_odds_setting 共用同一後端 helper，有一樣的 errorCode=1 陷阱；金額欄位是 stored 值（非顯示金額），2026-08-25 dev 實測驗證 |
 | `aladdin_admin_in_house_game_back_office_get_two_eight_hedge_setting` | `InHouseGameBackOffice.GetTwoEightHedgeSetting` | 取得指定玩法組的二八槓對沖策略設定；與兩個 sibling 不同，這支不查廠商幣別，playGroupId 不存在會靜默回預設值（maxItems=10）而不報錯，2026-08-25 dev 實測驗證 |
 | `aladdin_admin_in_house_game_back_office_update_vendor_status` | `InHouseGameBackOffice.UpdateVendorStatus` | 切換自研遊戲廠商啟用/停用狀態；**注意**停用會連鎖停用該廠商底下所有玩法組（不對稱，重新啟用不會恢復），呼叫前務必先查證影響範圍；同值呼叫不會誤報找不到（mysql2 FOUND_ROWS flag），2026-08-25 dev round-trip 實測驗證且測試環境已還原乾淨 |
+| `aladdin_admin_in_house_game_back_office_update_play_group_status` | `InHouseGameBackOffice.UpdatePlayGroupStatus` | 切換自研遊戲玩法組啟用/停用狀態；**注意**啟用前會檢查賠率/限額設定是否完整（不完整回 errorCode=1313，讀原始碼確認但 dev 未實測觸發過）、啟用會立即讓前台玩家可下注（機器人下一局才生效）、每次呼叫都會留下稽核日誌，2026-08-25 dev round-trip 實測驗證且測試環境已還原乾淨（業務狀態，稽核紀錄依設計保留） |
 
 ## src/ 結構
 
