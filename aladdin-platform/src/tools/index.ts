@@ -34,6 +34,7 @@ import { registerCreateOrUpdatePointHolidayBonusTool } from './create_or_update_
 import { registerDeletePointHolidayBonusTool } from './delete_point_holiday_bonus.ts';
 import { registerGetVipSettingEquityIconsTool } from './get_vip_setting_equity_icons.ts';
 import { registerGetVipLevelSettingsTool } from './get_vip_level_settings.ts';
+import { registerDeleteVipLevelSettingTool } from './delete_vip_level_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -73,4 +74,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerDeletePointHolidayBonusTool(server);
     registerGetVipSettingEquityIconsTool(server);
     registerGetVipLevelSettingsTool(server);
+    registerDeleteVipLevelSettingTool(server);
 }
