@@ -26,6 +26,7 @@ import { registerGetMutedRoomMembersTool } from './get_muted_room_members.ts';
 import { registerKickRoomMemberTool } from './kick_room_member.ts';
 import { registerMuteRoomMemberTool } from './mute_room_member.ts';
 import { registerUnmuteRoomMemberTool } from './unmute_room_member.ts';
+import { registerGetRoomChatHistoryTool } from './get_room_chat_history.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -57,4 +58,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerKickRoomMemberTool(server);
     registerMuteRoomMemberTool(server);
     registerUnmuteRoomMemberTool(server);
+    registerGetRoomChatHistoryTool(server);
 }
