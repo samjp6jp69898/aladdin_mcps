@@ -34,6 +34,15 @@ import { registerCreateFloatingWindowTool } from './create_floating_window.ts';
 import { registerUpdateRoomSortOrderTool } from './update_room_sort_order.ts';
 import { registerGetMuteHistoryTool } from './get_mute_history.ts';
 import { registerCreateOrUpdateRoomMuteTool } from './create_or_update_room_mute.ts';
+import { registerUpdateGameVendorMaintenanceStatusTool } from './update_game_vendor_maintenance_status.ts';
+import { registerUpdateGameVendorGameStatusTool } from './update_game_vendor_game_status.ts';
+import { registerListAllBrandsTool } from './list_all_brands.ts';
+import { registerGetBrandForEditTool } from './get_brand_for_edit.ts';
+import { registerUpdateBrandStatusTool } from './update_brand_status.ts';
+import { registerListAllGameDisplayTagsTool } from './list_all_game_display_tags.ts';
+import { registerUpdateGameTagStatusTool } from './update_game_tag_status.ts';
+import { registerUpdateGameTagSortOrderTool } from './update_game_tag_sort_order.ts';
+import { registerCreateOrUpdateGameDisplayTagTool } from './create_or_update_game_display_tag.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -73,4 +82,13 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateRoomSortOrderTool(server);
     registerGetMuteHistoryTool(server);
     registerCreateOrUpdateRoomMuteTool(server);
+    registerUpdateGameVendorMaintenanceStatusTool(server);
+    registerUpdateGameVendorGameStatusTool(server);
+    registerListAllBrandsTool(server);
+    registerGetBrandForEditTool(server);
+    registerUpdateBrandStatusTool(server);
+    registerListAllGameDisplayTagsTool(server);
+    registerUpdateGameTagStatusTool(server);
+    registerUpdateGameTagSortOrderTool(server);
+    registerCreateOrUpdateGameDisplayTagTool(server);
 }
