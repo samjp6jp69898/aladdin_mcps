@@ -26,6 +26,7 @@ import { registerUpdateBrandStatusTool } from './update_brand_status.ts';
 import { registerListAllGameDisplayTagsTool } from './list_all_game_display_tags.ts';
 import { registerUpdateGameTagStatusTool } from './update_game_tag_status.ts';
 import { registerUpdateGameTagSortOrderTool } from './update_game_tag_sort_order.ts';
+import { registerCreateOrUpdateGameDisplayTagTool } from './create_or_update_game_display_tag.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -57,4 +58,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListAllGameDisplayTagsTool(server);
     registerUpdateGameTagStatusTool(server);
     registerUpdateGameTagSortOrderTool(server);
+    registerCreateOrUpdateGameDisplayTagTool(server);
 }
