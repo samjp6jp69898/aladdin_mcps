@@ -45,6 +45,12 @@
  * 涵蓋：不存在的 id → errorCode=0「假成功」已驗證並在 tool 層以讀清單防呆；非法列舉值 254
  * → errorCode=9；newStatus 與現值相同 → errorCode=0；round-trip 切換至相反狀態 → 讀回驗證
  * 變更生效 → 切回原值 → 讀回驗證已復原，全程無殘留髒資料）。
+ *
+ * **2026-08-25 補測**：改用真正的 MCP stdio Client（`@modelcontextprotocol/sdk` 的 Client +
+ * StdioClientTransport，走 `tools/call`，涵蓋 zod schema 驗證與 `registerTool` handler 本身，
+ * 不繞過 MCP 工具層）對 worktree 內 `bun src/stdio.ts` 重新驗證：確認 tool 出現在 `tools/list`、
+ * 不存在 id 的防呆訊息、round-trip 切換 enabled/disabled 並復原，行為與直接呼叫底層 rajah method
+ * 的結果一致；額外驗證 `status: "unknown"`（合法列舉值 0）可正確寫入。
  */
 
 import { z } from 'zod';
@@ -80,7 +86,8 @@ export function registerUpdateGameVendorMaintenanceStatusTool(server: McpServer)
                 '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
                 '絕不能自行假設使用者同意。非 prod 環境不需要、也會忽略 confirm 欄位。' +
                 '**2026-08-25 已通過 dev 實測**（對 pk-platform.alddev.com 直接呼叫底層 rajah method 驗證過上述各項' +
-                '錯誤碼行為，並完成 round-trip 切換 + 復原，未留殘留資料）。',
+                '錯誤碼行為，並完成 round-trip 切換 + 復原，未留殘留資料；並另外透過真正的 MCP stdio Client 打 ' +
+                'tools/call 重新驗證過同一組情境，行為一致）。',
             inputSchema: {
                 id: z.number().int().describe(
                     '廠商場館 id（即 game_vendor_id），來自 aladdin_platform_game_vendor_platform_list_game_vendors 的回傳結果 ' +
