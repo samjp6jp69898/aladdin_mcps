@@ -13,12 +13,12 @@
       "rajah_ref": "rajah/services/audit_back_office.rajah:92",
       "server": null,
       "mcp_tool_id": null,
-      "status": "pending",
+      "status": "done",
       "category": null,
-      "claimed_by": null,
-      "claimed_at": null,
-      "updated_at": null,
-      "notes": "",
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:12:29Z",
+      "updated_at": "2026-08-25T03:17:01Z",
+      "notes": "commit 5210051fa + 01c0fdd49(註解修正) + e911def97(actionId驗證繞過bug修正)；已通過 pk-platform.alddev.com dev 驗證（含修正後重測）；review-C PASS（3個註解瑕疵已修正）、review-D FAIL→已修正（actionId 驗證可被數字字串/原型繼承鍵繞過，改為 typeof===number 檢查；另補 PII 提醒）",
       "legacy_task_id": null
     },
     {
@@ -28,12 +28,12 @@
       "rajah_ref": "rajah/services/audit_back_office.rajah:98",
       "server": null,
       "mcp_tool_id": null,
-      "status": "pending",
+      "status": "done",
       "category": null,
-      "claimed_by": null,
-      "claimed_at": null,
-      "updated_at": null,
-      "notes": "",
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:12:29Z",
+      "updated_at": "2026-08-25T03:17:01Z",
+      "notes": "commit 69232945f + 01c0fdd49(註解修正) + e911def97(PII提醒補充)；已通過 admin.alddev.com dev 驗證；review-C PASS、review-D PASS（admin端z.enum白名單機制不受actionId繞過影響）",
       "legacy_task_id": null
     }
   ]

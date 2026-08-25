@@ -1,0 +1,49 @@
+{
+  "claims": [
+    {
+      "domain": "advertisement_back_office",
+      "session_label": "rajah-worker-genie",
+      "claimed_at": "2026-08-25T01:43:50Z"
+    },
+    {
+      "domain": "game_back_office",
+      "session_label": "rajah-worker-falcon",
+      "claimed_at": "2026-08-25T01:49:28Z"
+    },
+    {
+      "domain": "customer_back_office",
+      "session_label": "rajah-worker-oasis",
+      "claimed_at": "2026-08-25T03:49:21Z"
+    },
+    {
+      "domain": "vip_back_office",
+      "session_label": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T03:49:25Z"
+    },
+    {
+      "domain": "inventory_back_office",
+      "session_label": "rajah-worker-scout",
+      "claimed_at": "2026-08-25T05:43:04Z"
+    },
+    {
+      "domain": "room_back_office",
+      "session_label": "rajah-worker-sultan",
+      "claimed_at": "2026-08-25T05:43:19Z"
+    },
+    {
+      "domain": "in_house_game_back_office",
+      "session_label": "rajah-worker-magic",
+      "claimed_at": "2026-08-25T05:43:23Z"
+    },
+    {
+      "domain": "information_back_office",
+      "session_label": "rajah-worker-jinn",
+      "claimed_at": "2026-08-25T07:46:12Z"
+    },
+    {
+      "domain": "activity_back_office",
+      "session_label": "rajah-worker-iago",
+      "claimed_at": "2026-08-25T07:46:26Z"
+    }
+  ]
+}

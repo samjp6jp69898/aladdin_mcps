@@ -20,12 +20,12 @@
       "rajah_ref": "rajah/services/payment_back_office.rajah:2899",
       "server": null,
       "mcp_tool_id": null,
-      "status": "pending",
+      "status": "needs_clarification",
       "category": null,
-      "claimed_by": null,
-      "claimed_at": null,
-      "updated_at": null,
-      "notes": "",
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T07:47:05Z",
+      "updated_at": "2026-08-25T07:48:38Z",
+      "notes": "已讀 rajah/services/payment_back_office.rajah:2896-2899（DepositAdmin.GetUploadImageToken(type PaymentUploadImageEnum)，無 @Permission，非 Placeholder、非 @NoPublic）與 agrabah 實作 agrabah/src/servers/payment_back_office/services/deposit_admin.ts:77（真實實作，非 notImplemented；委派 FileManager.uploadByImageSettingKey 產生物件儲存上傳 token，純讀取無 DB 寫入，屬 method-category-checklist.md 第8節『上傳/建立用 token 類』，有時效性）。所屬 agrabah server 為 PaymentBackOffice（agrabah/src/servers/payment_back_office/index.ts），屬 Payment（充值/提現）後台域。此域與現有兩個 MCP server 完全不同：aladdin-admin-dev 覆蓋的是全平台三方場館/廠商遊戲母表，aladdin-platform-dev-pk 覆蓋的是平台遊戲上架顯示設定，兩者皆屬 Game Vendor 領域，都不適合容納 Payment 域的 tool。建議新建 server：一個獨立的 Payment 後台 MCP server（涵蓋 payment_back_office.rajah 的 DepositAdmin/WithdrawAdmin/DepositPlatform/WithdrawPlatform 等 service），這是架構決策需使用者確認，不在此逕自新建。",
       "legacy_task_id": null
     },
     {
