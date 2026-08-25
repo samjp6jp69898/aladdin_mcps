@@ -29,6 +29,7 @@ import { registerUnmuteRoomMemberTool } from './unmute_room_member.ts';
 import { registerGetRoomChatHistoryTool } from './get_room_chat_history.ts';
 import { registerGetRoomChatRecordsTool } from './get_room_chat_records.ts';
 import { registerGetRoomShowOrderRecordsTool } from './get_room_show_order_records.ts';
+import { registerGetRoomMonitorListTool } from './get_room_monitor_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -63,4 +64,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRoomChatHistoryTool(server);
     registerGetRoomChatRecordsTool(server);
     registerGetRoomShowOrderRecordsTool(server);
+    registerGetRoomMonitorListTool(server);
 }
