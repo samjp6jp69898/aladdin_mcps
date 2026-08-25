@@ -24,6 +24,7 @@ import { registerSetHomePagePopupStatusTool } from './set_home_page_popup_status
 import { registerEditHomePagePopupTool } from './edit_home_page_popup.ts';
 import { registerListHomePagePopupFissionActivitiesTool } from './list_home_page_popup_fission_activities.ts';
 import { registerListFloatingWindowsTool } from './list_floating_windows.ts';
+import { registerCreateFloatingWindowTool } from './create_floating_window.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -53,4 +54,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerEditHomePagePopupTool(server);
     registerListHomePagePopupFissionActivitiesTool(server);
     registerListFloatingWindowsTool(server);
+    registerCreateFloatingWindowTool(server);
 }
