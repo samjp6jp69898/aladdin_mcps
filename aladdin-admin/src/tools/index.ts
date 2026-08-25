@@ -21,6 +21,7 @@ import { registerListGameTagNamesTool } from './list_game_tag_names.ts';
 import { registerUpdateGameTagNameTool } from './update_game_tag_name.ts';
 import { registerSetGameVendorMaintenanceTool } from './set_game_vendor_maintenance.ts';
 import { registerCreatePlatformTool } from './create_platform.ts';
+import { registerGetAuditLogsTool } from './get_audit_logs.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +50,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdateGameTagNameTool(server);
     registerSetGameVendorMaintenanceTool(server);
     registerCreatePlatformTool(server);
+    registerGetAuditLogsTool(server);
 }

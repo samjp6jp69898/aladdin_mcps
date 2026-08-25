@@ -24,6 +24,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_update_game_tag_name` | `GameVendorAdmin.UpdateGameTagName` | 更新遊戲標籤（vendorFee 廠商殺數分類/appDisplay 前端顯示分類/rebate 返水分類，三者共用同一組固定 tag enum；不支援 frontendGroup 前台自訂標籤，那是另一張表）的多語系顯示名稱；寫入前後各呼叫一次 `ListAllGameTagNamesByType` 做 before/after round-trip，`names` 只動到你列出的語系代碼——2026-08-24 dev 站台實測確認「未列出語系不受影響」與非法 tagType 回業務錯誤碼 317（gameTagTypeNotExists） |
 | `aladdin_admin_game_vendor_admin_set_game_vendor_maintenance` | 設定廠商場館（母表 game_vendors）的維護時間窗口（rajah: GameVendorAdmin.SetGameVendorMaintenance）；毫秒 epoch，無獨立開關（isMaintaining 是即時計算的衍生值），寫入後用 ListAllGameVendors 讀回驗證 |
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
+| `aladdin_admin_audit_admin_get_audit_logs` | `AuditAdmin.GetAuditLogs` | 查詢系統管理後台（跨平台）的操作紀錄；`systemId` 省略內部固定送 -1（0 是合法值 core，不能當不篩選）；`actionId` 是 AdminActionIdEnum 字串 key（122 個值，完整列舉）；`pageSize` 只接受 10/20/30/50/100/200；2026-08-25 dev 實測 |
 
 ## src/ 結構
 
