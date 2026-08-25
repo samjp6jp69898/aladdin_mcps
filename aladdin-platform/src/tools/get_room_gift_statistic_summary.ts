@@ -13,8 +13,13 @@
  * 業務語意：後台「送禮管理」頁面頂部的統計摘要卡片（禮物總金額、主播總收入、平台總收入、
  * 最後統計時間）。2026-08-25 讀 agrabah 後端原始碼查證（room_gift_manager.ts:417-424）：
  * 三個 CurrencyLink[] 欄位是後端用 `RateHelper.storedToNormal()` 算好的顯示值（非
- * stored 整數），本工具原樣透傳，不做額外換算。`lastCalculatedAt` 為 i64，經 protobufjs
- * decode 可能是 Long 物件，已用 `toPlainNumber()` 轉換。
+ * stored 整數，跟 list_room_gifts.ts 的 exchangeAmount 是不同語意，那支是 stored 值）。
+ * 附帶觀察（非本工具問題，如實記錄）：`storedToNormal()` 的除法結果可能是小數，但
+ * `CurrencyLink.value` 的 wire 型別是 i64（整數），後端把小數塞進整數欄位時 protobuf
+ * 編碼會截斷小數部分——這是後端既有行為，abu 前端也會看到同樣結果，非本工具造成。
+ * `CurrencyLink[].value` 與 `lastCalculatedAt` 皆為 i64，經 protobufjs decode 可能是
+ * Long 物件，已分別用 `toPlainCurrencyLinks()`/`toPlainNumber()` 轉換（2026-08-25 review
+ * 發現 CurrencyLink[] 內的 value 原本漏轉，已修正）。
  *
  * 純讀取查詢，不修改任何資料，可安全重複呼叫。無密鑰/PII 欄位，不需遮罩。
  */
@@ -23,7 +28,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { toPlainNumber } from '../const.ts';
+import { toPlainNumber, toPlainCurrencyLinks } from '../const.ts';
 
 export function registerGetRoomGiftStatisticSummaryTool(server: McpServer): void {
     server.registerTool(
@@ -43,9 +48,9 @@ export function registerGetRoomGiftStatisticSummaryTool(server: McpServer): void
 
             return asTextResult({
                 success: true,
-                totalGiftPrice: r.data?.totalGiftPrice ?? [],
-                anchorTotalIncome: r.data?.anchorTotalIncome ?? [],
-                platformTotalIncome: r.data?.platformTotalIncome ?? [],
+                totalGiftPrice: toPlainCurrencyLinks(r.data?.totalGiftPrice),
+                anchorTotalIncome: toPlainCurrencyLinks(r.data?.anchorTotalIncome),
+                platformTotalIncome: toPlainCurrencyLinks(r.data?.platformTotalIncome),
                 lastCalculatedAt: toPlainNumber(r.data?.lastCalculatedAt),
             });
         },

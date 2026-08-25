@@ -26,10 +26,19 @@
  *   pageSize 省略時後端預設 20。
  * - `startDate`/`endDate` 為 ms timestamp，後端轉換 `Math.floor(ms/1000)` 塞進
  *   `FROM_UNIXTIME`，本工具原樣傳入 ms，不需呼叫端自己轉秒。
- * - `productPrice`/`totalPrice`/`anchorIncome`/`platformIncome` 是 CurrencyLink[]
- *   （多幣別，`{code, value}[]`），直接來自 DB JSON 欄位，本工具原樣透傳，不做額外換算。
- * - `id`/`createdAt` 皆為 i64，經 protobufjs decode 可能是 Long 物件，已用 `toPlainNumber()`
- *   轉換（2026-08-25 review 發現 `id` 原本漏轉，已補上）。
+ * - **2026-08-25 review 發現並修正的錯誤描述——金額是 stored 值，不是顯示值**：
+ *   `productPrice`/`totalPrice`/`anchorIncome`/`platformIncome` 是 CurrencyLink[]
+ *   （多幣別，`{code, value}[]`），直接來自 DB JSON 欄位（`room_gift.ts:197-236` 寫入時
+ *   用 `productUnitPrice * quantity` 等純乘除計算、全程未呼叫任何 storedToNormal，
+ *   `productUnitPrice` 本身來自 `MallProduct.exchangeAmount`，依
+ *   inventory_back_office_internal.ts:41 檔頭註解「皆為 stored value」）——**value 是
+ *   stored 值，不是顯示金額**，跟 `methodGetAnchorStatisticSummary`/
+ *   `methodGetPlatformStatisticSummary`（那兩支有呼叫 `RateHelper.storedToNormal()`）不同。
+ *   換算成顯示值需依 code 幣別的精度（常見 ÷10000），本工具不做這個換算，呼叫端需自行處理。
+ * - `id`/`createdAt` 為 i64，`productPrice`/`totalPrice`/`anchorIncome`/`platformIncome`
+ *   （CurrencyLink[]）的 `value` 也是 i64，經 protobufjs decode 皆可能是 Long 物件，已分別用
+ *   `toPlainNumber()`/`toPlainCurrencyLinks()` 轉換（2026-08-25 review 發現 `id` 與
+ *   CurrencyLink[] 內的 value 原本都漏轉，已補上）。
  * - `orderId`/`productId`/`senderCurrencyCode` 在 rajah model 標 `@Hide`（後台表單不顯示），
  *   仍原樣回傳（`@Hide` 不影響 API 是否回傳這個欄位）。
  *
@@ -48,7 +57,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { RoomGiftGetRecordParams } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { toPlainNumber } from '../const.ts';
+import { toPlainNumber, toPlainCurrencyLinks } from '../const.ts';
 
 const ROOM_GIFT_STATUS_MAP = { pending: 0, deductItemsFailed: 1, completed: 2, deductItemsRetryFailed: 3, refunded: 4, all: 99 } as const;
 const ROOM_GIFT_STATUS_KEYS = Object.keys(ROOM_GIFT_STATUS_MAP) as [ keyof typeof ROOM_GIFT_STATUS_MAP, ...(keyof typeof ROOM_GIFT_STATUS_MAP)[] ];
@@ -68,8 +77,9 @@ export function registerListRecordsTool(server: McpServer): void {
                 '**status 省略時內部固定送 "all"，不會只查到 pending**：後端把「省略」與「明確傳 pending」' +
                 '在協定層視為同一件事（都是 0），若省略時直接不處理，會被後端誤判成「只篩 pending（待處理）」' +
                 '而非「不篩選」——本工具已處理這個陷阱，呼叫端不需要自己記得帶 status="all"。' +
-                'productPrice/totalPrice/anchorIncome/platformIncome 是 CurrencyLink[] 多幣別陣列' +
-                '（value 是後端已算好的顯示值，非 stored 整數，不需額外換算）。' +
+                'productPrice/totalPrice/anchorIncome/platformIncome 是 CurrencyLink[] 多幣別陣列——' +
+                '**value 是 stored 值，不是人類可讀金額**（依 code 幣別的精度縮放，常見 ÷10000，不同幣別' +
+                '可能不同），本工具不做換算，呼叫端需自行依 code 換算成顯示金額。' +
                 '這是純讀取查詢，可安全重複呼叫。',
             inputSchema: {
                 page: z.number().int().min(1).optional().describe('頁碼，從 1 開始，預設 1'),
@@ -110,6 +120,10 @@ export function registerListRecordsTool(server: McpServer): void {
                 id: toPlainNumber(row.id),
                 status: row.status != null ? roomGiftStatusNumberToKey(row.status) : row.status,
                 createdAt: toPlainNumber(row.createdAt),
+                productPrice: toPlainCurrencyLinks(row.productPrice),
+                totalPrice: toPlainCurrencyLinks(row.totalPrice),
+                anchorIncome: toPlainCurrencyLinks(row.anchorIncome),
+                platformIncome: toPlainCurrencyLinks(row.platformIncome),
             }));
 
             return asTextResult({ success: true, rows, totalPage: r.data?.totalPage, totalRow: r.data?.totalRow });

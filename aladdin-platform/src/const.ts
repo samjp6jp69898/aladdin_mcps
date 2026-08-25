@@ -138,3 +138,16 @@ export function toPlainNumber(value: unknown): number | undefined {
     }
     return Number(value);
 }
+
+/**
+ * CurrencyLink（`{code, value}`，rajah model 的 `value` 是 i64）陣列轉換：`value` 經
+ * protobufjs decode 同樣可能是 Long 物件，套用 toPlainNumber()。2026-08-25 review 發現
+ * list_room_gifts.ts/get_room_gift_statistic_summary.ts/list_records.ts 對巢狀在
+ * CurrencyLink[] 元素內的 value 原本全部漏轉（只轉了頂層/row 層的裸 i64 欄位），
+ * 抽成共用函式避免重複遺漏。
+ */
+export function toPlainCurrencyLinks(
+    links: { code?: string | null; value?: unknown }[] | null | undefined,
+): { code: string | null | undefined; value: number | undefined }[] {
+    return (links ?? []).map((l) => ({ code: l.code, value: toPlainNumber(l.value) }));
+}
