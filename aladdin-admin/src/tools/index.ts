@@ -22,6 +22,7 @@ import { registerUpdateGameTagNameTool } from './update_game_tag_name.ts';
 import { registerSetGameVendorMaintenanceTool } from './set_game_vendor_maintenance.ts';
 import { registerCreatePlatformTool } from './create_platform.ts';
 import { registerGetGameListTool } from './get_game_list.ts';
+import { registerListAvailableGameCodesTool } from './list_available_game_codes.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -51,4 +52,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerSetGameVendorMaintenanceTool(server);
     registerCreatePlatformTool(server);
     registerGetGameListTool(server);
+    registerListAvailableGameCodesTool(server);
 }

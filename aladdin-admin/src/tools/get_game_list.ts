@@ -10,9 +10,9 @@
  * 前端實際用法確認只在 Admin：`abu/admin/src/pages/game/two_eight/GameList.vue:33`
  * `api.remote.inHouseGameBackOffice.main.GetGameList(InHouseGameListSearch.fromObject(searchParams.value), page, pageSize)`，
  * 另 `GameSelect.vue:17` 也呼叫同一支 method 做下拉選單資料源；全庫搜尋 `abu/platform/src/pages`
- * 找不到任何呼叫點，因此本 tool 放在 aladdin-admin（不是 aladdin-platform——上一支
- * ListAvailableGameCodes 因為 Admin/Platform 都真的有呼叫點才放 aladdin-platform，這支不能照搬
- * 同一個判斷，需逐 method 核對呼叫點）。
+ * 找不到任何呼叫點，因此本 tool 放在 aladdin-admin（server 歸屬一律以真實前端呼叫點為準，逐 method
+ * 核對，不可用「同一個 service 底下其他 method 兩端都用」來類推——sibling tool
+ * `list_available_game_codes.ts` 檔頭記錄了一次因為類推而放錯 server 的修正案例）。
  *
  * agrabah 後端實作（agrabah/src/servers/in_house_game_back_office/services/in_house_game_back_office.ts:203-245
  * methodGetGameList）：`gameName` 用 `LIKE %...%` 模糊比對，`gameCode` 用 `g.game_code = ?` **精確比對**——
@@ -73,7 +73,7 @@ export function registerGetGameListTool(server: McpServer): void {
                 '的使用者皆可呼叫，純讀取、無副作用。',
             inputSchema: {
                 gameName: z.string().optional().describe('遊戲名稱，模糊比對（後端 LIKE %關鍵字%）'),
-                gameCode: z.string().optional().describe('遊戲代碼，精確比對（如 CND28，後端有 UNIQUE INDEX 保證最多命中 1 筆）；合法值全集可用另一個 MCP server（aladdin-platform）的 aladdin_platform_in_house_game_back_office_list_available_game_codes 取得（同一支後端 method，兩個 server 皆可呼叫）'),
+                gameCode: z.string().optional().describe('遊戲代碼，精確比對（如 CND28，後端有 UNIQUE INDEX 保證最多命中 1 筆）；合法值全集可用 aladdin_admin_in_house_game_back_office_list_available_game_codes 取得'),
                 page: z.number().int().min(1).optional().describe('頁碼，從 1 開始，預設 1'),
                 pageSize: z.number().int().min(1).max(200).optional().describe('每頁筆數，預設 100（後端 DefaultPageSize），上限 200'),
             },
