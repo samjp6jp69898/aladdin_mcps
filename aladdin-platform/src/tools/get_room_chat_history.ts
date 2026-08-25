@@ -8,9 +8,8 @@
  * getHistory）：
  * - **不是分頁查詢，是「近期歷史快照」**：先查記憶體 LRU 快取（每房間上限 50 筆），沒命中才 fallback
  *   查 DB（`deleted_at IS NULL`，`ORDER BY id DESC LIMIT 100`）並寫回快取。rajah 定義也只有
- *   `(rows [ClientChatMessage] 1)`，沒有 page/pageSize——完整分頁歷史查詢要用同 service 的
- *   `RoomPlatform.GetChatRecords(roomId, page, pageSize)`，**這支 method 本次尚未包成 MCP tool**，
- *   目前沒有替代方案，這支只回近期快照。
+ *   `(rows [ClientChatMessage] 1)`，沒有 page/pageSize——完整分頁歷史查詢請改用
+ *   `aladdin_platform_room_platform_get_chat_records`（同 service，已另外包成 tool），這支只回近期快照。
  * - **回傳的 `chatRoomId` 不是輸入的 `roomId`**：`chatRoomId` 是 chat 系統內部的數字 id（`DbRoomChat`
  *   對照表產生），跟輸入參數 `roomId`（rooms 表的業務 string id）是完全不同體系的兩個值，不能互相
  *   代換——這支工具直接把它從輸出移除，避免呼叫端誤把它當成 roomId 拿去餵給其他 room 相關 tool。
@@ -40,8 +39,7 @@ export function registerGetRoomChatHistoryTool(server: McpServer): void {
             description:
                 '取得指定房間的近期聊天訊息快照（rajah: RoomPlatform.GetChatHistory）。' +
                 '**不是分頁查詢**，是記憶體快取的近期快照（每房間上限約 50 筆，快取沒命中時 fallback 查 DB 最多 100 筆），' +
-                '沒有 page/pageSize 參數；要查更久以前或完整分頁歷史需要 RoomPlatform.GetChatRecords，' +
-                '但那支 method 本次尚未包成 MCP tool，目前沒有替代方案。' +
+                '沒有 page/pageSize 參數；要查更久以前或完整分頁歷史請改用 aladdin_platform_room_platform_get_chat_records。' +
                 'roomId 不存在會直接報錯，不會回空陣列。極少數情況下（刪除通知跨節點廣播失敗）快取可能短暫仍含剛被刪除的訊息。' +
                 '**回傳內容不含 chatRoomId**（chat 系統內部數字 id，跟輸入的 roomId 是不同體系的值，故意移除避免混淆）。',
             inputSchema: {
