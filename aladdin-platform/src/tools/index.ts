@@ -27,6 +27,7 @@ import { registerGetCategoriesByClassificationTool } from './get_categories_by_c
 import { registerListUserTransactionsTool } from './list_user_transactions.ts';
 import { registerGetAuditLogsTool } from './get_audit_logs.ts';
 import { registerListRoomGiftsTool } from './list_room_gifts.ts';
+import { registerGetRoomGiftStatisticSummaryTool } from './get_room_gift_statistic_summary.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -57,5 +58,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerDeleteClassificationTool(server);
     registerGetCategoriesByClassificationTool(server);
     registerListUserTransactionsTool(server);
-    registerListRoomGiftsTool(server);
+    registerGetRoomGiftStatisticSummaryTool(server);
 }
