@@ -21,6 +21,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerListPlatformRiskStrategiesTool } from './list_platform_risk_strategies.ts';
 import { registerGetPlatformRiskStrategiesTool } from './get_platform_risk_strategies.ts';
 import { registerGetPlatformRiskStrategyForEditTool } from './get_platform_risk_strategy_for_edit.ts';
+import { registerUpdatePlatformRiskStrategyStatusTool } from './update_platform_risk_strategy_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -47,4 +48,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListPlatformRiskStrategiesTool(server);
     registerGetPlatformRiskStrategiesTool(server);
     registerGetPlatformRiskStrategyForEditTool(server);
+    registerUpdatePlatformRiskStrategyStatusTool(server);
 }

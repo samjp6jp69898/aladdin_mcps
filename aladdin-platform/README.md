@@ -24,6 +24,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_list_platform_risk_strategies` | `RiskPlatform.ListPlatformRiskStrategies` | 分頁查詢當前登入平台的風控策略（含 status/riskLevel，不含 riskStrategyCode）；與 aladdin-admin 端超管版本回傳的欄位不對稱，見 tool description。**已知分頁陷阱**：`totalPage` 只有 `page=1` 才會真的計算，翻頁到底要改用 `rows.length < pageSize` |
 | `aladdin_platform_risk_platform_get_platform_risk_strategies` | `RiskPlatform.GetPlatformRiskStrategies` | 無參數、不分頁一次取回當前平台**全部**風控策略，設計用途是前端下拉選單/篩選器的 select option 來源（管理員維護的小型清單，可安全全撈）。欄位同分頁版 |
 | `aladdin_platform_risk_platform_get_platform_risk_strategy_for_edit` | `RiskPlatform.GetPlatformRiskStrategyForEdit` | 依 id 讀取單筆策略完整編輯資料，**正確做平台隔離**（`id = ? AND platform_id = ?`，與 admin 端超管版本不同）。多帶 `riskStrategyCurrencyConditions`（各幣別觸發門檻條件 JSON），不含 status。查無此 id 回業務錯誤 errorCode=11（idNotExists，非例外） |
+| `aladdin_platform_risk_platform_update_platform_risk_strategy_status` | `RiskPlatform.UpdatePlatformRiskStrategyStatus` | 切換單一策略啟用/停用，只改 status，不動其他欄位；寫入後用不分頁的 `get_platform_risk_strategies` 讀回驗證。2026-08-25 dev 實測：不存在 id/跨平台 id 回 errorCode=14（objectNotFound）、同值呼叫成功（不會誤判失敗） |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
