@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-25T01:13:37.095Z",
+  "generated_at": "2026-08-25T01:26:13.786Z",
   "schema_version": 1,
   "note": "每個 files[] 項目對應一個 rajah/services/*.rajah 檔案的完整任務清單（obsidian/mcps/rajah-inventory/<stem>.json）。要重跑：先跑 mcp-rajah-tasks-gen.ts（可用 --files= 限定範圍），再跑本腳本重建這份 index。",
   "total_files": 101,
