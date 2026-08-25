@@ -22,6 +22,7 @@ import { registerListRoomsTool } from './list_rooms.ts';
 import { registerGetRoomNamesTool } from './get_room_names.ts';
 import { registerGetRoomAnnouncementsTool } from './get_room_announcements.ts';
 import { registerGetRoomMembersTool } from './get_room_members.ts';
+import { registerGetMutedRoomMembersTool } from './get_muted_room_members.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -49,4 +50,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRoomNamesTool(server);
     registerGetRoomAnnouncementsTool(server);
     registerGetRoomMembersTool(server);
+    registerGetMutedRoomMembersTool(server);
 }
