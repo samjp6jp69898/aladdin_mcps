@@ -21,6 +21,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerUpdateGameVendorMaintenanceStatusTool } from './update_game_vendor_maintenance_status.ts';
 import { registerUpdateGameVendorGameStatusTool } from './update_game_vendor_game_status.ts';
 import { registerListAllBrandsTool } from './list_all_brands.ts';
+import { registerGetBrandForEditTool } from './get_brand_for_edit.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -47,4 +48,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateGameVendorMaintenanceStatusTool(server);
     registerUpdateGameVendorGameStatusTool(server);
     registerListAllBrandsTool(server);
+    registerGetBrandForEditTool(server);
 }
