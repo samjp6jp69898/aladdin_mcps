@@ -17,8 +17,11 @@
  *   `YYYY/MM`（`parseMonthRange` 用 `/[\/\-]/` 切割年月，年份需在 1970~9999、月份需在
  *   1~12），格式不合法回錯誤（ErrorCode.requestNotValid）；帶了完整日期（如 `2026-08-15`）
  *   也能解析（只取年月，忽略日），但語意上這是「月份」查詢，不建議帶日期造成混淆。
- * - 實際查詢區間是「該月 1 號 ~ 次月 1 號」（左閉右開），只回傳**單一月份**的資料，不是
- *   從 searchStartDate 到現在的區間。
+ * - **2026-08-25 review 發現並修正的錯誤描述——查詢區間不是單一月份**：`parseMonthRange` 的
+ *   結束日期是用**今天**的日期算下個月（`const now = new Date()`，room_gift_platform.ts:
+ *   28-31），不是 searchStartDate 的下個月。實際查詢區間是「searchStartDate 那個月 1 號 ~
+ *   目前為止」的**多個月份**，每個月各一列，不是只回傳單一月份。呼叫端若只想看特定一個月，
+ *   需自行從回傳 rows 依 `month` 欄位篩選。
  * - `currencyCode` 為必填（`@Rules "Required"`），只查該幣別的統計列（不同幣別各自獨立列）。
  * - `anchorUid` 在此 model 型別是**字串**（跟 ListRecords 的 anchorUid 是 i32 不同，rajah
  *   model 定義本身如此，非本工具刻意改型別），後端用 `Number(params.anchorUid)` 轉數字後
@@ -49,7 +52,9 @@ export function registerGetAnchorStatisticSummaryTool(server: McpServer): void {
             description:
                 '查詢本平台主播的月度送禮收益統計摘要（rajah: RoomGiftPlatform.GetAnchorStatisticSummary）。' +
                 'searchStartDate（月份，格式 "YYYY-MM" 或 "YYYY/MM"）與 currencyCode（幣別代碼）皆為必填，' +
-                '只回傳**單一月份、單一幣別**的資料，格式不合法會回錯誤。anchorUid 若帶非數字字串會查不到' +
+                '只回傳**單一幣別**的資料，格式不合法會回錯誤。**查詢區間不是單一月份**：後端結束日期用' +
+                '「今天」推算，實際回傳的是「searchStartDate 那個月 ~ 目前為止」的多個月份資料（每月各一' +
+                '列），若只想看特定月份請自行依回傳 rows 的 month 欄位篩選。anchorUid 若帶非數字字串會查不到' +
                 '資料（回空結果，非錯誤）。row 的 anchorIncome/platformIncome、頂層 anchorTotalIncome 皆為' +
                 '後端已算好的顯示值；頂層 anchorTotalIncome 是**當前這一頁**的加總，不是全量加總。' +
                 '這是純讀取查詢，可安全重複呼叫。',

@@ -28,7 +28,8 @@
  *   `FROM_UNIXTIME`，本工具原樣傳入 ms，不需呼叫端自己轉秒。
  * - `productPrice`/`totalPrice`/`anchorIncome`/`platformIncome` 是 CurrencyLink[]
  *   （多幣別，`{code, value}[]`），直接來自 DB JSON 欄位，本工具原樣透傳，不做額外換算。
- * - `createdAt` 為 i64，經 protobufjs decode 可能是 Long 物件，已用 `toPlainNumber()` 轉換。
+ * - `id`/`createdAt` 皆為 i64，經 protobufjs decode 可能是 Long 物件，已用 `toPlainNumber()`
+ *   轉換（2026-08-25 review 發現 `id` 原本漏轉，已補上）。
  * - `orderId`/`productId`/`senderCurrencyCode` 在 rajah model 標 `@Hide`（後台表單不顯示），
  *   仍原樣回傳（`@Hide` 不影響 API 是否回傳這個欄位）。
  *
@@ -106,6 +107,7 @@ export function registerListRecordsTool(server: McpServer): void {
 
             const rows = (r.data?.rows ?? []).map((row) => ({
                 ...row,
+                id: toPlainNumber(row.id),
                 status: row.status != null ? roomGiftStatusNumberToKey(row.status) : row.status,
                 createdAt: toPlainNumber(row.createdAt),
             }));

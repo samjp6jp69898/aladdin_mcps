@@ -12,17 +12,24 @@
  *
  * 2026-08-25 讀 agrabah 後端原始碼查證（room_gift_platform.ts:284-350，
  * methodGetPlatformStatisticSummary）：
- * - **searchStartDate 為必填**，格式與月份區間解析（`YYYY-MM`/`YYYY/MM`，左閉右開單月）與
- *   aladdin_platform_room_gift_platform_get_anchor_statistic_summary 共用同一支
- *   `parseMonthRange`，行為完全一致（格式不合法回 requestNotValid）。
+ * - **searchStartDate 為必填**，格式與月份區間解析共用 `parseMonthRange`（room_gift_platform.ts:
+ *   22-34），與 aladdin_platform_room_gift_platform_get_anchor_statistic_summary 行為完全一致
+ *   （格式不合法回 requestNotValid）。
+ * - **2026-08-25 review 發現並修正的錯誤描述——查詢區間不是單一月份**：`parseMonthRange` 的
+ *   結束日期是用 **今天** 的日期算下個月（`const now = new Date(); endMonth = now.getMonth()+2`
+ *   等，room_gift_platform.ts:28-31），不是 searchStartDate 的下個月。實際查詢區間是
+ *   「searchStartDate 那個月 1 號 ~ 今天所在月份的下個月 1 號」——換句話說是「從指定月份查到
+ *   目前為止」的**多個月份**，`GROUP BY statistic_month, currency_code` 後每個月各自一列，
+ *   不是只回傳單一月份。呼叫端若只想看特定一個月，需自行從回傳 rows 依 `month` 欄位篩選。
  * - **與 GetAnchorStatisticSummary 的差異**：這支聚合到「月份+幣別」維度（`GROUP BY
  *   statistic_month, currency_code` 對 `platform_income` 做 SUM），不分主播；那支聚合到
  *   「主播」維度。
  * - `currencyCode` 為必填，只查該幣別。
- * - row 的 `platformIncome` 是 SQL `SUM(platform_income)` 的**原始加總**（DB 欄位本身已是
- *   stored 值？需注意：這支與 GetAnchorStatisticSummary 不同，SQL 直接 SUM 沒有經過
- *   `RateHelper.storedToNormal()` 轉換——2026-08-25 dev 實測比對兩支輸出的數量級以確認
- *   是否為同一種值域，本工具不假設兩者可直接互相比較）。
+ * - **2026-08-25 review 發現並修正的錯誤描述——RateHelper 換算**：row 的 `platformIncome`
+ *   雖然是 SQL `SUM(platform_income)` 算出來的，但取出後仍會經過
+ *   `RateHelper.storedToNormal(Number(r.platformIncome))`（room_gift_platform.ts:351）才組進
+ *   回應，跟 GetAnchorStatisticSummary 的換算方式相同，**兩支金額量級一致，可以互相比較**
+ *   （先前版本誤寫成「未經換算、不可比較」，已更正）。
  * - 頂層 `platformTotalIncome` 是**當前這一頁 rows 的加總**（前端 reduce），不是 DB 全量
  *   加總，檔頭註解明確標註過這一點。
  * - i64 欄位（row 的 platformIncome、頂層 platformTotalIncome）經 protobufjs decode 可能是
@@ -46,10 +53,12 @@ export function registerGetPlatformStatisticSummaryTool(server: McpServer): void
                 '查詢本平台的月度送禮平台收入統計摘要（依月份+幣別聚合，不分主播）（rajah: ' +
                 'RoomGiftPlatform.GetPlatformStatisticSummary）。searchStartDate（月份，格式 "YYYY-MM" 或 ' +
                 '"YYYY/MM"）與 currencyCode（幣別代碼）皆為必填，只回傳單一幣別的資料，格式不合法會回錯誤。' +
+                '**查詢區間不是單一月份**：後端結束日期用「今天」推算，實際回傳的是「searchStartDate 那個' +
+                '月 ~ 目前為止」的多個月份資料（每月各一列），不是只有 searchStartDate 那一個月，若只想看' +
+                '特定月份請自行依回傳 rows 的 month 欄位篩選。' +
                 '與 aladdin_platform_room_gift_platform_get_anchor_statistic_summary 的差異：這支聚合到' +
-                '月份+幣別維度（不分主播），那支聚合到主播維度；兩支的金額計算路徑不同（這支是 DB SQL ' +
-                'SUM 原始加總，未必與那支的 RateHelper 換算結果同量級，不建議直接互相比較）。頂層' +
-                'platformTotalIncome 是**當前這一頁**的加總，不是全量加總。' +
+                '月份+幣別維度（不分主播），那支聚合到主播維度；兩支金額皆經過 RateHelper 換算，量級一致，' +
+                '可以互相比較。頂層 platformTotalIncome 是**當前這一頁**的加總，不是全量加總。' +
                 '這是純讀取查詢，可安全重複呼叫。',
             inputSchema: {
                 searchStartDate: z.string().min(1).describe('帳單月份，格式 "YYYY-MM" 或 "YYYY/MM"（必填）'),

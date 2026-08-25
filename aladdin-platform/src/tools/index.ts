@@ -61,5 +61,10 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerDeleteClassificationTool(server);
     registerGetCategoriesByClassificationTool(server);
     registerListUserTransactionsTool(server);
+    registerGetAuditLogsTool(server);
+    registerListRoomGiftsTool(server);
+    registerGetRoomGiftStatisticSummaryTool(server);
+    registerListRecordsTool(server);
+    registerGetAnchorStatisticSummaryTool(server);
     registerGetPlatformStatisticSummaryTool(server);
 }
