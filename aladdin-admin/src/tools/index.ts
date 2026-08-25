@@ -22,6 +22,7 @@ import { registerUpdateGameTagNameTool } from './update_game_tag_name.ts';
 import { registerSetGameVendorMaintenanceTool } from './set_game_vendor_maintenance.ts';
 import { registerCreatePlatformTool } from './create_platform.ts';
 import { registerListPlatformRiskStrategiesTool } from './list_platform_risk_strategies.ts';
+import { registerGetPlatformRiskStrategyForEditTool } from './get_platform_risk_strategy_for_edit.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -51,4 +52,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerSetGameVendorMaintenanceTool(server);
     registerCreatePlatformTool(server);
     registerListPlatformRiskStrategiesTool(server);
+    registerGetPlatformRiskStrategyForEditTool(server);
 }
