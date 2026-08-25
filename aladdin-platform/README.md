@@ -31,6 +31,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_audit_platform_get_audit_logs` | `AuditPlatform.GetAuditLogs` | 查詢本平台的操作紀錄；`systemId` 省略內部固定送 -1（0 是合法值 core，不能當不篩選）；`actionId` 是 PlatformActionIdEnum 字串 key（723 個值，改用字串 + 呼叫前驗證，不塞進 z.enum）；`pageSize` 只接受 10/20/30/50/100/200；2026-08-25 dev 實測 |
 | `aladdin_platform_room_gift_platform_list_room_gifts` | `RoomGiftPlatform.ListRoomGifts` | 列出直播間送禮商品清單，無參數；2026-08-25 dev 實測（本 dev 站台目前無資料，回空陣列） |
 | `aladdin_platform_room_gift_platform_get_room_gift_statistic_summary` | `RoomGiftPlatform.GetRoomGiftStatisticSummary` | 讀取送禮整體統計摘要，無參數；2026-08-25 dev 實測（本 dev 站台目前無資料） |
+| `aladdin_platform_room_gift_platform_list_records` | `RoomGiftPlatform.ListRecords` | 查詢送禮紀錄；**status 省略時內部固定送 "all"**（後端把「省略」與「明確傳 pending」在協定層視為同一件事，皆等於 0，省略若不處理會被誤判成只篩 pending，見程式碼註解）；2026-08-25 dev 實測 RPC 呼叫與非法輸入正確不出錯（本 dev 站台目前無送禮紀錄資料，無法實測驗證 all/pending 篩選結果確實不同，此限制已誠實記錄在程式碼註解） |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
