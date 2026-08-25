@@ -33,6 +33,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_point_platform_update_point_sign_in_setting` | `PointPlatform.GetPointSignInSetting` + `UpdatePointSignInSetting` | 更新「簽到獎勵」設定；⚠️ streakBonuses 若帶入是整組全量替換（DELETE+INSERT），非增量新增 |
 | `aladdin_platform_point_platform_get_point_holiday_setting` | `PointPlatform.GetPointHolidaySetting` | 取得「積分活動 > 節假日獎勵」開關 + 設置列表（只回未軟刪除的） |
 | `aladdin_platform_point_platform_update_point_holiday_status` | `PointPlatform.UpdatePointHolidayStatus` | 切換「節假日獎勵」功能開關，不影響已設定的節假日清單 |
+| `aladdin_platform_point_platform_create_or_update_point_holiday_bonus` | `PointPlatform.CreateOrUpdatePointHolidayBonus` | 新增/編輯一筆節假日設置（id=0 新增、id>0 編輯）；期間僅精確到天、不可與其他設置重疊；回傳值是 Empty，新增後改用 name 比對 round-trip，找不到精準匹配時如實回報非失敗 |
 
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
