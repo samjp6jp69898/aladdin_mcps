@@ -21,6 +21,7 @@ import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.
 import { registerGetShowCategoryTool } from './get_show_category.ts';
 import { registerUpdateShowCategoryTool } from './update_show_category.ts';
 import { registerListClassificationCategoriesTool } from './list_classification_categories.ts';
+import { registerCreateOrUpdateClassificationTool } from './create_or_update_classification.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -47,4 +48,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetShowCategoryTool(server);
     registerUpdateShowCategoryTool(server);
     registerListClassificationCategoriesTool(server);
+    registerCreateOrUpdateClassificationTool(server);
 }
