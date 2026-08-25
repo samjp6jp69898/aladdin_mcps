@@ -29,6 +29,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_ip_region_get_ip_region_list` | `RiskPlatformIpRegion.GetIpRegionList` | 分頁查詢「限制遊戲 IP/地區」規則。**limitContent 搜尋是逗號分隔多值 FIND_IN_SET OR 查詢，不是子字串模糊比對**（remark 才是 LIKE）；pageSize 為固定選項（PageSizeEnum）。回傳含後台表單標 @Hide 但 API 仍會給的 status/promptText/customerId。**已知分頁陷阱**：`totalPage` 只有 `page=1` 才會真的計算 |
 | `aladdin_platform_risk_platform_ip_region_update_ip_region_status` | `RiskPlatformIpRegion.UpdateIpRegionStatus` | 切換單一規則啟用/停用。同值呼叫是明確 no-op（後端先查現況、相同直接回成功不執行 UPDATE），可放心重複呼叫 |
 | `aladdin_platform_risk_platform_ip_region_batch_update_ip_region_status` | `RiskPlatformIpRegion.BatchUpdateIpRegionStatus` | 批量切換多筆規則狀態。**部分成功語意**：回傳的 success 只含真的被改變的 id，沒出現的 id 可能是不存在/不屬於當前平台/已是目標狀態三者之一，無法進一步區分 |
+| `aladdin_platform_risk_platform_ip_region_delete_ip_region` | `RiskPlatformIpRegion.DeleteIpRegion` | **硬刪除**單一規則，無法復原。id 不存在/屬於別平台回業務錯誤，不會誤刪 |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
