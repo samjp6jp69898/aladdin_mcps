@@ -36,6 +36,7 @@ import { registerGetVipSettingEquityIconsTool } from './get_vip_setting_equity_i
 import { registerGetVipLevelSettingsTool } from './get_vip_level_settings.ts';
 import { registerDeleteVipLevelSettingTool } from './delete_vip_level_setting.ts';
 import { registerGetVipSettingTool } from './get_vip_setting.ts';
+import { registerUpdateVipSettingTool } from './update_vip_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -77,4 +78,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetVipLevelSettingsTool(server);
     registerDeleteVipLevelSettingTool(server);
     registerGetVipSettingTool(server);
+    registerUpdateVipSettingTool(server);
 }
