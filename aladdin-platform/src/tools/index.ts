@@ -19,6 +19,7 @@ import { registerUpdateGameVendorTool } from './update_game_vendor.ts';
 import { registerResolveInHousePlayGroupGameIdsTool } from './resolve_in_house_play_group_game_ids.ts';
 import { registerUpdateGameVendorStatusTool } from './update_game_vendor_status.ts';
 import { registerListPlatformRiskStrategiesTool } from './list_platform_risk_strategies.ts';
+import { registerGetPlatformRiskStrategiesTool } from './get_platform_risk_strategies.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -43,4 +44,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerResolveInHousePlayGroupGameIdsTool(server);
     registerUpdateGameVendorStatusTool(server);
     registerListPlatformRiskStrategiesTool(server);
+    registerGetPlatformRiskStrategiesTool(server);
 }
