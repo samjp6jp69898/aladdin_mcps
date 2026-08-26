@@ -15,6 +15,11 @@
  *   憑證欄位名稱，數值語意見 rajah payment.rajah 的 `PaymentAdapterFieldEnum`：hashKey=1/
  *   publicKey=2/privateKey=4），本方法不寫入/不接受任何實際密鑰值，第 8 節敏感資料規則不適用。
  * - 沒有 adapterKey 重複檢查（同一 adapterKey 可以建立多個實例，用 name 區分），不需要先查重。
+ * - **已知資料陷阱（2026-08-26 dev 實測踩到，非推測）**：`name` 欄位 DB schema 是 `VARCHAR(30)`
+ *   （migrations/payment/202411281816_create_deposit_tables.sql），但 rajah `@Rules` 只標
+ *   `Required`、沒有 `MaxLength`；實測帶入 34 字元的 name 時，後端不是回傳明確的「欄位過長」
+ *   業務錯誤，而是通用的 errorCode=12（unknownDatabaseError）——本工具已在 zod schema 加上
+ *   `max(30)` 提前擋下，避免呼叫端收到語意不明的通用錯誤碼。
  * - **已知資料陷阱（2026-08-26 dev 實測踩到，非推測）**：`specialRequestCurrency` 欄位在 rajah 標
  *   `@NoEdit`（abu 前端表單不顯示輸入框），但後端 `#specialRequestCurrencyHandle` 私有方法真的會讀
  *   這個欄位——@NoEdit 只是「前端不渲染輸入框」的顯示控制，不代表 API 層忽略此欄位（method-category-
@@ -57,7 +62,10 @@ export function registerCreateDepositAdapterTool(server: McpServer): void {
                 '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
                 '絕不能自行假設使用者同意。非 prod 環境（dev/pre/evi）不需要、也會忽略 confirm 欄位。',
             inputSchema: {
-                name: z.string().min(1).describe('adapter 顯示名稱，建議加測試前綴如 ZZZ_TEST_ 方便事後辨識/清理'),
+                name: z.string().min(1).max(30).describe(
+                    'adapter 顯示名稱，DB 欄位限制 30 字元（rajah 未標示此限制，超長會回通用 errorCode=12）；' +
+                    '建議加測試前綴如 ZZZ_TEST_ 方便事後辨識/清理',
+                ),
                 adapterKey: z.string().describe('必須是 aladdin_admin_deposit_admin_get_adapter_keys 回傳清單中的值'),
                 baseUrl: z.string().optional().describe('廠商 API base URL'),
                 callbackBaseUrl: z.string().optional().describe('回調 base URL'),
