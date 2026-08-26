@@ -13,6 +13,7 @@ import { registerGetDailyUserGameVendorTagBetUserSummaryTool } from './get_daily
 import { registerGetTodayPlatformStatisticTool } from './get_today_platform_statistic.ts';
 import { registerGetYesterdayPlatformStatisticTool } from './get_yesterday_platform_statistic.ts';
 import { registerListDailyVipStatisticsTool } from './list_daily_vip_statistics.ts';
+import { registerListDepositMethodStatisticsTool } from './list_deposit_method_statistics.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
@@ -265,4 +266,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetTodayPlatformStatisticTool(server);
     registerGetYesterdayPlatformStatisticTool(server);
     registerListDailyVipStatisticsTool(server);
+    registerListDepositMethodStatisticsTool(server);
 }
