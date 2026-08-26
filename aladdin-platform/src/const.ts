@@ -282,6 +282,23 @@ export const OFFICIAL_POST_STATUS_MAP = { show: 1, hide: 2 } as const;
 // UserTypeEnum（message_board_common.rajah:1-8），大舞台評論/動態的 userType/toUserType 欄位共用。
 export const MESSAGE_BOARD_USER_TYPE_MAP = { unknown: 0, player: 1, platform: 2 } as const;
 
+// MessageBoardGiftRecordStatusEnum（message_board_back_office.rajah:923-940），送禮紀錄回傳的
+// status 欄位共用；無 all 值（回傳值不需要「不篩選」語意）。
+export const MESSAGE_BOARD_GIFT_RECORD_STATUS_MAP = {
+    unknown: 0, addProducts: 1, unexpectedError: 2, deductProductsFailed: 3, deductProductsRetryFailed: 4,
+    addToReceiverFailed: 5, addToReceiverRetryFailed: 6, updateRecordFailed: 7, updateRecordRetryFailed: 8,
+    addToReceiver: 9, pendingReview: 10, approvedReviewPendingRelease: 11, reviewRejected: 12,
+    reviewRejectRefundFailed: 13, reviewRejectRefundRetryFailed: 14, reviewRejectRefunded: 15,
+} as const;
+
+// MessageBoardGiftRecordStatusClientEnum（message_board_back_office.rajah:886-920）——GetPostGiftRecords
+// 查詢用的版本，數值與上面 STATUS_MAP 完全相同，額外多一個 all=999（「不篩選」語意，@Rules "Required"
+// 故本工具省略時固定送 all）。
+export const MESSAGE_BOARD_GIFT_RECORD_STATUS_CLIENT_MAP = {
+    ...MESSAGE_BOARD_GIFT_RECORD_STATUS_MAP,
+    all: 999,
+} as const;
+
 /** 通用「數字值 → map key 字串」反查，查不到時原樣回傳數字，不讓 undefined 流入回應文案。 */
 export function numberToMapKey<T extends Record<string, number>>(map: T, value: number): string | number {
     return Object.entries(map).find(([ , v ]) => v === value)?.[ 0 ] ?? value;
