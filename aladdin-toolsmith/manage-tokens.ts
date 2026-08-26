@@ -8,18 +8,27 @@
  * 不自己改 JSON）。
  *
  * 用法：
- *   bun manage-tokens.ts --issue  --id <id> --name <顯示名>   # 簽發並把設定發到 TG_KIT_ADMIN_CHAT_ID
- *   bun manage-tokens.ts --rotate --id <id> [--name <顯示名>] # 換新 token（舊的立即失效）並發 TG
- *   bun manage-tokens.ts --revoke --id <id>                   # 撤銷（立即生效）
- *   bun manage-tokens.ts --rename --id <id> --name <新顯示名> # 只改 display_name（token 不變）
+ *   bun manage-tokens.ts --issue  --id <id> --name <顯示名> [--quiet]   # 簽發並把設定發到 TG_KIT_ADMIN_CHAT_ID
+ *   bun manage-tokens.ts --rotate --id <id> [--name <顯示名>] [--quiet] # 換新 token（舊的立即失效）並發 TG
+ *   bun manage-tokens.ts --revoke --id <id>                             # 撤銷（立即生效）
+ *   bun manage-tokens.ts --rename --id <id> --name <新顯示名>           # 只改 display_name（token 不變）
  *   bun manage-tokens.ts --list
  *
  * 紀律（沿用 make-starter-kit.ts）：
  * - 名冊 fail-closed、每個 request 現讀檔案（見 src/auth.ts 檔頭），寫入一律
- *   暫存檔 + rename 的 atomic 手法，絕不就地覆寫。
+ *   暫存檔 + rename 的 atomic 手法，絕不就地覆寫。這支腳本是 tokens.json 的
+ *   唯一寫入者（issue/rotate/revoke/rename 全部經由它）——2026-08-26 起
+ *   make-starter-kit.ts 會唯讀查閱這份名冊、把找到的條目併進 kit 的
+ *   .mcp.json，但從不寫回，這個「唯一寫入者」不變。
  * - token 值絕不印到 stdout/stderr——交付走 tg-notify.sh 直送 kit 管理者
  *   （TG_KIT_ADMIN_CHAT_ID，即 Landon）的 Telegram，訊息含可直接轉交工程師
  *   的 .mcp.json 片段（跟 kit zip 走同一個私訊管道）。
+ * - --quiet：跳過這則 TG 訊息（不影響名冊寫入）。供 tg-monitor「Token 權限」
+ *   頁在此人「同時也有 kit 環境」時使用——那種情況下 make-starter-kit.ts 會
+ *   把新核發/重簽的 token 唯讀併進重建後的 .mcp.json，隨 kit zip 一起送出，
+ *   這裡就不用再單獨發一則「請手動貼進 .mcp.json」的訊息，避免同一個 token
+ *   重複出現在兩則 TG 訊息裡。此人沒有任何 kit 環境時（純 toolsmith 名冊）
+ *   不要傳這個旗標——那是唯一會通知到本人的管道。
  */
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -123,6 +132,7 @@ function main(): void {
             rename: { type: 'boolean', default: false },
             list: { type: 'boolean', default: false },
             help: { type: 'boolean', default: false },
+            quiet: { type: 'boolean', default: false },
         },
     });
 
@@ -178,8 +188,12 @@ function main(): void {
         registry.tokens.push(entry);
         writeRegistryAtomic(registry);
         console.log(`[toolsmith] 名冊已更新（${ REGISTRY_PATH }）`);
-        sendViaTgNotify(buildDeliveryText('簽發', entry));
-        console.log(`完成：toolsmith token 已簽發並發到 kit 管理者 TG（token 不落地、不印出）。`);
+        if (values.quiet) {
+            console.log(`完成：toolsmith token 已簽發（--quiet，未另發 TG 訊息，token 不落地、不印出）。`);
+        } else {
+            sendViaTgNotify(buildDeliveryText('簽發', entry));
+            console.log(`完成：toolsmith token 已簽發並發到 kit 管理者 TG（token 不落地、不印出）。`);
+        }
         return;
     }
 
@@ -198,8 +212,12 @@ function main(): void {
         registry.tokens[idx] = entry;
         writeRegistryAtomic(registry);
         console.log(`[toolsmith] 名冊已更新（${ REGISTRY_PATH }），舊 token 立即失效`);
-        sendViaTgNotify(buildDeliveryText('重簽', entry));
-        console.log(`完成：toolsmith token 已重簽並發到 kit 管理者 TG（token 不落地、不印出）。`);
+        if (values.quiet) {
+            console.log(`完成：toolsmith token 已重簽（--quiet，未另發 TG 訊息，token 不落地、不印出）。`);
+        } else {
+            sendViaTgNotify(buildDeliveryText('重簽', entry));
+            console.log(`完成：toolsmith token 已重簽並發到 kit 管理者 TG（token 不落地、不印出）。`);
+        }
         return;
     }
 

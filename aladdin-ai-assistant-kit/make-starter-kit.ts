@@ -21,12 +21,13 @@
  * uat/prod 仍未部署——這兩個環境目前連真實後台網址都沒有，要求會被明確拒絕
  * （不是靜默忽略）。
  *
- * toolsmith（TOOLSMITH_API_TOKEN）也刻意不在這支產生器的範圍內：toolsmith
- * 尚未上線（H25/H26 待做），目前的 kit 範本裡完全沒有任何 toolsmith 欄位。
- * 等 toolsmith 上線、要把它加進這支產生器時，切記 tasks.json H19 AC 早就
- * 記錄的提醒：toolsmith 是「全員共用一把 token」（不像 admin/platform 一人
- * 一把），撤銷任一人需要輪替並重發「所有」kit——第一份含 toolsmith 的 kit
- * 發出去之前，這個不對稱必須先讓操作者看到明確提示。
+ * toolsmith（2026-08-26 起併入輸出，唯讀）：toolsmith 已上線，且改用跟
+ * admin/platform 一樣「一人一把」的名冊格式（/Users/user/aladdin/obsidian/
+ * mcps/aladdin-toolsmith/tokens.json），原本「全員共用一把 token」的疑慮已
+ * 不成立。toolsmith 名冊的**唯一寫入者**仍是 manage-tokens.ts（核發/重簽/
+ * 撤銷都經由它）——這支腳本只唯讀查閱那份名冊，把找到的條目併進輸出的
+ * `.mcp.json`（見 mergeToolsmithGrant()），從不寫回那份名冊。id 不在 toolsmith
+ * 名冊裡時，輸出的 `.mcp.json` 就是沒有這個 server，跟以前一樣。
  *
  * ── 重跑同一個 id 的行為（idempotent 契約，AC 要求明確定義）─────────────
  * 預設：**拒絕**。如果 --id 在任一目標名冊裡已存在、或 dist/<id>/ 已存在，
@@ -84,6 +85,10 @@ import { parseArgs } from 'node:util';
 const KIT_DIR = dirname(new URL(import.meta.url).pathname);
 // 2026-08-22：改用 Cloudflare Tunnel 取代 ngrok（使用者裁定，H28 risk_notes (12) 收斂）。
 const DISPATCH_DOMAIN = 'https://mcp.aladdin-assistant.cc';
+
+// toolsmith 名冊——manage-tokens.ts 的唯一寫入者，這裡只唯讀查閱（見檔頭說明）。
+const TOOLSMITH_REGISTRY_PATH = join(KIT_DIR, '..', 'aladdin-toolsmith', 'tokens.json');
+const TOOLSMITH_URL_PREFIX = '/toolsmith';
 
 interface GrantConfig {
     /** .mcp.json 裡的 server 別名。 */
@@ -259,11 +264,29 @@ function buildMcpJson(grants: string[], token: string | ((grant: string) => stri
     return { mcpServers };
 }
 
+/**
+ * 唯讀查閱 toolsmith 名冊，找到這個 id 的條目就併進 mcpServers；找不到就
+ * 什麼都不做（不新增、不報錯——沒有 toolsmith 權限的人本來就不該有這個
+ * server）。名冊檔本身不存在（toolsmith server 尚未部署的機器）時也視為
+ * 找不到，不擋 kit 產生。從不寫回這份名冊，寫入永遠是 manage-tokens.ts 的事。
+ */
+function mergeToolsmithGrant(mcpServers: Record<string, unknown>, id: string): void {
+    if (!existsSync(TOOLSMITH_REGISTRY_PATH)) return;
+    const entry = findEntry(loadRegistryFile(TOOLSMITH_REGISTRY_PATH), id);
+    if (!entry) return;
+    mcpServers['aladdin-toolsmith'] = {
+        type: 'http',
+        url: `${ DISPATCH_DOMAIN }${ TOOLSMITH_URL_PREFIX }/mcp`,
+        headers: { Authorization: `Bearer ${ entry.token }` },
+    };
+}
+
 function printUsageAndExit(code: number): never {
     console.error(`用法：
   bun make-starter-kit.ts --id <企劃唯一id> --name <顯示名> [--grants ${ Object.keys(ALLOWED_GRANTS).join(',') }|all] [--rotate]
   bun make-starter-kit.ts --revoke --id <id> --grants <envs|all>   # 撤銷指定環境的 token（立即生效）
   bun make-starter-kit.ts --rename --id <id> --name <新顯示名>      # 只改 display_name（token 不變）
+  bun make-starter-kit.ts --rebuild --id <id>                       # 不核發/重簽任何 token，只重組 .mcp.json（例如撈最新 toolsmith token）
   bun make-starter-kit.ts --list
 
 目前支援的 --grants（預設給 ${ DEFAULT_GRANTS.join(' + ') }，可用逗號分隔指定子集；all = 全部）：
@@ -343,16 +366,36 @@ function cmdRevoke(id: string, requestedGrants: string[]): void {
             tokensForOutput[g] = entry.token;
         }
     }
+    // toolsmith 是唯讀併入（見檔頭說明），不算在 ALLOWED_GRANTS 的 remaining
+    // 裡，但決定「dist/<id>/ 該整個刪掉還是重建」時要一併考慮——這個人的 kit
+    // 環境全數被撤，不代表他的 toolsmith 權限也沒了，刪掉 dist 會連帶讓已經
+    // 併進去的 toolsmith 設定一起消失。
+    const hasToolsmith = existsSync(TOOLSMITH_REGISTRY_PATH) && !!findEntry(loadRegistryFile(TOOLSMITH_REGISTRY_PATH), id);
     const distDir = join(KIT_DIR, 'dist', id);
-    if (remaining.length === 0) {
+    if (remaining.length === 0 && !hasToolsmith) {
         if (existsSync(distDir)) rmSync(distDir, { recursive: true, force: true });
         console.log(`\nid "${ id }" 已無任何環境權限，dist/${ id }/ 已一併移除。`);
+    } else if (remaining.length === 0) {
+        // kit 環境全數被撤，但仍有 toolsmith：保留 dist/，重建成只含 toolsmith
+        // 的 .mcp.json，不整個刪掉。
+        if (existsSync(distDir)) rmSync(distDir, { recursive: true, force: true });
+        mkdirSync(distDir, { recursive: true });
+        copyStaticFiles(distDir);
+        const mcpJsonPath = join(distDir, '.mcp.json');
+        const mcpJson = buildMcpJson(remaining, g => tokensForOutput[g]) as { mcpServers: Record<string, unknown> };
+        mergeToolsmithGrant(mcpJson.mcpServers, id);
+        writeFileSync(mcpJsonPath, JSON.stringify(mcpJson, null, 2) + '\n', 'utf-8');
+        chmodSync(mcpJsonPath, 0o600);
+        JSON.parse(readFileSync(mcpJsonPath, 'utf-8'));
+        console.log(`\nid "${ id }" 已無任何 kit 環境，但仍有 toolsmith 權限：dist/${ id }/ 已重建，只含 aladdin-toolsmith。`);
     } else if (existsSync(distDir)) {
         rmSync(distDir, { recursive: true, force: true });
         mkdirSync(distDir, { recursive: true });
         copyStaticFiles(distDir);
         const mcpJsonPath = join(distDir, '.mcp.json');
-        writeFileSync(mcpJsonPath, JSON.stringify(buildMcpJson(remaining, g => tokensForOutput[g]), null, 2) + '\n', 'utf-8');
+        const mcpJson = buildMcpJson(remaining, g => tokensForOutput[g]) as { mcpServers: Record<string, unknown> };
+        mergeToolsmithGrant(mcpJson.mcpServers, id);
+        writeFileSync(mcpJsonPath, JSON.stringify(mcpJson, null, 2) + '\n', 'utf-8');
         chmodSync(mcpJsonPath, 0o600);
         JSON.parse(readFileSync(mcpJsonPath, 'utf-8'));
         console.log(`\ndist/${ id }/ 已重建，僅含仍有效環境：${ remaining.join('、') }。對方手上的舊 kit 仍含被撤環境的死 token，記得把更新後的 kit 重新交付。`);
@@ -360,6 +403,44 @@ function cmdRevoke(id: string, requestedGrants: string[]): void {
         console.log(`\n仍有效環境：${ remaining.join('、') }（dist/${ id }/ 不存在，未重建）。`);
     }
     console.log('撤銷即刻生效：名冊 fail-closed、每個 request 現讀檔案，被撤環境的舊 token 下一個 request 起 401。');
+}
+
+/**
+ * --rebuild：不核發、不重簽任何 kit 環境的 token，只是把「這個 id 目前在
+ * 各名冊（含唯讀併入的 toolsmith）裡實際有效的一切」重新組成 dist/<id>/
+ * .mcp.json 覆蓋輸出。用途：manage-tokens.ts 核發/重簽 toolsmith 之後，
+ * 用這個指令把新的 toolsmith token 併進這個人既有的 kit 交付物，不需要
+ * 連帶重簽任何一個 kit 環境。
+ */
+function cmdRebuild(id: string): void {
+    const allGrantsForId: string[] = [];
+    const tokensForOutput: Record<string, string> = {};
+    for (const g of Object.keys(ALLOWED_GRANTS)) {
+        const entry = findEntry(loadRegistryFile(ALLOWED_GRANTS[g].registryPath), id);
+        if (entry) {
+            allGrantsForId.push(g);
+            tokensForOutput[g] = entry.token;
+        }
+    }
+    const hasToolsmith = existsSync(TOOLSMITH_REGISTRY_PATH) && !!findEntry(loadRegistryFile(TOOLSMITH_REGISTRY_PATH), id);
+    if (allGrantsForId.length === 0 && !hasToolsmith) {
+        console.error(`id "${ id }" 在任何 kit 環境或 toolsmith 名冊都沒有條目，無法重建。`);
+        process.exit(1);
+    }
+
+    const distDir = join(KIT_DIR, 'dist', id);
+    if (existsSync(distDir)) rmSync(distDir, { recursive: true, force: true });
+    mkdirSync(distDir, { recursive: true });
+    copyStaticFiles(distDir);
+
+    const mcpJson = buildMcpJson(allGrantsForId, g => tokensForOutput[g]) as { mcpServers: Record<string, unknown> };
+    mergeToolsmithGrant(mcpJson.mcpServers, id);
+    const mcpJsonPath = join(distDir, '.mcp.json');
+    writeFileSync(mcpJsonPath, JSON.stringify(mcpJson, null, 2) + '\n', 'utf-8');
+    chmodSync(mcpJsonPath, 0o600);
+    JSON.parse(readFileSync(mcpJsonPath, 'utf-8'));
+
+    console.log(`\ndist/${ id }/ 已重建（未核發/重簽任何 token，只是把名冊現況重新組成 .mcp.json）：${ [...allGrantsForId.map(g => ALLOWED_GRANTS[g].alias), ...(hasToolsmith ? ['aladdin-toolsmith'] : [])].join('、') }`);
 }
 
 function main(): void {
@@ -371,6 +452,7 @@ function main(): void {
             rotate: { type: 'boolean', default: false },
             revoke: { type: 'boolean', default: false },
             rename: { type: 'boolean', default: false },
+            rebuild: { type: 'boolean', default: false },
             list: { type: 'boolean', default: false },
             help: { type: 'boolean', default: false },
         },
@@ -379,6 +461,14 @@ function main(): void {
     if (values.help) printUsageAndExit(0);
     if (values.list) {
         cmdList();
+        return;
+    }
+    if (values.rebuild === true) {
+        if (!values.id) {
+            console.error('--rebuild 需要 --id。\n');
+            printUsageAndExit(1);
+        }
+        cmdRebuild(values.id);
         return;
     }
 
@@ -507,7 +597,8 @@ function main(): void {
     mkdirSync(distDir, { recursive: true });
     copyStaticFiles(distDir);
 
-    const mcpJson = buildMcpJson(allGrantsForId, g => tokensForOutput[g]);
+    const mcpJson = buildMcpJson(allGrantsForId, g => tokensForOutput[g]) as { mcpServers: Record<string, unknown> };
+    mergeToolsmithGrant(mcpJson.mcpServers, id);
     const mcpJsonPath = join(distDir, '.mcp.json');
     writeFileSync(mcpJsonPath, JSON.stringify(mcpJson, null, 2) + '\n', 'utf-8');
     chmodSync(mcpJsonPath, 0o600);
