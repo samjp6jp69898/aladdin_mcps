@@ -177,6 +177,18 @@ import { registerGetTradePasswordLockConfigTool } from './get_trade_password_loc
 import { registerCreateOrUpdateTradePasswordLockConfigTool } from './create_or_update_trade_password_lock_config.ts';
 import { registerGetFreezeConfigTool } from './get_freeze_config.ts';
 import { registerUpdateFreezeConfigTool } from './update_freeze_config.ts';
+import { registerGetSupportedLanguagesTool } from './get_supported_languages.ts';
+import { registerGetTimezoneTool } from './get_timezone.ts';
+import { registerGetPlatformCodeTool } from './get_platform_code.ts';
+import { registerListUsersTool } from './list_users.ts';
+import { registerUpdateUserStatusTool } from './update_user_status.ts';
+import { registerListPlatformSupportedLanguagesTool } from './list_platform_supported_languages.ts';
+import { registerCreateOrUpdateSupportLanguageTool } from './create_or_update_support_language.ts';
+import { registerGetBackofficeSupportedLanguagesTool } from './get_backoffice_supported_languages.ts';
+import { registerToggleBackofficeLanguageStatusTool } from './toggle_backoffice_language_status.ts';
+import { registerSetBackofficeDefaultLanguageTool } from './set_backoffice_default_language.ts';
+import { registerGetPlatformIdRolesTool } from './get_platform_id_roles.ts';
+import { registerNewUserTool } from './new_user.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -359,4 +371,16 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListDepositMethodStatisticsTool(server);
     registerListDepositDailyReportTool(server);
     registerListDepositWithdrawDailyReportTool(server);
+    registerGetSupportedLanguagesTool(server);
+    registerGetTimezoneTool(server);
+    registerGetPlatformCodeTool(server);
+    registerListUsersTool(server);
+    registerUpdateUserStatusTool(server);
+    registerListPlatformSupportedLanguagesTool(server);
+    registerCreateOrUpdateSupportLanguageTool(server);
+    registerGetBackofficeSupportedLanguagesTool(server);
+    registerToggleBackofficeLanguageStatusTool(server);
+    registerSetBackofficeDefaultLanguageTool(server);
+    registerGetPlatformIdRolesTool(server);
+    registerNewUserTool(server);
 }
