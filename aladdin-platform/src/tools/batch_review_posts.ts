@@ -73,7 +73,9 @@ export function registerBatchReviewPostsTool(server: McpServer): void {
             if (r.failed) {
                 return asErrorResult(r, {
                     hint: 'fail-fast：這個錯誤可能發生在整批驗證階段（全部未處理）或逐筆處理中途（部分 id 已成功、不會回滾）。' +
-                        '請用 get_message_board_posts 重新查詢這批 ids 目前的實際狀態，不要假設本次呼叫完全沒有生效。',
+                        '請用 get_message_board_posts 重新查詢這批 ids 目前的實際狀態，不要假設本次呼叫完全沒有生效——' +
+                        '但 get_message_board_posts 的 search 沒有 id 清單篩選欄位，無法直接「查這幾個 id 現在的狀態」，' +
+                        '只能靠 commentStatus/時間等條件撈頁後自行比對 id，批次較大或分散時可靠性有限。',
                 });
             }
 
