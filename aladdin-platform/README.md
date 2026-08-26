@@ -128,6 +128,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_ip_region_delete_ip_region` | `RiskPlatformIpRegion.DeleteIpRegion` | **硬刪除**單一規則，無法復原。id 不存在/屬於別平台回業務錯誤，不會誤刪 |
 | `aladdin_platform_risk_platform_ip_region_batch_delete_ip_region` | `RiskPlatformIpRegion.BatchDeleteIpRegion` | **硬刪除**多筆規則，無法復原。**部分成功語意**：回傳 deleted 只含真的存在且屬於當前平台的 id，沒出現的 id 沒有被誤刪 |
 | `aladdin_platform_ranking_platform_list_activity_ranking_setting` | `RankingPlatform.ListActivityRankingSetting` | 分頁查詢當前平台的全部活動排行榜設定，無 search 條件；2026-08-26 dev 實測回傳 14 筆真實資料 |
+| `aladdin_platform_ranking_platform_get_platform_ranking_activity_list` | `RankingPlatform.GetPlatformRankingActivityList` | 取得展示期間**尚未結束**的活動排行榜 id+名稱精簡清單（非全部），供下拉選單使用；2026-08-26 dev 實測 14 筆全量中只有 5 筆展示中 |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。

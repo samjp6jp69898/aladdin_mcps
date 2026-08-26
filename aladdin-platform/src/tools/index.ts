@@ -124,6 +124,7 @@ import { registerUpdateCurrencyStatusTool } from './update_currency_status.ts';
 import { registerGetOtpSmsSettingsTool } from './get_otp_sms_settings.ts';
 import { registerUpdateOtpSmsSettingsTool } from './update_otp_sms_settings.ts';
 import { registerListActivityRankingSettingsTool } from './list_activity_ranking_settings.ts';
+import { registerGetPlatformRankingActivityListTool } from './get_platform_ranking_activity_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -253,4 +254,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetOtpSmsSettingsTool(server);
     registerUpdateOtpSmsSettingsTool(server);
     registerListActivityRankingSettingsTool(server);
+    registerGetPlatformRankingActivityListTool(server);
 }
