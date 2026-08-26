@@ -10,6 +10,7 @@ import { registerGetAgentPhoneNumberVisibilityTool } from './get_agent_phone_num
 import { registerViewAgentPhoneNumberTool } from './view_agent_phone_number.ts';
 import { registerListAgentReportsTool } from './list_agent_reports.ts';
 import { registerListAgentReportDetailsTool } from './list_agent_report_details.ts';
+import { registerGetAgentReportStatisticsTool } from './get_agent_report_statistics.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
@@ -259,4 +260,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerViewAgentPhoneNumberTool(server);
     registerListAgentReportsTool(server);
     registerListAgentReportDetailsTool(server);
+    registerGetAgentReportStatisticsTool(server);
 }
