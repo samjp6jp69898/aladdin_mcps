@@ -13,7 +13,8 @@
  *   （`CorePlatform.GetPlatformBackofficeLanguages`）與不同的 rajah model
  *   （`PlatformBackofficeLanguage`，非 `PlatformSupportedLanguagesEssential`）。
  * - 對應的寫入方法是 `Platform.ToggleBackofficeLanguageStatus`（platform.rajah:101-102，
- *   @Permission "AdminManagement.Setting.PlatformLang"），非本輪任務範圍，未包裝。
+ *   @Permission "AdminManagement.Setting.PlatformLang"），已包成
+ *   aladdin_platform_platform_toggle_backoffice_language_status（同批次後續 commit）。
  *
  * ⚠️ 本工具不回傳 `id`（該欄位 @Hide，API 仍會回傳值，只是表單不顯示）：讀 platform.rajah 確認對應的
  * 寫入方法 `ToggleBackofficeLanguageStatus(languageCode, newStatus)` 與同 service 另一支

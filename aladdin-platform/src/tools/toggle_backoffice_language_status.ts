@@ -18,7 +18,8 @@
  * 2026-08-26 讀 agrabah 後端原始碼查證（core_platform.ts:268-331，該檔案內建完整業務規則註解，
  * 已逐條核對程式碼與註解一致）：
  * - **停用（newStatus=disabled）有兩條硬性限制**：(1) 目標語言若是當前平台的預設後台語言，一律拒絕
- *   （`requestNotValid`，須先用 `SetBackofficeDefaultLanguage`——本輪未包裝——切換預設語言後才能停用
+ *   （`requestNotValid`，須先用 `SetBackofficeDefaultLanguage`——已包成
+ *   aladdin_platform_platform_set_backoffice_default_language（同批次後續 commit）——切換預設語言後才能停用
  *   舊預設）；(2) 停用後若會導致該平台啟用語言數變成 0，一律拒絕（`requestNotValid`，至少保留一個
  *   啟用語言）。
  * - **啟用（newStatus=enabled）沒有特殊限制**。
