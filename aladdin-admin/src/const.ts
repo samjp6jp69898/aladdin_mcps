@@ -38,6 +38,10 @@ export const STATUS_KEYS = Object.keys(STATUS_MAP) as [ keyof typeof STATUS_MAP,
 export const TOTP_MODE_MAP = { normal: 0, force: 1 } as const;
 export const TOTP_MODE_KEYS = Object.keys(TOTP_MODE_MAP) as [ keyof typeof TOTP_MODE_MAP, ...(keyof typeof TOTP_MODE_MAP)[] ];
 
+// PaymentAdapterFieldEnum（payment.rajah:6-10）——DepositAdapter(Edit)/WithdrawAdapter(Edit) 的
+// parameterList 用這組 bit-flag 值，宣告 adapter 需要哪些憑證欄位（非實際密鑰值）。
+export const PAYMENT_ADAPTER_FIELD_MAP = { hashKey: 1, publicKey: 2, privateKey: 4 } as const;
+
 // GameTagTypeEnum（game_back_office.rajah:43-52）——ListAllGameTagNamesByType/UpdateGameTagName 的 gameTagType 參數用這組值。
 // 與既有 GAME_TAG_MAP 是不同語意：GAME_TAG_MAP 是「標籤值本身」(GameDisplayTagEnum/GameRebateTagEnum 的 0~7)，
 // 這裡是「標籤分類/類型」的選擇器 (1~4)，不要混用、不要沿用同一個名字。

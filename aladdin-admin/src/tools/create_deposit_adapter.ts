@@ -26,9 +26,10 @@
  *   checklist.md 第 4 節同類陷阱的另一實例）。實測不帶 specialRequestCurrency（預設 false）且不帶
  *   requestCurrencyCode 時，後端直接回 errorCode=682（paymentSpecialRequestCurrencyRequired），必須
  *   明確帶入合法的 requestCurrencyCode 才能建立成功。
- * - 沒有對應的 Delete 方法，只有 EnableAdapter 可切換 enabled/disabled（本 server 尚未包裝成
- *   tool）；dev 驗證後應呼叫該 RPC 停用剛建立的測試記錄，比照 create_game_vendor.ts 的
- *   「建議測試前綴 ZZZ_TEST_」慣例，方便事後辨識與人工清理殘留測試資料。
+ * - 沒有對應的 Delete 方法，只有 EnableAdapter 可切換 enabled/disabled——本 server 已包裝成
+ *   aladdin_admin_deposit_admin_enable_adapter（update_deposit_adapter_status.ts）；dev 驗證後
+ *   應呼叫該 tool 停用剛建立的測試記錄，比照 create_game_vendor.ts 的「建議測試前綴 ZZZ_TEST_」
+ *   慣例，方便事後辨識與人工清理殘留測試資料。
  *
  * dev 驗證：以 adapterKey=fake、name 帶 ZZZ_TEST_ 前綴建立一筆，round-trip 用回傳 id 呼叫
  * GetAdapterForEdit 讀回確認欄位一致，再呼叫 EnableAdapter(id, disabled) 停用清理。
@@ -40,8 +41,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DepositAdapterEdit } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
 import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-
-const PAYMENT_ADAPTER_FIELD_MAP = { hashKey: 1, publicKey: 2, privateKey: 4 };
+import { PAYMENT_ADAPTER_FIELD_MAP } from '../const.ts';
 
 export function registerCreateDepositAdapterTool(server: McpServer): void {
     server.registerTool(
@@ -56,7 +56,7 @@ export function registerCreateDepositAdapterTool(server: McpServer): void {
                 '影響任何真實金流（比照 aladdin_admin_game_vendor_admin_create_or_update_game_vendor 的既有先例）。' +
                 '本方法不接受、也不會寫入任何實際密鑰值——`parameterList` 只是宣告這個 adapter 需要哪些憑證欄位' +
                 '（hashKey/publicKey/privateKey），不是欄位的值本身。' +
-                '**沒有對應的刪除方法**，只能之後呼叫 EnableAdapter 停用（本 server 目前未包裝成 tool），' +
+                '**沒有對應的刪除方法**，只能之後呼叫 aladdin_admin_deposit_admin_enable_adapter 停用，' +
                 '建議 name 加測試前綴如 ZZZ_TEST_ 方便事後人工辨識/清理殘留測試資料。' +
                 'prod 執行前確認（H36）：當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion' +
                 '（或功能相同的方式）明確詢問使用者是否要在正式環境執行這個操作，取得明確同意後才可以帶上 confirm 參數；' +
@@ -110,7 +110,7 @@ export function registerCreateDepositAdapterTool(server: McpServer): void {
             return asTextResult({
                 success: true,
                 id,
-                message: '建立成功；沒有對應的刪除方法，測試後請呼叫 EnableAdapter(id, disabled) 停用清理',
+                message: '建立成功；沒有對應的刪除方法，測試後請呼叫 aladdin_admin_deposit_admin_enable_adapter(id, disabled) 停用清理',
                 readBack: readBack && !readBack.failed ? readBack.data?.adapter : null,
             });
         },

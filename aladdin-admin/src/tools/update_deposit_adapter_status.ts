@@ -19,6 +19,11 @@
  * - `DepositAdapterEdit`（GetAdapterForEdit 的回傳型別）沒有 status 欄位，無法用它 round-trip；
  *   改用 `ListAdapters` 讀回全部分頁比對 id（見 list_deposit_adapters.ts 已知陷阱：無 ORDER BY，
  *   但這裡只是找目前 status 值，不受排序影響）。
+ * - **已知 bug（獨立 review 抓到，非推測，已修正）**：`getPageData`（common/database_helper.ts）
+ *   的 `totalPage` 只在 page===1 時真的算出來，page>1 的回應一律回 `totalPage:0`——原本的掃描
+ *   終止判斷 `page >= (totalPage ?? 1)` 用這個值，在 page 2 就會被 `2 >= 0` 誤判成「已到底」而
+ *   提前中止，實際上根本沒掃到 20 頁上限。已改用 method-category-checklist.md 第 2 節建議的
+ *   「回傳沒有可靠 total 時,用 rows.length < pageSize 視為最後一頁」判斷，不再依賴 totalPage。
  *
  * dev 驗證：對真實存在的測試 adapter 切換 enabled→disabled→enabled，round-trip 確認每次都生效；
  * 對不存在的 id 呼叫，確認回傳 errorCode=14。
@@ -62,12 +67,14 @@ export function registerUpdateDepositAdapterStatusTool(server: McpServer): void 
             const r = await withAutoRelogin(() => remote.paymentBackOffice.depositAdmin.EnableAdapter(id, STATUS_MAP[ status ]));
             if (r.failed) return asErrorResult(r);
 
+            const PAGE_SIZE = 200;
             let matched: unknown = undefined;
             for (let page = 1; page <= 20 && matched === undefined; page++) {
-                const listResult = await withAutoRelogin(() => remote.paymentBackOffice.depositAdmin.ListAdapters(page, 200));
+                const listResult = await withAutoRelogin(() => remote.paymentBackOffice.depositAdmin.ListAdapters(page, PAGE_SIZE));
                 if (listResult.failed) break;
-                matched = listResult.data?.rows?.find((row) => row.id === id);
-                if (!listResult.data?.rows?.length || page >= (listResult.data?.totalPage ?? 1)) break;
+                const rows = listResult.data?.rows ?? [];
+                matched = rows.find((row) => row.id === id);
+                if (rows.length < PAGE_SIZE) break; // totalPage 只在 page===1 有效，不可靠，改用「回傳筆數 < pageSize」判斷是否到底
             }
 
             return asTextResult({

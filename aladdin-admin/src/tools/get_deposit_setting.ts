@@ -28,8 +28,8 @@ export function registerGetDepositSettingTool(server: McpServer): void {
             description:
                 '取得全域充值（Deposit）設定，供編輯用（rajah: DepositAdmin.GetDepositSettingForEdit，' +
                 'payment_back_office.rajah:2937）。無參數，這是全域唯一一筆設定，不分平台——若要查「某個平台的' +
-                '充值設定覆蓋值」，那是不同的 method（GetPlatformDepositSettingForEdit，本 server 尚未包裝成 ' +
-                'tool），不要混淆。回傳只有兩個 URL 欄位（callbackBaseUrl / paymentAssetUrl），不含任何金鑰/密碼。',
+                '充值設定覆蓋值」，那是不同的 tool（aladdin_admin_deposit_admin_get_platform_deposit_setting_for_edit），' +
+                '不要混淆。回傳只有兩個 URL 欄位（callbackBaseUrl / paymentAssetUrl），不含任何金鑰/密碼。',
             inputSchema: {},
         },
         async () => {

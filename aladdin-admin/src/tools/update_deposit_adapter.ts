@@ -12,9 +12,14 @@
  * - `adapterKey`/`specialRequestCurrency`/`requestCurrencyCode` 三個欄位被後端
  *   `excludeFieldsFromUpdate` 排除，即使呼叫端帶入不同值也會被後端還原成資料庫原值、
  *   不會真的被改到——本工具不接受這三個欄位作為輸入參數，避免呼叫端誤以為改得動。
- * - **id 不存在時的行為（2026-08-26 dev 站台實測，非推測）**：底層 `updateObject` 回傳
- *   `idNotExists`（errorCode=11），本方法會把它當成真正的錯誤回傳（不是靜默 no-op、也不是
- *   nothingChanged=10），呼叫端會收到 `success:false`。
+ * - **id 不存在時的行為（2026-08-26 dev 站台實測，非推測，含 review 修正）**：底層原始
+ *   `UpdateAdapter` RPC 若直接對不存在的 id 呼叫，`updateObject` 會回傳 `idNotExists`
+ *   （errorCode=11）。但**本工具實際的呼叫路徑不會走到這支底層行為**——本工具送出更新前
+ *   一律先呼叫 `GetAdapterForEdit(id)` 讀現值，id 不存在時這一步就會先失敗並短路回傳
+ *   （見 get_deposit_adapter_for_edit.ts 記錄的 errorCode=606 paymentAdapterInstanceNotExist），
+ *   永遠不會真的送到 `UpdateAdapter` RPC。也就是說呼叫端透過本工具實際會看到的是
+ *   errorCode=606（帶 `hint: 讀取現值失敗，可能 id 不存在`），不是 errorCode=11——11 只是
+ *   底層 RPC 單獨被呼叫時的行為，記錄在此供對照，不是本工具的實際回傳。
  * - **已知資料陷阱（2026-08-26 dev 實測踩到，非推測）**：`name` 欄位 DB schema 是
  *   `VARCHAR(30)`（migrations/payment/202411281816_create_deposit_tables.sql），但 rajah
  *   `@Rules` 只標 `Required`、沒有 `MaxLength`，前端/RPC 層都不會攔截超長字串；實測帶入 34
@@ -31,8 +36,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DepositAdapterEdit } from '/Users/user/aladdin/abu/admin/src/generated/types.gen.js';
 import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-
-const PAYMENT_ADAPTER_FIELD_MAP = { hashKey: 1, publicKey: 2, privateKey: 4 };
+import { PAYMENT_ADAPTER_FIELD_MAP } from '../const.ts';
 
 export function registerUpdateDepositAdapterTool(server: McpServer): void {
     server.registerTool(
@@ -46,7 +50,10 @@ export function registerUpdateDepositAdapterTool(server: McpServer): void {
                 '只覆蓋呼叫端明確帶入的欄位，其餘欄位維持原值後整包送出，完成後 round-trip 讀回驗證。' +
                 '**adapterKey / specialRequestCurrency / requestCurrencyCode 這三個欄位建立後無法再改**' +
                 '（後端 excludeFieldsFromUpdate 會把它們還原成資料庫原值），本工具不接受這三個參數。' +
-                '**已知行為（2026-08-26 dev 實測）**：id 不存在時會回傳 success:false、errorCode=11（idNotExists）。' +
+                '**已知行為（2026-08-26 dev 實測）**：id 不存在時本工具會回傳 success:false、errorCode=606' +
+                '（paymentAdapterInstanceNotExist）——因為本工具送出更新前一律先讀現值，id 不存在時在這一步就' +
+                '短路失敗，不會真的送到底層 UpdateAdapter RPC（底層 RPC 若被直接呼叫，id 不存在時回的是不同的' +
+                'errorCode=11 idNotExists，但呼叫本工具不會遇到這個碼）。' +
                 '**已知資料陷阱**：name 欄位 DB 限制 30 字元但 rajah 沒有 MaxLength 驗證，超長時後端回傳的是' +
                 '通用 errorCode=12（unknownDatabaseError），不是明確的「欄位過長」錯誤，帶入前建議自行檢查長度。' +
                 'prod 執行前確認（H36）：當這個 server 是正式環境（prod）時，執行本工具前必須先用 AskUserQuestion' +

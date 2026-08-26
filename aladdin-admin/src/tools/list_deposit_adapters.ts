@@ -10,8 +10,7 @@
  * 條件都沒有，僅 page/pageSize」——沒有可鎖定單一目標的欄位；但這張表是超管手動新增/設定的
  * 充值 adapter 實例（一次新增一筆），語意上是小型、成長緩慢的營運設定表，不是使用者產生內容，
  * 不適用 B 級「禁止當成逐頁掃描找特定一筆」的強制要求——本工具僅作為單純的分頁列表使用，
- * 若要精確查單一 adapter，改用業務鍵（id）直接查詢（rajah 有 GetAdapterForEdit(id)，本 server
- * 目前尚未包裝成 tool）。
+ * 若要精確查單一 adapter，改用業務鍵（id）直接查詢——見 aladdin_admin_deposit_admin_get_adapter_for_edit。
  *
  * **已知資料陷阱（讀原始碼確認，非推測）**：後端 `loadObjects(DbDepositAdapter, '', [], '', ...)`
  * 的 sort 參數是空字串，即整段查詢沒有 ORDER BY——分頁之間的排序不保證穩定，理論上可能因
