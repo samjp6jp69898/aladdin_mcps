@@ -342,6 +342,41 @@ export const PLATFORM_STATISTIC_TYPE_MAP: Record<(typeof PLATFORM_STATISTIC_TYPE
 // agrabah statistic.ts:143），呼叫端帶任何 currencyCode 都會被忽略。
 export const PLATFORM_STATISTIC_TYPES_WITH_NO_CURRENCY = [ 'onlineUsers', 'maxOnlineUsers', 'onlineMembers', 'maxOnlineMembers' ] as const;
 
+// FixedRankingKindEnum（rajah/services/ranking.rajah:10-20）——固定排行榜種類，unknown=0
+// 不收錄成可選值（FixedRankingPlatform 後端對 kind=0 一律回 invalidData，2026-08-26 dev 實測確認）。
+export const FIXED_RANKING_KIND_MAP = { turnover: 1, profit: 2, contribution: 3 } as const;
+export type FixedRankingKindKey = keyof typeof FIXED_RANKING_KIND_MAP;
+export const FIXED_RANKING_KIND_KEYS = Object.keys(FIXED_RANKING_KIND_MAP) as [ FixedRankingKindKey, ...FixedRankingKindKey[] ];
+
+// FixedRankingPeriodEnum（rajah/services/ranking.rajah:23-36）。today=1 已停用（rajah 註解「已停用，
+// 僅供歷史資料保留」），不收錄成可選值；unknown=0 同樣不收錄——後端 `getAllowedPeriodsForKind` 只接受
+// thisWeek/lastWeek/thisMonth/lastMonth（流水/盈利榜）或 allTime（等級榜），不會用到 unknown/today。
+export const FIXED_RANKING_PERIOD_MAP = { thisWeek: 2, lastWeek: 3, thisMonth: 4, lastMonth: 5, allTime: 6 } as const;
+export type FixedRankingPeriodKey = keyof typeof FIXED_RANKING_PERIOD_MAP;
+export const FIXED_RANKING_PERIOD_KEYS = Object.keys(FIXED_RANKING_PERIOD_MAP) as [ FixedRankingPeriodKey, ...FixedRankingPeriodKey[] ];
+
+// FixedRankingMaxDisplayCountEnum（rajah/services/ranking.rajah:51-55）；unknown=0 不收錄（同上理由）。
+export const FIXED_RANKING_MAX_DISPLAY_COUNT_MAP = { hundred: 1, threeHundred: 2 } as const;
+export type FixedRankingMaxDisplayCountKey = keyof typeof FIXED_RANKING_MAX_DISPLAY_COUNT_MAP;
+export const FIXED_RANKING_MAX_DISPLAY_COUNT_KEYS = Object.keys(FIXED_RANKING_MAX_DISPLAY_COUNT_MAP) as [ FixedRankingMaxDisplayCountKey, ...FixedRankingMaxDisplayCountKey[] ];
+
+// RankingTypeEnum（rajah/services/ranking.rajah:2-7），供 RankingPlatform.CreateOrUpdateActivityRankingSetting 使用。
+export const RANKING_TYPE_MAP = { winLose: 1, validBet: 2 } as const;
+export type RankingTypeKey = keyof typeof RANKING_TYPE_MAP;
+export const RANKING_TYPE_KEYS = Object.keys(RANKING_TYPE_MAP) as [ RankingTypeKey, ...RankingTypeKey[] ];
+
+// RankingTargetEnum（ranking_back_office.rajah:1-8），供 RankingPlatform.CreateOrUpdateActivityRankingSetting 使用。
+export const RANKING_TARGET_MAP = { gameBrand: 1, game: 2, all: 3 } as const;
+export type RankingTargetKey = keyof typeof RANKING_TARGET_MAP;
+export const RANKING_TARGET_KEYS = Object.keys(RANKING_TARGET_MAP) as [ RankingTargetKey, ...RankingTargetKey[] ];
+
+// ActivityRankingPeriodResetEnum（ranking_back_office.rajah:10-17），供
+// RankingPlatform.CreateOrUpdateActivityRankingSetting 的 periodReset 使用。none=0 是合法值
+// （未啟用週期重置），必須收錄，不能比照下面 unknown=0 系列排除。
+export const ACTIVITY_RANKING_PERIOD_RESET_MAP = { none: 0, daily: 1, weekly: 2 } as const;
+export type ActivityRankingPeriodResetKey = keyof typeof ACTIVITY_RANKING_PERIOD_RESET_MAP;
+export const ACTIVITY_RANKING_PERIOD_RESET_KEYS = Object.keys(ACTIVITY_RANKING_PERIOD_RESET_MAP) as [ ActivityRankingPeriodResetKey, ...ActivityRankingPeriodResetKey[] ];
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;

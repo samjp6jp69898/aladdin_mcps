@@ -189,6 +189,16 @@ import { registerToggleBackofficeLanguageStatusTool } from './toggle_backoffice_
 import { registerSetBackofficeDefaultLanguageTool } from './set_backoffice_default_language.ts';
 import { registerGetPlatformIdRolesTool } from './get_platform_id_roles.ts';
 import { registerNewUserTool } from './new_user.ts';
+import { registerListActivityRankingSettingsTool } from './list_activity_ranking_settings.ts';
+import { registerGetPlatformRankingActivityListTool } from './get_platform_ranking_activity_list.ts';
+import { registerChangeActivityRankingSettingStatusTool } from './change_activity_ranking_setting_status.ts';
+import { registerCreateOrUpdateActivityRankingSettingTool } from './create_or_update_activity_ranking_setting.ts';
+import { registerListFixedRankingSettingsTool } from './list_fixed_ranking_settings.ts';
+import { registerChangeFixedRankingStatusTool } from './change_fixed_ranking_status.ts';
+import { registerUpdateFixedRankingSettingTool } from './update_fixed_ranking_setting.ts';
+import { registerListFixedRankingEntriesTool } from './list_fixed_ranking_entries.ts';
+import { registerGetRouletteConfigNameListTool } from './get_roulette_config_name_list.ts';
+import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -383,4 +393,14 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerSetBackofficeDefaultLanguageTool(server);
     registerGetPlatformIdRolesTool(server);
     registerNewUserTool(server);
+    registerListActivityRankingSettingsTool(server);
+    registerGetPlatformRankingActivityListTool(server);
+    registerChangeActivityRankingSettingStatusTool(server);
+    registerCreateOrUpdateActivityRankingSettingTool(server);
+    registerListFixedRankingSettingsTool(server);
+    registerChangeFixedRankingStatusTool(server);
+    registerUpdateFixedRankingSettingTool(server);
+    registerListFixedRankingEntriesTool(server);
+    registerGetRouletteConfigNameListTool(server);
+    registerGetRouletteRewardNameListTool(server);
 }
