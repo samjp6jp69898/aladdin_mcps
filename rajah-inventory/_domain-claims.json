@@ -44,6 +44,36 @@
       "domain": "activity_back_office",
       "session_label": "rajah-worker-iago",
       "claimed_at": "2026-08-25T07:46:26Z"
+    },
+    {
+      "domain": "message_board_back_office",
+      "session_label": "rajah-worker-abu",
+      "claimed_at": "2026-08-26T00:54:46Z"
+    },
+    {
+      "domain": "statistic",
+      "session_label": "rajah-worker-sandstorm",
+      "claimed_at": "2026-08-26T00:54:57Z"
+    },
+    {
+      "domain": "payment_back_office",
+      "session_label": "rajah-worker-jafar",
+      "claimed_at": "2026-08-26T00:56:53Z"
+    },
+    {
+      "domain": "user_back_office",
+      "session_label": "rajah-worker-jasmine",
+      "claimed_at": "2026-08-26T02:03:36Z"
+    },
+    {
+      "domain": "platform",
+      "session_label": "rajah-worker-sinbad",
+      "claimed_at": "2026-08-26T02:03:57Z"
+    },
+    {
+      "domain": "agent_back_office",
+      "session_label": "rajah-worker-nile",
+      "claimed_at": "2026-08-26T02:10:00Z"
     }
   ]
 }
