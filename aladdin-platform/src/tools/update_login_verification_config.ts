@@ -31,6 +31,11 @@ export function registerUpdateLoginVerificationConfigTool(server: McpServer): vo
                 '所有欄位皆為 optional：只帶你要改的欄位，其餘會先讀現值原樣帶回，不會被清空或歸零。' +
                 '涵蓋 IP 異常登入驗證、異地登入驗證、設備異常登入驗證、密碼錯誤驗證四組獨立開關，' +
                 '各自的 xxxVerificationType 決定該規則觸發時要求 otp（手機短信）或 realName（真實姓名）驗證。' +
+                '互斥限制（後端實測查證，agrabah security_restriction_platform.ts）：' +
+                'passwordErrorVerificationStatus 設為 enabled 時，若「凍結管理」' +
+                '（aladdin_platform_security_restriction_platform_get_freeze_config 的 passwordError 規則）已經是 enabled，' +
+                '後端會直接拒絕並回傳 loginRulePasswordErrorConflictWithFreeze（兩者互斥，同一個鎖保護，不可同時啟用），' +
+                '需要先用 update_freeze_config 停用 passwordError 規則才能開啟這裡的密碼錯誤驗證。' +
                 '完成後會自動讀回最新設定一併回傳。' +
                 'prod 執行前確認：當這個 server 是正式環境時，執行前必須先用 AskUserQuestion 明確詢問使用者是否同意，' +
                 '取得同意後才可以帶上 confirm 參數；非 prod 環境不需要、也會忽略 confirm 欄位。',
