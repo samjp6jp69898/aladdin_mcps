@@ -143,6 +143,20 @@ import { registerListRegistrationIpUsersTool } from './list_registration_ip_user
 import { registerGetUserEnterHistoryAppDomainsTool } from './get_user_enter_history_app_domains.ts';
 import { registerGetUserEnterHistoryDomainReportTool } from './get_user_enter_history_domain_report.ts';
 import { registerGetUserEnterHistoryDeviceReportTool } from './get_user_enter_history_device_report.ts';
+import { registerGetRegistrationFieldConfigsTool } from './get_registration_field_configs.ts';
+import { registerCreateOrUpdateRegistrationFieldConfigTool } from './create_or_update_registration_field_config.ts';
+import { registerGetRegistrationLimitConfigTool } from './get_registration_limit_config.ts';
+import { registerUpdateRegistrationLimitConfigTool } from './update_registration_limit_config.ts';
+import { registerGetLoginRulesTool } from './get_login_rules.ts';
+import { registerUpdateLoginPromptConfigTool } from './update_login_prompt_config.ts';
+import { registerUpdateLoginVerificationConfigTool } from './update_login_verification_config.ts';
+import { registerUpdatePasswordResetConfigTool } from './update_password_reset_config.ts';
+import { registerListTradePasswordLockRecordTool } from './list_trade_password_lock_record.ts';
+import { registerUnlockTradePasswordLockRecordTool } from './unlock_trade_password_lock_record.ts';
+import { registerGetTradePasswordLockConfigTool } from './get_trade_password_lock_config.ts';
+import { registerCreateOrUpdateTradePasswordLockConfigTool } from './create_or_update_trade_password_lock_config.ts';
+import { registerGetFreezeConfigTool } from './get_freeze_config.ts';
+import { registerUpdateFreezeConfigTool } from './update_freeze_config.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -291,4 +305,18 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetUserEnterHistoryAppDomainsTool(server);
     registerGetUserEnterHistoryDomainReportTool(server);
     registerGetUserEnterHistoryDeviceReportTool(server);
+    registerGetRegistrationFieldConfigsTool(server);
+    registerCreateOrUpdateRegistrationFieldConfigTool(server);
+    registerGetRegistrationLimitConfigTool(server);
+    registerUpdateRegistrationLimitConfigTool(server);
+    registerGetLoginRulesTool(server);
+    registerUpdateLoginPromptConfigTool(server);
+    registerUpdateLoginVerificationConfigTool(server);
+    registerUpdatePasswordResetConfigTool(server);
+    registerListTradePasswordLockRecordTool(server);
+    registerUnlockTradePasswordLockRecordTool(server);
+    registerGetTradePasswordLockConfigTool(server);
+    registerCreateOrUpdateTradePasswordLockConfigTool(server);
+    registerGetFreezeConfigTool(server);
+    registerUpdateFreezeConfigTool(server);
 }
