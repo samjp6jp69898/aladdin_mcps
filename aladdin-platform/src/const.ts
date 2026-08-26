@@ -248,6 +248,28 @@ export const GAME_DISPLAY_TAG_MAP: Record<(typeof GAME_DISPLAY_TAG_KEYS)[number]
     slot: 1, board: 2, fish: 3, live: 4, sport: 5, eSport: 6, lottery: 7,
 };
 
+// PlatformStatisticTypeEnum（service_common.rajah:2281-2327），供
+// aladdin_platform_statistic_platform_get_today_platform_statistic /
+// get_yesterday_platform_statistic 共用（兩支都吃同一個 type 參數，集中一份避免各自重複）。
+// platformProfitRate（20）刻意收錄但工具描述需另外提醒：後端 hourly_platform_statistics 表
+// 從未寫入這個 type（agrabah statistic_platform.ts 註解「後端不產生此統計值，由前端即時計算」），
+// 帶這個值查詢會回 24 筆補 0 的假資料，不是「今日沒有波動」的真實統計。
+export const PLATFORM_STATISTIC_TYPE_KEYS = [
+    'betAmount', 'betCount', 'payoutAmount', 'winLoseAmount', 'newUserCount', 'depositAmount',
+    'withdrawAmount', 'paymentDifference', 'depositFee', 'withdrawFee', 'onlineUsers', 'onlineMembers',
+    'maxOnlineUsers', 'maxOnlineMembers', 'validBetAmount', 'enterMembers', 'registerMembers',
+    'centralWalletBalance', 'thirdPartyWalletBalance', 'platformProfitRate', 'newRegisteredUsers', 'betUserCount',
+] as const;
+export const PLATFORM_STATISTIC_TYPE_MAP: Record<(typeof PLATFORM_STATISTIC_TYPE_KEYS)[number], number> = {
+    betAmount: 1, betCount: 2, payoutAmount: 3, winLoseAmount: 4, newUserCount: 5, depositAmount: 6,
+    withdrawAmount: 7, paymentDifference: 8, depositFee: 9, withdrawFee: 10, onlineUsers: 11, onlineMembers: 12,
+    maxOnlineUsers: 13, maxOnlineMembers: 14, validBetAmount: 15, enterMembers: 16, registerMembers: 17,
+    centralWalletBalance: 18, thirdPartyWalletBalance: 19, platformProfitRate: 20, newRegisteredUsers: 21, betUserCount: 22,
+};
+// 這四類統計查詢時後端會把 currencyCode 強制清空（HourlyPlatformStatisticTypesWithNoCurrencyCode，
+// agrabah statistic.ts:143），呼叫端帶任何 currencyCode 都會被忽略。
+export const PLATFORM_STATISTIC_TYPES_WITH_NO_CURRENCY = [ 'onlineUsers', 'maxOnlineUsers', 'onlineMembers', 'maxOnlineMembers' ] as const;
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
