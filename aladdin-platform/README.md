@@ -129,6 +129,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_ip_region_batch_delete_ip_region` | `RiskPlatformIpRegion.BatchDeleteIpRegion` | **硬刪除**多筆規則，無法復原。**部分成功語意**：回傳 deleted 只含真的存在且屬於當前平台的 id，沒出現的 id 沒有被誤刪 |
 | `aladdin_platform_platform_get_supported_languages` | `Platform.GetSupportedLanguages` | 取得當前平台（依登入 token 綁定的 platformId）支援的語言設定；無輸入參數，回傳 defaultLanguageCode + languages 陣列；無 `@Permission`；純讀取、可安全重複呼叫；2026-08-26 dev 實測回傳 defaultLanguageCode=zh-CN、languages=[en-US, zh-CN, zh-TW] |
 | `aladdin_platform_platform_get_timezone` | `Platform.GetTimezone` | 取得當前平台的時區設定；無輸入參數，回傳 timezone（整數，原樣透傳，未在 rajah 找到明文單位定義）；無 `@Permission`；純讀取、可安全重複呼叫；2026-08-26 dev 實測回傳 28800（pk-platform 位於 UTC+8，數值與「UTC 偏移秒數」的假設吻合，但屬單一平台歸納推測，非明文定義） |
+| `aladdin_platform_platform_get_platform_code` | `Platform.GetPlatformCode` | 取得當前這次呼叫所屬平台的 platform code；無輸入參數；code 由 Gate 依請求 Host 判定後灌進 context，不查 DB；無 `@Permission`；純讀取、可安全重複呼叫；2026-08-26 dev 實測回傳 code="PK"（與 pk-platform 環境相符） |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。

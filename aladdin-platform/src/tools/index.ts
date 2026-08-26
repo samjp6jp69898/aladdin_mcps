@@ -125,6 +125,7 @@ import { registerGetOtpSmsSettingsTool } from './get_otp_sms_settings.ts';
 import { registerUpdateOtpSmsSettingsTool } from './update_otp_sms_settings.ts';
 import { registerGetSupportedLanguagesTool } from './get_supported_languages.ts';
 import { registerGetTimezoneTool } from './get_timezone.ts';
+import { registerGetPlatformCodeTool } from './get_platform_code.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -255,4 +256,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateOtpSmsSettingsTool(server);
     registerGetSupportedLanguagesTool(server);
     registerGetTimezoneTool(server);
+    registerGetPlatformCodeTool(server);
 }
