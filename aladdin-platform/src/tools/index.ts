@@ -15,6 +15,7 @@ import { registerGetYesterdayPlatformStatisticTool } from './get_yesterday_platf
 import { registerListDailyVipStatisticsTool } from './list_daily_vip_statistics.ts';
 import { registerListDepositMethodStatisticsTool } from './list_deposit_method_statistics.ts';
 import { registerListDepositDailyReportTool } from './list_deposit_daily_report.ts';
+import { registerListDepositWithdrawDailyReportTool } from './list_deposit_withdraw_daily_report.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
@@ -269,4 +270,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListDailyVipStatisticsTool(server);
     registerListDepositMethodStatisticsTool(server);
     registerListDepositDailyReportTool(server);
+    registerListDepositWithdrawDailyReportTool(server);
 }

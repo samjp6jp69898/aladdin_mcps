@@ -136,6 +136,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_statistic_platform_list_daily_vip_statistics` | `StatisticPlatform.ListDailyVipStatistics` | 日期數據分析 - VIP 等級視圖（每天 × 每個 VIP 等級一列）；**無分頁、後端無日期區間上限**，建議查詢範圍控制在週/月級別；2026-08-26 dev 呼叫成功（基本路徑，回傳真實資料） |
 | `aladdin_platform_statistic_platform_list_deposit_method_statistics` | `StatisticPlatform.ListDepositMethodStatistics` | 充值通道統計列表（依充值方式×支付平台×幣別分組）；固定只統計一般充值（不含代理體系）；successRate rateBase=10000；2026-08-26 dev 呼叫成功（基本路徑，回傳真實分頁資料） |
 | `aladdin_platform_statistic_platform_list_deposit_daily_report` | `StatisticPlatform.ListDepositDailyReport` | 充值報表（每日一列，拆分三方/公司/人工充值）；日期區間為**閉區間**（含結束當天）；manualSuccessAmount 可能為負值；2026-08-26 dev 呼叫成功（基本路徑，回傳真實分頁資料） |
+| `aladdin_platform_statistic_platform_list_deposit_withdraw_daily_report` | `StatisticPlatform.ListDepositWithdrawDailyReport` | 充提報表（每日一列，並列充值/提現雙側統計）；充值成功口徑併入人工充值，提現側無此併入邏輯，兩側口徑不對稱；2026-08-26 dev 呼叫成功（回傳真實資料，且逐欄核對過一筆 row 的計算邏輯與描述一致） |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
