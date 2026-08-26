@@ -248,6 +248,12 @@ export const GAME_DISPLAY_TAG_MAP: Record<(typeof GAME_DISPLAY_TAG_KEYS)[number]
     slot: 1, board: 2, fish: 3, live: 4, sport: 5, eSport: 6, lottery: 7,
 };
 
+// FixedRankingKindEnum（rajah/services/ranking.rajah:10-20）——固定排行榜種類，unknown=0
+// 不收錄成可選值（FixedRankingPlatform 後端對 kind=0 一律回 invalidData，2026-08-26 dev 實測確認）。
+export const FIXED_RANKING_KIND_MAP = { turnover: 1, profit: 2, contribution: 3 } as const;
+export type FixedRankingKindKey = keyof typeof FIXED_RANKING_KIND_MAP;
+export const FIXED_RANKING_KIND_KEYS = Object.keys(FIXED_RANKING_KIND_MAP) as [ FixedRankingKindKey, ...FixedRankingKindKey[] ];
+
 // RankingTypeEnum（rajah/services/ranking.rajah:2-7），供 RankingPlatform.CreateOrUpdateActivityRankingSetting 使用。
 export const RANKING_TYPE_MAP = { winLose: 1, validBet: 2 } as const;
 export type RankingTypeKey = keyof typeof RANKING_TYPE_MAP;
