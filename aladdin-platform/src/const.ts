@@ -254,6 +254,18 @@ export const FIXED_RANKING_KIND_MAP = { turnover: 1, profit: 2, contribution: 3 
 export type FixedRankingKindKey = keyof typeof FIXED_RANKING_KIND_MAP;
 export const FIXED_RANKING_KIND_KEYS = Object.keys(FIXED_RANKING_KIND_MAP) as [ FixedRankingKindKey, ...FixedRankingKindKey[] ];
 
+// FixedRankingPeriodEnum（rajah/services/ranking.rajah:23-36）。today=1 已停用（rajah 註解「已停用，
+// 僅供歷史資料保留」），不收錄成可選值；unknown=0 同樣不收錄——後端 `getAllowedPeriodsForKind` 只接受
+// thisWeek/lastWeek/thisMonth/lastMonth（流水/盈利榜）或 allTime（等級榜），不會用到 unknown/today。
+export const FIXED_RANKING_PERIOD_MAP = { thisWeek: 2, lastWeek: 3, thisMonth: 4, lastMonth: 5, allTime: 6 } as const;
+export type FixedRankingPeriodKey = keyof typeof FIXED_RANKING_PERIOD_MAP;
+export const FIXED_RANKING_PERIOD_KEYS = Object.keys(FIXED_RANKING_PERIOD_MAP) as [ FixedRankingPeriodKey, ...FixedRankingPeriodKey[] ];
+
+// FixedRankingMaxDisplayCountEnum（rajah/services/ranking.rajah:51-55）；unknown=0 不收錄（同上理由）。
+export const FIXED_RANKING_MAX_DISPLAY_COUNT_MAP = { hundred: 1, threeHundred: 2 } as const;
+export type FixedRankingMaxDisplayCountKey = keyof typeof FIXED_RANKING_MAX_DISPLAY_COUNT_MAP;
+export const FIXED_RANKING_MAX_DISPLAY_COUNT_KEYS = Object.keys(FIXED_RANKING_MAX_DISPLAY_COUNT_MAP) as [ FixedRankingMaxDisplayCountKey, ...FixedRankingMaxDisplayCountKey[] ];
+
 // RankingTypeEnum（rajah/services/ranking.rajah:2-7），供 RankingPlatform.CreateOrUpdateActivityRankingSetting 使用。
 export const RANKING_TYPE_MAP = { winLose: 1, validBet: 2 } as const;
 export type RankingTypeKey = keyof typeof RANKING_TYPE_MAP;
