@@ -127,6 +127,7 @@ import { registerGetSupportedLanguagesTool } from './get_supported_languages.ts'
 import { registerGetTimezoneTool } from './get_timezone.ts';
 import { registerGetPlatformCodeTool } from './get_platform_code.ts';
 import { registerListUsersTool } from './list_users.ts';
+import { registerUpdateUserStatusTool } from './update_user_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -259,4 +260,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetTimezoneTool(server);
     registerGetPlatformCodeTool(server);
     registerListUsersTool(server);
+    registerUpdateUserStatusTool(server);
 }
