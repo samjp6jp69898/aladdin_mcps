@@ -89,28 +89,35 @@ if errorlevel 1 (
 )
 
 REM ── 檢查 3：.env 是否已建立 ────────────────────────────────
+REM 沒有就直接用 copy 指令從 .env.example 複製一份出來，不用使用者自己
+REM 在檔案總管手動改檔名——Windows 檔案總管的重新命名對話框對「開頭是
+REM 點、沒有副檔名」的檔名（像 .env）很不穩定，常會存成 .env.（結尾多一
+REM 個點）或直接被擋下來；copy 指令是在檔案系統層直接用參數給的字串當
+REM 檔名，不會被那層 UI 動過手腳，產生的檔名保證就是純粹的 ".env"。
 if not exist ".env" (
-    echo   [!] 還沒有設定你的帳號密碼
+    if not exist ".env.example" (
+        echo   [X] 這份工具包不完整（缺少 .env.example）
+        echo.
+        echo   請聯絡工程師重新提供一份完整的工具包。
+        echo.
+        pause
+        exit /b 1
+    )
+    copy /y ".env.example" ".env" >nul
+    echo   [i] 已經幫你從 .env.example 建立好 .env 了，接下來還要手動填帳號密碼
     echo.
-    echo   請照這兩步做，然後再雙擊一次這個檔案：
-    echo.
-    echo     1. 把這個資料夾裡的 .env.example 複製一份，改名成 .env
-    echo     2. 用記事本打開 .env，填入你登入後台的帳號密碼
-    echo.
-    echo   （.env.example 檔案裡有詳細說明，包含要填哪幾組。）
-    echo.
-    echo   注意：用記事本存檔時，如果下方有「編碼」選項請選 UTF-8。
-    echo.
-    pause
-    exit /b 1
 )
 
 findstr /R /C:"^[A-Z0-9_]*_USER=..*" /C:"^[A-Z0-9_]*_PASSWORD=..*" ".env" > nul 2>&1
 if errorlevel 1 (
     echo   [!] .env 檔案裡的帳號密碼還是空的
     echo.
-    echo   請打開 .env，把你被授權的那幾組欄位填上值再試一次。
-    echo   （欄位很多是正常的，只要填你實際會用到的那幾組，其他留空。）
+    echo   請用記事本打開這個資料夾裡的 .env，把你被授權的那幾組欄位填上值
+    echo   再試一次。
+    echo   （欄位很多是正常的，只要填你實際會用到的那幾組，其他留空；
+    echo   .env.example 檔案裡有詳細說明，包含要填哪幾組。）
+    echo.
+    echo   注意：用記事本存檔時，如果下方有「編碼」選項請選 UTF-8。
     echo.
     pause
     exit /b 1

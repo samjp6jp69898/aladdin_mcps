@@ -112,26 +112,31 @@ if ! command -v git > /dev/null 2>&1; then
 fi
 
 # ── 檢查 3：.env 是否已建立並填寫 ───────────────────────────────
+# 沒有就直接用 cp 複製 .env.example 出來，不用使用者自己手動改檔名——
+# macOS Finder 對改成點開頭的檔名會跳出確認對話框，容易讓不熟悉命令列
+# 的人卡住；用 cp 指令直接建立就沒有這個問題。
 if [ ! -f .env ]; then
-    echo "  ⚠️  還沒有設定你的帳號密碼"
+    if [ ! -f .env.example ]; then
+        echo "  ❌ 這份工具包不完整（缺少 .env.example）"
+        echo ""
+        echo "  請聯絡工程師重新提供一份完整的工具包。"
+        echo ""
+        echo "  按 Enter 關閉這個視窗。"
+        read -r _
+        exit 1
+    fi
+    cp .env.example .env
+    echo "  ℹ️  已經幫你從 .env.example 建立好 .env 了，接下來還要手動填帳號密碼"
     echo ""
-    echo "  請照這兩步做，然後再雙擊一次這個檔案："
-    echo ""
-    echo "    1. 把這個資料夾裡的 .env.example 複製一份，改名成 .env"
-    echo "    2. 用文字編輯器打開 .env，填入你登入後台的帳號密碼"
-    echo ""
-    echo "  （.env.example 檔案裡有詳細說明，包含要填哪幾組。）"
-    echo ""
-    echo "  按 Enter 關閉這個視窗。"
-    read -r _
-    exit 1
 fi
 
 if ! grep -qE '^[A-Z0-9_]+_(USER|PASSWORD)=.+' .env 2>/dev/null; then
     echo "  ⚠️  .env 檔案裡的帳號密碼還是空的"
     echo ""
-    echo "  請打開 .env，把你被授權的那幾組欄位填上值再試一次。"
-    echo "  （欄位很多是正常的，只要填你實際會用到的那幾組，其他留空。）"
+    echo "  請用文字編輯器打開這個資料夾裡的 .env，把你被授權的那幾組欄位填上值"
+    echo "  再試一次。"
+    echo "  （欄位很多是正常的，只要填你實際會用到的那幾組，其他留空；"
+    echo "  .env.example 檔案裡有詳細說明，包含要填哪幾組。）"
     echo ""
     echo "  按 Enter 關閉這個視窗。"
     read -r _
