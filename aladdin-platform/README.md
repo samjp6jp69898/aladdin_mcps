@@ -128,6 +128,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_ip_region_delete_ip_region` | `RiskPlatformIpRegion.DeleteIpRegion` | **硬刪除**單一規則，無法復原。id 不存在/屬於別平台回業務錯誤，不會誤刪 |
 | `aladdin_platform_risk_platform_ip_region_batch_delete_ip_region` | `RiskPlatformIpRegion.BatchDeleteIpRegion` | **硬刪除**多筆規則，無法復原。**部分成功語意**：回傳 deleted 只含真的存在且屬於當前平台的 id，沒出現的 id 沒有被誤刪 |
 | `aladdin_platform_statistic_platform_get_daily_payment_high_net_worth_statistics` | `StatisticPlatform.GetDailyPaymentHighNetWorthStatistics` | 查詢指定單一天符合高淨值門檻的存提統計摘要；startedAtTimestamp 為精確等值比對（該表日期切點，非區間）；金額欄位為 DB 原始 stored 單位，未經 rateBase 換算；2026-08-26 dev 呼叫成功（基本路徑，未逐一覆蓋金額邊界情境） |
+| `aladdin_platform_statistic_platform_get_daily_payment_high_net_worth_users` | `StatisticPlatform.GetDailyPaymentHighNetWorthUsers` | 查詢符合同一組高淨值門檻的會員 userId 清單，與上一支共用完全相同的篩選條件；**無 @Permission 節點**；2026-08-26 dev 呼叫成功（基本路徑） |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
