@@ -133,6 +133,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_statistic_platform_get_daily_user_game_vendor_tag_bet_user_summary` | `StatisticPlatform.GetDailyUserGameVendorTagBetUserSummary` | 單一會員日投注統計（依廠商+分類+幣別分組）；startTimestamp/endTimestamp **皆為必填**（endTimestamp 雖然 method 內部程式碼註解稱選填，但 rajah Required 驗證擋在前面，2026-08-26 dev 實測證實 endTimestamp=0 會報錯）；totalProfit = bet − win（與平台總計版本方向相反）；**無 @Permission 節點** |
 | `aladdin_platform_statistic_platform_get_today_platform_statistic` | `StatisticPlatform.GetTodayPlatformStatistic` | 今日每小時平台統計（Dashboard 走勢圖），固定回傳 24 筆補零資料；type="platformProfitRate" 會回全 0 假資料；2026-08-26 dev 呼叫成功（基本路徑，未逐一覆蓋每個 type 值） |
 | `aladdin_platform_statistic_platform_get_yesterday_platform_statistic` | `StatisticPlatform.GetYesterdayPlatformStatistic` | 昨日每小時平台統計，邏輯同上一支；回應**沒有** lastUpdatedAtTimestamp 欄位（rajah 定義本來就沒有）；2026-08-26 dev 呼叫成功（基本路徑） |
+| `aladdin_platform_statistic_platform_list_daily_vip_statistics` | `StatisticPlatform.ListDailyVipStatistics` | 日期數據分析 - VIP 等級視圖（每天 × 每個 VIP 等級一列）；**無分頁、後端無日期區間上限**，建議查詢範圍控制在週/月級別；2026-08-26 dev 呼叫成功（基本路徑，回傳真實資料） |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
