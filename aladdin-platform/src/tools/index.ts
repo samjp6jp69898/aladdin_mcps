@@ -9,6 +9,7 @@ import { registerLoginTool } from './login.ts';
 import { registerGetDailyPaymentHighNetWorthStatisticsTool } from './get_daily_payment_high_net_worth_statistics.ts';
 import { registerGetDailyPaymentHighNetWorthUsersTool } from './get_daily_payment_high_net_worth_users.ts';
 import { registerGetDailyUserGameVendorTagBetSummaryTool } from './get_daily_user_game_vendor_tag_bet_summary.ts';
+import { registerGetDailyUserGameVendorTagBetUserSummaryTool } from './get_daily_user_game_vendor_tag_bet_user_summary.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
@@ -257,4 +258,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetDailyPaymentHighNetWorthStatisticsTool(server);
     registerGetDailyPaymentHighNetWorthUsersTool(server);
     registerGetDailyUserGameVendorTagBetSummaryTool(server);
+    registerGetDailyUserGameVendorTagBetUserSummaryTool(server);
 }
