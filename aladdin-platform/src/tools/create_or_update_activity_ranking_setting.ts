@@ -34,6 +34,11 @@
  *   的 id 集合差異反推新建 id（同 create_or_update_activity_tab.ts 的既有做法）。
  * - **這組 service 沒有 Delete method**：測試資料只能用 ChangeActivityRankingSettingStatus 設為
  *   disabled，無法真正刪除；2026-08-26 dev 實測留下的 id=1021 測試列已設回 disabled。
+ * - **RankingPlatform 沒有帶業務鍵（id）的直接查詢 method**（唯一同名的 GetActivityRankingSetting
+ *   定義在 @NoPublic 的 RankingInternal，不對外、且回傳精簡版 Essential 模型），`findById()` 依
+ *   method-category-checklist.md 第 5 節規則改為逐頁掃描到 totalPage（pageSize 用 PageSizeEnum
+ *   上限 200，上限 20 頁／整體 30 秒逾時，觸頂回結構化失敗訊息），不是原先固定查第一頁 200 筆
+ *   （2026-08-26 review 發現並修正——目前資料量 14 筆不會觸發，但這是結構性正確性要求，不是效能優化）。
  * - i64 欄位（各 timestamp、minimumAmount[].value）實測回傳十進位字串，本工具用 const.ts 的
  *   toPlainNumber/toPlainCurrencyLinks 轉成一般數字。
  */
@@ -48,16 +53,44 @@ import {
     RANKING_TYPE_MAP, RANKING_TYPE_KEYS,
     RANKING_TARGET_MAP, RANKING_TARGET_KEYS,
     ACTIVITY_RANKING_PERIOD_RESET_MAP, ACTIVITY_RANKING_PERIOD_RESET_KEYS,
-    toPlainNumber, toPlainCurrencyLinks,
+    toPlainNumber, toPlainCurrencyLinks, PAGE_SIZE_MAP,
 } from '../const.ts';
 
 const localizationSchema = z.array(z.object({ code: z.string(), value: z.string() }));
 const currencyLinkSchema = z.array(z.object({ code: z.string(), value: z.number() }));
 
+/**
+ * RankingPlatform 沒有帶業務鍵（id）的直接查詢 method（唯一同名的 GetActivityRankingSetting
+ * 定義在 @NoPublic 的 RankingInternal，不對外，且回傳精簡版 ActivityRankingSettingEssential，
+ * 不能拿來當外部查找介面）。依 method-category-checklist.md 第 5 節規則，只能靠分頁掃描比對
+ * 業務鍵定位，逐頁掃到底、設上限與逾時保護（比照第 2 節 B 級：20 頁 × 200 筆上限、整體 30 秒逾時）。
+ * pageSize 用 PageSizeEnum 的上限 200（見 const.ts PAGE_SIZE_MAP.size200）。
+ */
 async function findById(id: number) {
-    const r = await withAutoRelogin(() => remote.rankingBackOffice.rankingPlatform.ListActivityRankingSetting(1, 200));
-    const row = r.data?.rows?.find((existing) => existing.id === id);
-    return { failed: r.failed, errorCode: r.errorCode, message: r.message, row };
+    const SCAN_PAGE_CAP = 20;
+    const SCAN_TIMEOUT_MS = 30_000;
+    const scanStartedAt = Date.now();
+
+    for (let page = 1; page <= SCAN_PAGE_CAP; page++) {
+        if (Date.now() - scanStartedAt > SCAN_TIMEOUT_MS) {
+            return { failed: true, errorCode: -1, message: `掃描超過 ${ SCAN_TIMEOUT_MS }ms 逾時，已掃 ${ page - 1 } 頁仍未找到 id=${ id }`, row: undefined };
+        }
+
+        const r = await withAutoRelogin(() => remote.rankingBackOffice.rankingPlatform.ListActivityRankingSetting(page, PAGE_SIZE_MAP.size200));
+        if (r.failed) return { failed: true, errorCode: r.errorCode, message: r.message, row: undefined };
+
+        const row = r.data?.rows?.find((existing) => existing.id === id);
+        if (row) return { failed: false, errorCode: 0, message: '', row };
+
+        const totalPage = r.data?.totalPage ?? 0;
+        const rows = r.data?.rows ?? [];
+        // totalPage 只在 page=1 保證有效（同 domain 其他 tool 已知的分頁陷阱），page>1 之後改用
+        // rows.length < pageSize 判斷是否已到最後一頁。
+        const isLastPage = page === 1 ? page >= totalPage : rows.length < PAGE_SIZE_MAP.size200;
+        if (isLastPage) return { failed: false, errorCode: 0, message: '', row: undefined };
+    }
+
+    return { failed: true, errorCode: -1, message: `已掃描 ${ SCAN_PAGE_CAP } 頁（觸頂）仍未找到 id=${ id }，可能資料量超出掃描上限`, row: undefined };
 }
 
 export function registerCreateOrUpdateActivityRankingSettingTool(server: McpServer): void {
