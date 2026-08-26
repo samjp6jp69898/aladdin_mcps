@@ -304,6 +304,22 @@ export function numberToMapKey<T extends Record<string, number>>(map: T, value: 
     return Object.entries(map).find(([ , v ]) => v === value)?.[ 0 ] ?? value;
 }
 
+// LoginDeviceEnum（common.rajah:2323-2330）；all=99 是搜尋用「不篩選」語意，不收錄成可選值。
+export const LOGIN_DEVICE_MAP = { unknown: 0, ios: 1, android: 2, pc: 3, mac: 4 } as const;
+
+/**
+ * 數字 → 對照表 key 的字串；查不到已知 key 時原樣回傳數字，不讓未知值消失。
+ * 2026-08-26 review 發現這支函式在 get_registration_ip_quota_config.ts/get_customer_tickets.ts/
+ * list_customer_category_details.ts/get_otp_sms_settings.ts/get_customer_config_restrict.ts/
+ * get_message_board_setting.ts 各自重複宣告過一份（逐字相同），抽到這裡供新檔案共用，避免繼續增加
+ * 重複份數；既有檔案各自的本地定義維持原樣未動（surgical scope，非本次任務範圍）。
+ */
+export function describeEnum<T extends Record<string, number>>(map: T, value: number | null | undefined): string | number {
+    if (value === null || value === undefined) return value as never;
+    const hit = Object.entries(map).find(([ , v ]) => v === value);
+    return hit ? hit[ 0 ] : value;
+}
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
