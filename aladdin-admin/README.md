@@ -56,6 +56,16 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_time_based_otp_list_route_settings` | `TimeBasedOtp.ListRouteSettings` | 列出 admin gate 自己（不涉及任何平台）目前所有可設定 TOTP 二次驗證的路由與設定；rajah 目前完全未掛 `@Permission`（歷史上曾掛 `AdminManagement.Setting.Totp`，2026-07-14 commit 33b6e2dd 移除），任何登入 admin 後台的帳號皆可呼叫 |
 | `aladdin_admin_time_based_otp_update_route_setting` | `TimeBasedOtp.UpdateRouteSetting` | 調整某路由的 TOTP 驗證有效分鐘數（0=每次都需驗證），只改 validMinutes 不影響是否啟用；寫入後讀回驗證 |
 | `aladdin_admin_time_based_otp_update_route_setting_status` | `TimeBasedOtp.UpdateRouteSettingStatus` | 啟用/停用某路由的 TOTP 驗證需求，只改 status 不影響 validMinutes；寫入後讀回驗證 |
+| `aladdin_admin_deposit_admin_get_adapter_keys` | `DepositAdmin.GetAdapterKeys` | 無參數，即時列出系統已實作的充值 adapter 代碼（編譯期寫死在 adapters Map 裡，非 DB 表，2026-08-26 dev 實測 50 個）；不含任何金鑰/密碼 |
+| `aladdin_admin_deposit_admin_list_adapters` | `DepositAdmin.ListAdapters` | 分頁列出超管已設定的充值 adapter 實例（`deposit_adapters` 全表，無篩選）；**已知陷阱**：後端查詢沒有 ORDER BY，跨頁排序不保證穩定 |
+| `aladdin_admin_deposit_admin_get_adapter_for_edit` | `DepositAdmin.GetAdapterForEdit` | 依 id 讀取單一充值 adapter 完整資料；id 不存在回 errorCode=606（`paymentAdapterInstanceNotExist`） |
+| `aladdin_admin_deposit_admin_create_adapter` | `DepositAdmin.CreateAdapter` | 新增充值 adapter 實例；**已知陷阱**：`name` 欄位 DB 限制 VARCHAR(30) 但 rajah 未標 MaxLength，超長回通用 errorCode=12；`specialRequestCurrency` 雖標 `@NoEdit` 但後端真的會讀，不帶 requestCurrencyCode 時回 errorCode=682；建立後不會立刻影響任何真實金流（預設不綁定任何 platform）；沒有刪除方法，只能用 `enable_adapter` 停用 |
+| `aladdin_admin_deposit_admin_update_adapter` | `DepositAdmin.UpdateAdapter` | 更新既有充值 adapter；本工具先讀現值只覆蓋要改欄位；`adapterKey`/`specialRequestCurrency`/`requestCurrencyCode` 建立後無法再改（後端 `excludeFieldsFromUpdate`）；id 不存在時本工具在內部的讀現值步驟就會先短路失敗，回 errorCode=606（底層 `UpdateAdapter` RPC 單獨被呼叫時是不同的 errorCode=11，但走本工具不會遇到） |
+| `aladdin_admin_deposit_admin_enable_adapter` | `DepositAdmin.EnableAdapter` | 啟用/停用充值 adapter；id 不存在回 errorCode=14（objectNotFound）；status 非法值回 errorCode=9；`GetAdapterForEdit` 沒有 status 欄位，改用 `ListAdapters` 分頁讀回驗證（用 `rows.length < pageSize` 判斷翻頁終點，不依賴後端 `totalPage` 在 page>1 時不可靠的問題） |
+| `aladdin_admin_deposit_admin_list_platform_deposit_adapters` | `DepositAdmin.ListPlatformDepositAdapters` | 分頁列出某平台底下全部已啟用（母表 status=enabled）adapter 各自的綁定狀態；**已知陷阱**：`platformId` 只在 LEFT JOIN、不在 WHERE，帶不存在的 platformId 不會報錯，會回全部母表 adapter、status 落回未綁定預設值 |
+| `aladdin_admin_deposit_admin_update_platform_deposit_adapter_status` | `DepositAdmin.UpdatePlatformDepositAdapterStatus` | 更新某 adapter 在某平台底下的啟停狀態；adapterId 不存在回 errorCode=9；**已知陷阱**：platformId 完全沒有存在性驗證/外鍵，帶不存在但落在 0–65535 範圍內的 platformId 會靜默成功、插入孤兒綁定列 |
+| `aladdin_admin_deposit_admin_get_deposit_setting_for_edit` | `DepositAdmin.GetDepositSettingForEdit` | 無參數，取得全域充值設定（callbackBaseUrl/paymentAssetUrl 兩個 URL），不分平台 |
+| `aladdin_admin_deposit_admin_get_platform_deposit_setting_for_edit` | `DepositAdmin.GetPlatformDepositSettingForEdit` | 取得指定平台的充值設定；**已知陷阱（假唯讀）**：查無資料時後端會直接 INSERT 一筆帶預設值的新記錄再回傳，不是純讀取；因此本工具比照寫入類 tool 補上 H36 `assertProdConfirmed` 閘門，即使名義上是 Get |
 
 ## src/ 結構
 

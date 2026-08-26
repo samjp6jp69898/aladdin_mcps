@@ -53,6 +53,16 @@ import { registerSetPlatformTotpModeTool } from './set_platform_totp_mode.ts';
 import { registerListTotpRouteSettingsTool } from './list_totp_route_settings.ts';
 import { registerUpdateTotpRouteSettingTool } from './update_totp_route_setting.ts';
 import { registerUpdateTotpRouteSettingStatusTool } from './update_totp_route_setting_status.ts';
+import { registerGetDepositAdapterKeysTool } from './get_deposit_adapter_keys.ts';
+import { registerListDepositAdaptersTool } from './list_deposit_adapters.ts';
+import { registerGetDepositAdapterForEditTool } from './get_deposit_adapter_for_edit.ts';
+import { registerCreateDepositAdapterTool } from './create_deposit_adapter.ts';
+import { registerUpdateDepositAdapterTool } from './update_deposit_adapter.ts';
+import { registerUpdateDepositAdapterStatusTool } from './update_deposit_adapter_status.ts';
+import { registerListPlatformDepositAdaptersTool } from './list_platform_deposit_adapters.ts';
+import { registerUpdatePlatformDepositAdapterStatusTool } from './update_platform_deposit_adapter_status.ts';
+import { registerGetDepositSettingTool } from './get_deposit_setting.ts';
+import { registerGetPlatformDepositSettingTool } from './get_platform_deposit_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -113,4 +123,14 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerListTotpRouteSettingsTool(server);
     registerUpdateTotpRouteSettingTool(server);
     registerUpdateTotpRouteSettingStatusTool(server);
+    registerGetDepositAdapterKeysTool(server);
+    registerListDepositAdaptersTool(server);
+    registerGetDepositAdapterForEditTool(server);
+    registerCreateDepositAdapterTool(server);
+    registerUpdateDepositAdapterTool(server);
+    registerUpdateDepositAdapterStatusTool(server);
+    registerListPlatformDepositAdaptersTool(server);
+    registerUpdatePlatformDepositAdapterStatusTool(server);
+    registerGetDepositSettingTool(server);
+    registerGetPlatformDepositSettingTool(server);
 }
