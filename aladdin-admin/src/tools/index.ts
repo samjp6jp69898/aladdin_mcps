@@ -58,6 +58,7 @@ import { registerListDepositAdaptersTool } from './list_deposit_adapters.ts';
 import { registerGetDepositAdapterForEditTool } from './get_deposit_adapter_for_edit.ts';
 import { registerCreateDepositAdapterTool } from './create_deposit_adapter.ts';
 import { registerUpdateDepositAdapterTool } from './update_deposit_adapter.ts';
+import { registerUpdateDepositAdapterStatusTool } from './update_deposit_adapter_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -123,4 +124,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerGetDepositAdapterForEditTool(server);
     registerCreateDepositAdapterTool(server);
     registerUpdateDepositAdapterTool(server);
+    registerUpdateDepositAdapterStatusTool(server);
 }
