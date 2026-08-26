@@ -248,6 +248,62 @@ export const GAME_DISPLAY_TAG_MAP: Record<(typeof GAME_DISPLAY_TAG_KEYS)[number]
     slot: 1, board: 2, fish: 3, live: 4, sport: 5, eSport: 6, lottery: 7,
 };
 
+// MessageBoardTypeEnum（message_board_back_office.rajah:38-49），大舞台動態文章型態；all=3 是
+// GetMessageBoardPosts 查詢用的「不篩選」值，非文章本身合法型態。GetMessageBoardPosts search.type
+// 與 MessageBoardPost.type 回傳共用；ReviewPost/BatchReviewPosts 等狀態轉換類 tool 共用下方 STATUS_MAP。
+export const MESSAGE_BOARD_TYPE_MAP = { text: 0, image: 1, video: 2, all: 3 } as const;
+
+// MessageBoardStatusEnum（message_board_back_office.rajah:67-85），大舞台動態審核狀態；all=8 是
+// 列表查詢專用的「不篩選」值。GetMessageBoardPosts/ReviewPost/BatchReviewPosts/DelistPost/RelistPost/
+// CancelPost 等共用。
+export const MESSAGE_BOARD_STATUS_MAP = {
+    pending: 0, approved: 1, rejected: 2, delisted: 3,
+    removePending: 4, removeApproved: 5, removeRejected: 6, removeDelisted: 7, all: 8,
+} as const;
+
+// MessageBoardCommentStatusEnum（message_board_back_office.rajah:88-101）
+export const MESSAGE_BOARD_COMMENT_STATUS_MAP = {
+    pending: 0, approved: 1, removedPending: 2, removedApproved: 3, all: 4, rejected: 5,
+} as const;
+
+// MessageBoardReceiveGiftEnum（message_board_back_office.rajah:60-65）；0（未設定）在後端語意是
+// 「不篩選」（GetMessageBoardPosts 用 `if (options.receiveGiftStatus)` 做 truthy 判斷），故不收錄 all。
+export const MESSAGE_BOARD_RECEIVE_GIFT_MAP = { enabled: 1, disabled: 2 } as const;
+
+// MessageBoardPinFilterEnum（message_board_back_office.rajah:374-381）
+export const MESSAGE_BOARD_PIN_FILTER_MAP = { all: 0, pinned: 1, notPinned: 2 } as const;
+
+// MessageBoardHotFilterEnum（message_board_back_office.rajah:384-391）
+export const MESSAGE_BOARD_HOT_FILTER_MAP = { all: 0, hot: 1, notHot: 2 } as const;
+
+// OfficialPostStatusEnum（message_board_back_office.rajah:52-57）
+export const OFFICIAL_POST_STATUS_MAP = { show: 1, hide: 2 } as const;
+
+// UserTypeEnum（message_board_common.rajah:1-8），大舞台評論/動態的 userType/toUserType 欄位共用。
+export const MESSAGE_BOARD_USER_TYPE_MAP = { unknown: 0, player: 1, platform: 2 } as const;
+
+// MessageBoardGiftRecordStatusEnum（message_board_back_office.rajah:923-940），送禮紀錄回傳的
+// status 欄位共用；無 all 值（回傳值不需要「不篩選」語意）。
+export const MESSAGE_BOARD_GIFT_RECORD_STATUS_MAP = {
+    unknown: 0, addProducts: 1, unexpectedError: 2, deductProductsFailed: 3, deductProductsRetryFailed: 4,
+    addToReceiverFailed: 5, addToReceiverRetryFailed: 6, updateRecordFailed: 7, updateRecordRetryFailed: 8,
+    addToReceiver: 9, pendingReview: 10, approvedReviewPendingRelease: 11, reviewRejected: 12,
+    reviewRejectRefundFailed: 13, reviewRejectRefundRetryFailed: 14, reviewRejectRefunded: 15,
+} as const;
+
+// MessageBoardGiftRecordStatusClientEnum（message_board_back_office.rajah:886-920）——GetPostGiftRecords
+// 查詢用的版本，數值與上面 STATUS_MAP 完全相同，額外多一個 all=999（「不篩選」語意，@Rules "Required"
+// 故本工具省略時固定送 all）。
+export const MESSAGE_BOARD_GIFT_RECORD_STATUS_CLIENT_MAP = {
+    ...MESSAGE_BOARD_GIFT_RECORD_STATUS_MAP,
+    all: 999,
+} as const;
+
+/** 通用「數字值 → map key 字串」反查，查不到時原樣回傳數字，不讓 undefined 流入回應文案。 */
+export function numberToMapKey<T extends Record<string, number>>(map: T, value: number): string | number {
+    return Object.entries(map).find(([ , v ]) => v === value)?.[ 0 ] ?? value;
+}
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
