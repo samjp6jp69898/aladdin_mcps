@@ -133,6 +133,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_agent_platform_get_report_details` | `AgentPlatform.GetReportDetails` | 分頁查詢某代理的直屬/團隊成員個別統計列，agentId/agentName 可精確鎖定目標代理（須為已註冊代理帳號，非任意會員 id），relationType 篩直屬/團隊；回傳含 summary 彙總；`lastLoginIp` 預設遮罩，`revealLastLoginIp=true` 才回傳完整值；⚠️ 省略 statisticsDateStart/End 同樣會回 errorCode=2778 agentReportCrossMonthNotAllowed |
 | `aladdin_platform_agent_platform_get_report_statistics` | `AgentPlatform.GetReportStatistics` | 取得單一代理在指定區間的直屬/團隊兩套口徑統計數據，agentId/startTimestamp/endTimestamp 皆必填；無 PII 欄位 |
 | `aladdin_platform_agent_platform_get_agent_game_reports` | `AgentPlatform.GetAgentGameReports` | 分頁查詢某代理團隊會員的遊戲報表（每列一個遊戲品牌），agentId 必填，可用 displayTag/brandId 篩選；⚠️ displayTag 省略在後端會被誤判成 0 而非全部，本 tool 已用 default(-1) 防呆；statisticsDateStart/End 省略只抓最近 7 天；無 PII 欄位 |
+| `aladdin_platform_agent_platform_get_agent_bet_records` | `AgentPlatform.GetAgentBetRecords` | 分頁查詢某代理團隊會員的投注紀錄，agentId 必填，可用 accountName/userId 精確鎖定會員；⚠️ totalBetAmount 等彙總欄位是當頁合計非全條件彙總；userAccountName 非真實姓名，無 PII 遮罩需求 |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
