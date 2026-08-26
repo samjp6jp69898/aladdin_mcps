@@ -15,6 +15,7 @@ import { registerListAgentGameReportsTool } from './list_agent_game_reports.ts';
 import { registerListAgentBetRecordsTool } from './list_agent_bet_records.ts';
 import { registerListAgentMemberGameReportsTool } from './list_agent_member_game_reports.ts';
 import { registerListAgentLoginHistoriesTool } from './list_agent_login_histories.ts';
+import { registerListAgentReferralDomainsTool } from './list_agent_referral_domains.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
@@ -269,4 +270,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListAgentBetRecordsTool(server);
     registerListAgentMemberGameReportsTool(server);
     registerListAgentLoginHistoriesTool(server);
+    registerListAgentReferralDomainsTool(server);
 }
