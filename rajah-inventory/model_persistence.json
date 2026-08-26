@@ -1,0 +1,54 @@
+{
+  "rajah_file": "rajah/services/model_persistence.rajah",
+  "generated_at": "2026-08-25T00:59:58.624Z",
+  "services": [
+    "ModelPersistence"
+  ],
+  "tasks": [
+    {
+      "id": "model_persistence__ModelPersistence__GetReflection",
+      "service": "ModelPersistence",
+      "method": "GetReflection",
+      "rajah_ref": "rajah/services/model_persistence.rajah:24",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "model_persistence__ModelPersistence__Serialize",
+      "service": "ModelPersistence",
+      "method": "Serialize",
+      "rajah_ref": "rajah/services/model_persistence.rajah:25",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "model_persistence__ModelPersistence__Deserialize",
+      "service": "ModelPersistence",
+      "method": "Deserialize",
+      "rajah_ref": "rajah/services/model_persistence.rajah:26",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

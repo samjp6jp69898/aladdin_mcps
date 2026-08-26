@@ -1,0 +1,24 @@
+{
+  "rajah_file": "rajah/services/sensitive_word.rajah",
+  "generated_at": "2026-08-25T00:59:58.630Z",
+  "services": [
+    "SensitiveWord"
+  ],
+  "tasks": [
+    {
+      "id": "sensitive_word__SensitiveWord__ProcessSensitiveWord",
+      "service": "SensitiveWord",
+      "method": "ProcessSensitiveWord",
+      "rajah_ref": "rajah/services/sensitive_word.rajah:100",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

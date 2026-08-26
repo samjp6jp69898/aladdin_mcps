@@ -1,0 +1,54 @@
+{
+  "rajah_file": "rajah/services/location.rajah",
+  "generated_at": "2026-08-25T00:59:58.624Z",
+  "services": [
+    "Location"
+  ],
+  "tasks": [
+    {
+      "id": "location__Location__QueryIpLocation",
+      "service": "Location",
+      "method": "QueryIpLocation",
+      "rajah_ref": "rajah/services/location.rajah:15",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "location__Location__QueryIpLocations",
+      "service": "Location",
+      "method": "QueryIpLocations",
+      "rajah_ref": "rajah/services/location.rajah:17",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "location__Location__ListChinaRegionNames",
+      "service": "Location",
+      "method": "ListChinaRegionNames",
+      "rajah_ref": "rajah/services/location.rajah:20",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "rajah_file": "rajah/services/batch_operation.rajah",
+  "generated_at": "2026-08-25T00:59:58.618Z",
+  "services": [
+    "BatchImportLog"
+  ],
+  "tasks": [
+    {
+      "id": "batch_operation__BatchImportLog__ListLogs",
+      "service": "BatchImportLog",
+      "method": "ListLogs",
+      "rajah_ref": "rajah/services/batch_operation.rajah:33",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "batch_operation__BatchImportLog__CreateLog",
+      "service": "BatchImportLog",
+      "method": "CreateLog",
+      "rajah_ref": "rajah/services/batch_operation.rajah:34",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

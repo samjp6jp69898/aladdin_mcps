@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/wallet.rajah",
+  "generated_at": "2026-08-25T00:59:58.634Z",
+  "services": [
+    "Wallet"
+  ],
+  "tasks": [
+    {
+      "id": "wallet__Wallet__GetWallets",
+      "service": "Wallet",
+      "method": "GetWallets",
+      "rajah_ref": "rajah/services/wallet.rajah:56",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "wallet__Wallet__GetBalance",
+      "service": "Wallet",
+      "method": "GetBalance",
+      "rajah_ref": "rajah/services/wallet.rajah:57",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "wallet__Wallet__GetAllBalance",
+      "service": "Wallet",
+      "method": "GetAllBalance",
+      "rajah_ref": "rajah/services/wallet.rajah:58",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "wallet__Wallet__GetTransactionsBySources",
+      "service": "Wallet",
+      "method": "GetTransactionsBySources",
+      "rajah_ref": "rajah/services/wallet.rajah:59",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "wallet__Wallet__GetTransactionsByCategories",
+      "service": "Wallet",
+      "method": "GetTransactionsByCategories",
+      "rajah_ref": "rajah/services/wallet.rajah:60",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

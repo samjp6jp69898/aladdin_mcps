@@ -1,0 +1,79 @@
+{
+  "claims": [
+    {
+      "domain": "advertisement_back_office",
+      "session_label": "rajah-worker-genie",
+      "claimed_at": "2026-08-25T01:43:50Z"
+    },
+    {
+      "domain": "game_back_office",
+      "session_label": "rajah-worker-falcon",
+      "claimed_at": "2026-08-25T01:49:28Z"
+    },
+    {
+      "domain": "customer_back_office",
+      "session_label": "rajah-worker-oasis",
+      "claimed_at": "2026-08-25T03:49:21Z"
+    },
+    {
+      "domain": "vip_back_office",
+      "session_label": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T03:49:25Z"
+    },
+    {
+      "domain": "inventory_back_office",
+      "session_label": "rajah-worker-scout",
+      "claimed_at": "2026-08-25T05:43:04Z"
+    },
+    {
+      "domain": "room_back_office",
+      "session_label": "rajah-worker-sultan",
+      "claimed_at": "2026-08-25T05:43:19Z"
+    },
+    {
+      "domain": "in_house_game_back_office",
+      "session_label": "rajah-worker-magic",
+      "claimed_at": "2026-08-25T05:43:23Z"
+    },
+    {
+      "domain": "information_back_office",
+      "session_label": "rajah-worker-jinn",
+      "claimed_at": "2026-08-25T07:46:12Z"
+    },
+    {
+      "domain": "activity_back_office",
+      "session_label": "rajah-worker-iago",
+      "claimed_at": "2026-08-25T07:46:26Z"
+    },
+    {
+      "domain": "message_board_back_office",
+      "session_label": "rajah-worker-abu",
+      "claimed_at": "2026-08-26T00:54:46Z"
+    },
+    {
+      "domain": "statistic",
+      "session_label": "rajah-worker-sandstorm",
+      "claimed_at": "2026-08-26T00:54:57Z"
+    },
+    {
+      "domain": "payment_back_office",
+      "session_label": "rajah-worker-jafar",
+      "claimed_at": "2026-08-26T00:56:53Z"
+    },
+    {
+      "domain": "user_back_office",
+      "session_label": "rajah-worker-jasmine",
+      "claimed_at": "2026-08-26T02:03:36Z"
+    },
+    {
+      "domain": "platform",
+      "session_label": "rajah-worker-sinbad",
+      "claimed_at": "2026-08-26T02:03:57Z"
+    },
+    {
+      "domain": "agent_back_office",
+      "session_label": "rajah-worker-nile",
+      "claimed_at": "2026-08-26T02:10:00Z"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "rajah_file": "rajah/services/service_common.rajah",
+  "generated_at": "2026-08-25T00:59:58.630Z",
+  "services": [
+    "AbuCommon"
+  ],
+  "tasks": [
+    {
+      "id": "service_common__AbuCommon__GetUploadRichTextImageToken",
+      "service": "AbuCommon",
+      "method": "GetUploadRichTextImageToken",
+      "rajah_ref": "rajah/services/service_common.rajah:2029",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "rajah_file": "rajah/services/encryption.rajah",
+  "generated_at": "2026-08-25T00:59:58.620Z",
+  "services": [
+    "Encryption"
+  ],
+  "tasks": [
+    {
+      "id": "encryption__Encryption__Encrypt",
+      "service": "Encryption",
+      "method": "Encrypt",
+      "rajah_ref": "rajah/services/encryption.rajah:3",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "encryption__Encryption__BatchEncrypt",
+      "service": "Encryption",
+      "method": "BatchEncrypt",
+      "rajah_ref": "rajah/services/encryption.rajah:4",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "encryption__Encryption__Decrypt",
+      "service": "Encryption",
+      "method": "Decrypt",
+      "rajah_ref": "rajah/services/encryption.rajah:6",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "encryption__Encryption__BatchDecrypt",
+      "service": "Encryption",
+      "method": "BatchDecrypt",
+      "rajah_ref": "rajah/services/encryption.rajah:7",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

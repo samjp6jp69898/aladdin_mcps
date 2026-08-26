@@ -1,0 +1,1787 @@
+{
+  "generated_at": "2026-08-25T01:26:13.786Z",
+  "schema_version": 1,
+  "note": "每個 files[] 項目對應一個 rajah/services/*.rajah 檔案的完整任務清單（obsidian/mcps/rajah-inventory/<stem>.json）。要重跑：先跑 mcp-rajah-tasks-gen.ts（可用 --files= 限定範圍），再跑本腳本重建這份 index。",
+  "total_files": 101,
+  "total_tasks": 2398,
+  "counts": {
+    "pending": 2361,
+    "in_progress": 0,
+    "review": 0,
+    "done": 35,
+    "failed": 1,
+    "needs_clarification": 1
+  },
+  "files": [
+    {
+      "rajah_file": "rajah/services/activity.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/activity.json",
+      "services": [
+        "Activity"
+      ],
+      "total_tasks": 16,
+      "counts": {
+        "pending": 16,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/activity_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/activity_back_office.json",
+      "services": [
+        "ActivityPlatform",
+        "ActivityWrapPlatform",
+        "ActivityInternal"
+      ],
+      "total_tasks": 46,
+      "counts": {
+        "pending": 46,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/activity_back_office_view.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/activity_back_office_view.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/activity_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/activity_common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/activity_external.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/activity_external.json",
+      "services": [
+        "Fission",
+        "ActivityApi",
+        "FissionApp"
+      ],
+      "total_tasks": 4,
+      "counts": {
+        "pending": 4,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/admin.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/admin.json",
+      "services": [
+        "Admin",
+        "PlatformManagement",
+        "AdminUserCenter"
+      ],
+      "total_tasks": 15,
+      "counts": {
+        "pending": 13,
+        "in_progress": 0,
+        "review": 0,
+        "done": 2,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/advertisement.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/advertisement.json",
+      "services": [
+        "Advertisement"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/advertisement_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/advertisement_back_office.json",
+      "services": [
+        "AdHomePagePopUpPlatform",
+        "AdFloatingWindowPlatform",
+        "AdCarouselPlatform"
+      ],
+      "total_tasks": 21,
+      "counts": {
+        "pending": 21,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/agent.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/agent.json",
+      "services": [
+        "AgentAuth",
+        "AgentHierarchiesManage",
+        "AgentPromotions",
+        "Agent",
+        "AgentPayment"
+      ],
+      "total_tasks": 48,
+      "counts": {
+        "pending": 48,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/agent_app.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/agent_app.json",
+      "services": [
+        "ApplicationsApp",
+        "AgentApp",
+        "AgentPromotionsApp",
+        "AgentPaymentApp",
+        "AgentGeneralApp",
+        "AgentRewardCenterApp"
+      ],
+      "total_tasks": 56,
+      "counts": {
+        "pending": 56,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/agent_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/agent_back_office.json",
+      "services": [
+        "AgentBackOfficeInternal",
+        "AgentPlatform",
+        "ApplicationsPlatform",
+        "AgentListPlatform",
+        "AgentHierarchiesManagePlatform",
+        "AgentPromotionsPlatform",
+        "AgentPaymentsPlatform",
+        "AgentWithdrawPlatform",
+        "AgentDepositPlatform",
+        "AgentSummaryPlatform",
+        "AgentCommissionManagePlatform",
+        "AgentGeneralPlatform",
+        "AgentDomainPlatform",
+        "AgentSupportListPlatform"
+      ],
+      "total_tasks": 260,
+      "counts": {
+        "pending": 260,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/agent_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/agent_common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/app.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/app.json",
+      "services": [
+        "Hub",
+        "ExternalHub"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/app_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/app_back_office.json",
+      "services": [
+        "AppAdmin",
+        "AppPlatform"
+      ],
+      "total_tasks": 18,
+      "counts": {
+        "pending": 18,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/app_packager.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/app_packager.json",
+      "services": [
+        "AppPackager"
+      ],
+      "total_tasks": 1,
+      "counts": {
+        "pending": 1,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/app_user.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/app_user.json",
+      "services": [
+        "AppUser",
+        "Link"
+      ],
+      "total_tasks": 49,
+      "counts": {
+        "pending": 49,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/audit_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/audit_back_office.json",
+      "services": [
+        "AuditPlatform",
+        "AuditAdmin"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/audit_log.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/audit_log.json",
+      "services": [
+        "AuditLog"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/auth.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/auth.json",
+      "services": [
+        "Auth"
+      ],
+      "total_tasks": 8,
+      "counts": {
+        "pending": 8,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/back_office_notification_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/back_office_notification_back_office.json",
+      "services": [
+        "BackOfficeNotificationPerm",
+        "BackOfficeNotificationSetting",
+        "BackOfficeNotification"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/batch_operation.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/batch_operation.json",
+      "services": [
+        "BatchImportLog"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/chat.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/chat.json",
+      "services": [
+        "Chat",
+        "ChatInternal"
+      ],
+      "total_tasks": 13,
+      "counts": {
+        "pending": 13,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/chat_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/chat_back_office.json",
+      "services": [
+        "ChatSpeechSettingPlatform"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/configuration.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/configuration.json",
+      "services": [
+        "Configuration"
+      ],
+      "total_tasks": 1,
+      "counts": {
+        "pending": 1,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/control_center.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/control_center.json",
+      "services": [
+        "ControlCenter"
+      ],
+      "total_tasks": 6,
+      "counts": {
+        "pending": 6,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/core.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/core.json",
+      "services": [
+        "Currency",
+        "CurrencyAdmin",
+        "CurrencyPlatform",
+        "Core",
+        "CoreSetting",
+        "CoreAdmin",
+        "Setting",
+        "CorePlatform",
+        "WhiteListedIpManagement",
+        "AppIpManagement"
+      ],
+      "total_tasks": 50,
+      "counts": {
+        "pending": 48,
+        "in_progress": 0,
+        "review": 0,
+        "done": 2,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/customer_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/customer_back_office.json",
+      "services": [
+        "CustomerAdmin",
+        "CustomerServiceInternal",
+        "CustomerPlatform"
+      ],
+      "total_tasks": 46,
+      "counts": {
+        "pending": 46,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/customer_service.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/customer_service.json",
+      "services": [
+        "PlatformMaintenance",
+        "CustomerService",
+        "CustomerInfo",
+        "CustomerWbgcorp"
+      ],
+      "total_tasks": 18,
+      "counts": {
+        "pending": 18,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/discovery.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/discovery.json",
+      "services": [
+        "Discovery"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/encryption.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/encryption.json",
+      "services": [
+        "Encryption"
+      ],
+      "total_tasks": 4,
+      "counts": {
+        "pending": 4,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/event.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/event.json",
+      "services": [
+        "Event"
+      ],
+      "total_tasks": 1,
+      "counts": {
+        "pending": 1,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/event_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/event_back_office.json",
+      "services": [
+        "EventPlatform",
+        "EventInternal"
+      ],
+      "total_tasks": 7,
+      "counts": {
+        "pending": 7,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/export_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/export_back_office.json",
+      "services": [
+        "ExportPlatform"
+      ],
+      "total_tasks": 7,
+      "counts": {
+        "pending": 7,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/external_stream.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/external_stream.json",
+      "services": [
+        "Longm"
+      ],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/external_stream_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/external_stream_back_office.json",
+      "services": [
+        "ExternalStreamPlatform"
+      ],
+      "total_tasks": 9,
+      "counts": {
+        "pending": 9,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/fund_adjustment_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/fund_adjustment_back_office.json",
+      "services": [
+        "FundAdjustmentPlatform"
+      ],
+      "total_tasks": 23,
+      "counts": {
+        "pending": 23,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/game.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/game.json",
+      "services": [
+        "Game",
+        "GameRecordCenter",
+        "GameCallback"
+      ],
+      "total_tasks": 29,
+      "counts": {
+        "pending": 29,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/game_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/game_back_office.json",
+      "services": [
+        "GameInternal",
+        "GameVendorAdmin",
+        "GameVendorPlatform",
+        "GameVendorAgent",
+        "GameBackOfficeInternal",
+        "GameRecordPlatform",
+        "GameHierarchyPlatform",
+        "PageEngineBackOffice",
+        "GameBadgePlatform",
+        "GameFilterPlatform",
+        "GameRecordCenterPlatform",
+        "GameVendorFeeAdmin",
+        "GameCustomer",
+        "GameTransactionPlatform"
+      ],
+      "total_tasks": 128,
+      "counts": {
+        "pending": 97,
+        "in_progress": 0,
+        "review": 0,
+        "done": 29,
+        "failed": 1,
+        "needs_clarification": 1
+      }
+    },
+    {
+      "rajah_file": "rajah/services/health.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/health.json",
+      "services": [
+        "Health"
+      ],
+      "total_tasks": 6,
+      "counts": {
+        "pending": 6,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/in_house_game.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/in_house_game.json",
+      "services": [
+        "BettingHandler",
+        "InHouseGameApi"
+      ],
+      "total_tasks": 11,
+      "counts": {
+        "pending": 11,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/in_house_game_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/in_house_game_back_office.json",
+      "services": [
+        "InHouseGameBackOffice",
+        "InHouseGameRecords",
+        "InHouseGameInternal",
+        "InHouseGameRobotBackOffice"
+      ],
+      "total_tasks": 55,
+      "counts": {
+        "pending": 55,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/information.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/information.json",
+      "services": [
+        "Information"
+      ],
+      "total_tasks": 9,
+      "counts": {
+        "pending": 9,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/information_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/information_back_office.json",
+      "services": [
+        "CommonInfoPlatform",
+        "UrgentInfoPlatform",
+        "AnnouncementInfoPlatform",
+        "AgentAnnouncementInfoPlatform",
+        "NewsInfoPlatform",
+        "MustReadInfoPlatform",
+        "SystemNotificationInfoPlatform",
+        "InSiteMailInfoPlatform",
+        "RecurringAwardInfoPlatform",
+        "LiveNotificationInfoPlatform",
+        "NotificationInfoPlatform",
+        "MarqueeInfoPlatform",
+        "AvailabilityInfoPlatform",
+        "MarqueeSender",
+        "InformationTemplatePlatform",
+        "InformationTemplateInternal",
+        "TemplateSendRecordPlatform",
+        "NotifBotPlatform",
+        "NotifGroupPlatform",
+        "NotifConditionTemplatePlatform",
+        "NotifMessageTemplatePlatform",
+        "NotifTriggerPlatform",
+        "NotifSendLogPlatform",
+        "NotifAssetBaseUrlPlatform",
+        "NotifInternal"
+      ],
+      "total_tasks": 110,
+      "counts": {
+        "pending": 110,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/inventory.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/inventory.json",
+      "services": [
+        "Inventory"
+      ],
+      "total_tasks": 8,
+      "counts": {
+        "pending": 8,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/inventory_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/inventory_back_office.json",
+      "services": [
+        "InventoryInternal",
+        "InventoryPlatform",
+        "InventoryBackOfficeInternal"
+      ],
+      "total_tasks": 30,
+      "counts": {
+        "pending": 30,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/inventory_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/inventory_common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/live.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/live.json",
+      "services": [
+        "Live"
+      ],
+      "total_tasks": 11,
+      "counts": {
+        "pending": 11,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/live_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/live_back_office.json",
+      "services": [
+        "LivePlatform"
+      ],
+      "total_tasks": 8,
+      "counts": {
+        "pending": 8,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/location.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/location.json",
+      "services": [
+        "Location"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/mall.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/mall.json",
+      "services": [
+        "MallInfo"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/message_board.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/message_board.json",
+      "services": [
+        "MessageBoard",
+        "MessageBoardInternal"
+      ],
+      "total_tasks": 33,
+      "counts": {
+        "pending": 33,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/message_board_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/message_board_back_office.json",
+      "services": [
+        "MessageBoardPlatform",
+        "MessageBoardPlatformInternal"
+      ],
+      "total_tasks": 75,
+      "counts": {
+        "pending": 73,
+        "in_progress": 0,
+        "review": 0,
+        "done": 2,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/message_board_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/message_board_common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/model_persistence.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/model_persistence.json",
+      "services": [
+        "ModelPersistence"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/module.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/module.json",
+      "services": [
+        "Module",
+        "ModuleAdmin",
+        "ModulePlatform"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/otp_code.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/otp_code.json",
+      "services": [
+        "OtpCodeConfigAdmin",
+        "OtpCodeRecordPlatform",
+        "OtpCodeSender",
+        "OtpCodeValidator"
+      ],
+      "total_tasks": 13,
+      "counts": {
+        "pending": 13,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/otp_code_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/otp_code_back_office.json",
+      "services": [
+        "TimeBasedOtpInternal",
+        "TimeBasedOtp",
+        "TimeBasedOtpAdmin",
+        "OtpCodeSettingPlatform"
+      ],
+      "total_tasks": 20,
+      "counts": {
+        "pending": 20,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/payment.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/payment.json",
+      "services": [
+        "Deposit",
+        "Withdraw",
+        "PaymentCallback",
+        "RiskPaymentInternal",
+        "AgentPaymentInternal",
+        "ActivityPaymentInternal"
+      ],
+      "total_tasks": 53,
+      "counts": {
+        "pending": 53,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/payment_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/payment_back_office.json",
+      "services": [
+        "DepositAdmin",
+        "WithdrawAdmin",
+        "DepositPlatform",
+        "WithdrawPlatform",
+        "PaymentRate",
+        "StatisticPaymentInternal",
+        "DepositInternal",
+        "WithdrawInternal",
+        "CustomerInternal"
+      ],
+      "total_tasks": 244,
+      "counts": {
+        "pending": 244,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/platform.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/platform.json",
+      "services": [
+        "Platform",
+        "PlatformAdminUserCenter",
+        "PlatformAdmin",
+        "Dashboard",
+        "DataRanking"
+      ],
+      "total_tasks": 52,
+      "counts": {
+        "pending": 52,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/point.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/point.json",
+      "services": [
+        "Point"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/point_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/point_back_office.json",
+      "services": [
+        "PointPlatform",
+        "PointInternal"
+      ],
+      "total_tasks": 20,
+      "counts": {
+        "pending": 20,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/push_notification.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/push_notification.json",
+      "services": [
+        "NotificationSender"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/push_notification_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/push_notification_back_office.json",
+      "services": [
+        "NotificationAdmin",
+        "NotificationPlatform"
+      ],
+      "total_tasks": 6,
+      "counts": {
+        "pending": 6,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/ranking.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/ranking.json",
+      "services": [
+        "Ranking",
+        "FixedRanking",
+        "FixedRankingInternal"
+      ],
+      "total_tasks": 7,
+      "counts": {
+        "pending": 7,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/ranking_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/ranking_back_office.json",
+      "services": [
+        "RankingPlatform",
+        "RankingInternal",
+        "FixedRankingPlatform"
+      ],
+      "total_tasks": 14,
+      "counts": {
+        "pending": 14,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/rebate.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/rebate.json",
+      "services": [
+        "AppRebate"
+      ],
+      "total_tasks": 7,
+      "counts": {
+        "pending": 7,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/rebate_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/rebate_back_office.json",
+      "services": [
+        "RebatePlatform",
+        "RebateInternal"
+      ],
+      "total_tasks": 18,
+      "counts": {
+        "pending": 18,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/risk.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/risk.json",
+      "services": [
+        "RiskInternal",
+        "RiskAdmin",
+        "RiskPlatform"
+      ],
+      "total_tasks": 13,
+      "counts": {
+        "pending": 13,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/risk_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/risk_back_office.json",
+      "services": [
+        "RiskPlatformIpRegion"
+      ],
+      "total_tasks": 6,
+      "counts": {
+        "pending": 6,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/role.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/role.json",
+      "services": [
+        "Role",
+        "RoleInternal",
+        "AbuPermissionAdmin",
+        "AbuPermissionPlatform"
+      ],
+      "total_tasks": 19,
+      "counts": {
+        "pending": 19,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/room.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/room.json",
+      "services": [
+        "GuestRoom",
+        "Room",
+        "RoomOperate",
+        "ShowOrder",
+        "RoomBet"
+      ],
+      "total_tasks": 16,
+      "counts": {
+        "pending": 16,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/room_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/room_back_office.json",
+      "services": [
+        "RoomPlatform",
+        "RoomInternal",
+        "RoomModeration",
+        "RoomAnchor",
+        "RoomEntrySettingPlatform",
+        "RoomPlaybackBaseUrlPlatform",
+        "RoomFakeViewerSettingPlatform",
+        "RoomBetRecordPlatform"
+      ],
+      "total_tasks": 57,
+      "counts": {
+        "pending": 57,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/room_gift.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/room_gift.json",
+      "services": [
+        "RoomGift"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/room_gift_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/room_gift_back_office.json",
+      "services": [
+        "RoomGiftPlatform"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/roulette.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/roulette.json",
+      "services": [
+        "AppRoulette"
+      ],
+      "total_tasks": 7,
+      "counts": {
+        "pending": 7,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/roulette_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/roulette_back_office.json",
+      "services": [
+        "RoulettePlatform",
+        "RouletteInternal"
+      ],
+      "total_tasks": 12,
+      "counts": {
+        "pending": 12,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/scheduler.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/scheduler.json",
+      "services": [
+        "Scheduler",
+        "SchedulerInternal"
+      ],
+      "total_tasks": 8,
+      "counts": {
+        "pending": 8,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/security_restriction_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/security_restriction_back_office.json",
+      "services": [
+        "SecurityRestrictionPlatform",
+        "SecurityRestrictionInternal"
+      ],
+      "total_tasks": 23,
+      "counts": {
+        "pending": 23,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/sensitive_word.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/sensitive_word.json",
+      "services": [
+        "SensitiveWord"
+      ],
+      "total_tasks": 1,
+      "counts": {
+        "pending": 1,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/sensitive_word_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/sensitive_word_back_office.json",
+      "services": [
+        "SensitiveWordPlatform"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/service_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/service_common.json",
+      "services": [
+        "AbuCommon"
+      ],
+      "total_tasks": 1,
+      "counts": {
+        "pending": 1,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/sport.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/sport.json",
+      "services": [
+        "Sport"
+      ],
+      "total_tasks": 19,
+      "counts": {
+        "pending": 19,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/sport_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/sport_back_office.json",
+      "services": [
+        "SportInternal",
+        "SportExternalLongm"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/statistic.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/statistic.json",
+      "services": [
+        "Statistic",
+        "StatisticPlatform",
+        "StatisticFixedRanking"
+      ],
+      "total_tasks": 120,
+      "counts": {
+        "pending": 120,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/user.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/user.json",
+      "services": [
+        "User"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/user_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/user_back_office.json",
+      "services": [
+        "UserInternal",
+        "AppUserInternal",
+        "AppUserIpQuotaPlatform",
+        "PlatformAppUser",
+        "PlatformAppUserInternal",
+        "UserData",
+        "UserEnterHistoryPlatform",
+        "MemberAccessLogPlatform",
+        "UserCustomerWbgcorp"
+      ],
+      "total_tasks": 175,
+      "counts": {
+        "pending": 175,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/user_level_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/user_level_back_office.json",
+      "services": [
+        "Strategy",
+        "UserLevel",
+        "UserLevelInternal"
+      ],
+      "total_tasks": 19,
+      "counts": {
+        "pending": 19,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/verification_code.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/verification_code.json",
+      "services": [
+        "VerificationCode",
+        "AdminCaptchaConfig",
+        "PlatformCaptchaConfig"
+      ],
+      "total_tasks": 8,
+      "counts": {
+        "pending": 8,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/verification_code_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/verification_code_common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/verification_code_persistent.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/verification_code_persistent.json",
+      "services": [
+        "VerificationCodePersistent"
+      ],
+      "total_tasks": 1,
+      "counts": {
+        "pending": 1,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/vip.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/vip.json",
+      "services": [
+        "VipLevel"
+      ],
+      "total_tasks": 3,
+      "counts": {
+        "pending": 3,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/vip_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/vip_back_office.json",
+      "services": [
+        "VipPlatform",
+        "VipLevelPlatform",
+        "VipInternal"
+      ],
+      "total_tasks": 53,
+      "counts": {
+        "pending": 53,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/wagering.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/wagering.json",
+      "services": [
+        "Wagering"
+      ],
+      "total_tasks": 2,
+      "counts": {
+        "pending": 2,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/wagering_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/wagering_back_office.json",
+      "services": [
+        "WageringInternal",
+        "WageringPlatform",
+        "WageringUserPlatform"
+      ],
+      "total_tasks": 24,
+      "counts": {
+        "pending": 24,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/wallet.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/wallet.json",
+      "services": [
+        "Wallet"
+      ],
+      "total_tasks": 5,
+      "counts": {
+        "pending": 5,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/wallet_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/wallet_back_office.json",
+      "services": [
+        "WalletInternal",
+        "WalletPlatform"
+      ],
+      "total_tasks": 26,
+      "counts": {
+        "pending": 26,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/world_cup.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/world_cup.json",
+      "services": [
+        "WorldCup"
+      ],
+      "total_tasks": 10,
+      "counts": {
+        "pending": 10,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/world_cup_back_office.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/world_cup_back_office.json",
+      "services": [
+        "WorldCupPlatform"
+      ],
+      "total_tasks": 11,
+      "counts": {
+        "pending": 11,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    },
+    {
+      "rajah_file": "rajah/services/world_cup_common.rajah",
+      "json_path": "obsidian/mcps/rajah-inventory/world_cup_common.json",
+      "services": [],
+      "total_tasks": 0,
+      "counts": {
+        "pending": 0,
+        "in_progress": 0,
+        "review": 0,
+        "done": 0,
+        "failed": 0,
+        "needs_clarification": 0
+      }
+    }
+  ]
+}

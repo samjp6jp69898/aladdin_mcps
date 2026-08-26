@@ -1,0 +1,39 @@
+{
+  "rajah_file": "rajah/services/room_gift.rajah",
+  "generated_at": "2026-08-25T00:59:58.629Z",
+  "services": [
+    "RoomGift"
+  ],
+  "tasks": [
+    {
+      "id": "room_gift__RoomGift__ListRoomGifts",
+      "service": "RoomGift",
+      "method": "ListRoomGifts",
+      "rajah_ref": "rajah/services/room_gift.rajah:89",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift__RoomGift__SendGift",
+      "service": "RoomGift",
+      "method": "SendGift",
+      "rajah_ref": "rajah/services/room_gift.rajah:92",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

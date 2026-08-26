@@ -1,0 +1,99 @@
+{
+  "rajah_file": "rajah/services/control_center.rajah",
+  "generated_at": "2026-08-25T00:59:58.619Z",
+  "services": [
+    "ControlCenter"
+  ],
+  "tasks": [
+    {
+      "id": "control_center__ControlCenter__GetServerStatus",
+      "service": "ControlCenter",
+      "method": "GetServerStatus",
+      "rajah_ref": "rajah/services/control_center.rajah:29",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:46:30Z",
+      "updated_at": "2026-08-25T01:46:30Z",
+      "notes": "待人工裁示：ControlCenter 是獨立的 agrabah infra/ops server（server_control_center.json），非 aladdin-admin 現有工具涵蓋的「三方場館/廠商遊戲/平台清單」母表領域——雖然透過 abu/admin 前端、@Permission \"AdminManagement.Setting.*\" 掛在同一權限樹下，概念上屬伺服器監控/維運工具，不是母表管理。本方法（GetServerStatus/Ping/ListDebugRoutes）讀後端已註冊 server 清單狀態或 debug route 設定，本身唯讀低風險，但是否要把「基礎設施監控」這類工具塞進 aladdin-admin、還是另建專屬 ops MCP server，是架構決策，需使用者裁示後才動工。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__Ping",
+      "service": "ControlCenter",
+      "method": "Ping",
+      "rajah_ref": "rajah/services/control_center.rajah:32",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:46:30Z",
+      "updated_at": "2026-08-25T01:46:30Z",
+      "notes": "待人工裁示：ControlCenter 是獨立的 agrabah infra/ops server（server_control_center.json），非 aladdin-admin 現有工具涵蓋的「三方場館/廠商遊戲/平台清單」母表領域——雖然透過 abu/admin 前端、@Permission \"AdminManagement.Setting.*\" 掛在同一權限樹下，概念上屬伺服器監控/維運工具，不是母表管理。本方法（GetServerStatus/Ping/ListDebugRoutes）讀後端已註冊 server 清單狀態或 debug route 設定，本身唯讀低風險，但是否要把「基礎設施監控」這類工具塞進 aladdin-admin、還是另建專屬 ops MCP server，是架構決策，需使用者裁示後才動工。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__RequestGarbageCollection",
+      "service": "ControlCenter",
+      "method": "RequestGarbageCollection",
+      "rajah_ref": "rajah/services/control_center.rajah:35",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:46:30Z",
+      "updated_at": "2026-08-25T01:46:30Z",
+      "notes": "待人工裁示：同上，ControlCenter 屬獨立 infra/ops server，非 aladdin-admin 現有母表領域，是否併入需裁示。且本方法屬會影響正式環境運行中伺服器的寫入/操作類 RPC——RequestGarbageCollection 會對指定 server 端點實際觸發 Bun.gc()（agrabah/src/servers/control_center/services/control_center.ts:135-147），AddDebugRoute/DeleteDebugRoute 會寫 Redis 並對全部 server 廣播 ModifyDebugRoute message、即時變更叢集所有實例的路由行為（control_center.ts:171-194）。讓 agent 能觸發生產叢集的 GC 或即時改動 debug 路由，風險等同「會影響其他人/正式環境運行狀態的寫入操作」，比照 collect_all_vendor_balance 先例，先不做，需使用者裁示。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__ListDebugRoutes",
+      "service": "ControlCenter",
+      "method": "ListDebugRoutes",
+      "rajah_ref": "rajah/services/control_center.rajah:38",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:46:30Z",
+      "updated_at": "2026-08-25T01:46:30Z",
+      "notes": "待人工裁示：ControlCenter 是獨立的 agrabah infra/ops server（server_control_center.json），非 aladdin-admin 現有工具涵蓋的「三方場館/廠商遊戲/平台清單」母表領域——雖然透過 abu/admin 前端、@Permission \"AdminManagement.Setting.*\" 掛在同一權限樹下，概念上屬伺服器監控/維運工具，不是母表管理。本方法（GetServerStatus/Ping/ListDebugRoutes）讀後端已註冊 server 清單狀態或 debug route 設定，本身唯讀低風險，但是否要把「基礎設施監控」這類工具塞進 aladdin-admin、還是另建專屬 ops MCP server，是架構決策，需使用者裁示後才動工。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__AddDebugRoute",
+      "service": "ControlCenter",
+      "method": "AddDebugRoute",
+      "rajah_ref": "rajah/services/control_center.rajah:41",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:46:30Z",
+      "updated_at": "2026-08-25T01:46:30Z",
+      "notes": "待人工裁示：同上，ControlCenter 屬獨立 infra/ops server，非 aladdin-admin 現有母表領域，是否併入需裁示。且本方法屬會影響正式環境運行中伺服器的寫入/操作類 RPC——RequestGarbageCollection 會對指定 server 端點實際觸發 Bun.gc()（agrabah/src/servers/control_center/services/control_center.ts:135-147），AddDebugRoute/DeleteDebugRoute 會寫 Redis 並對全部 server 廣播 ModifyDebugRoute message、即時變更叢集所有實例的路由行為（control_center.ts:171-194）。讓 agent 能觸發生產叢集的 GC 或即時改動 debug 路由，風險等同「會影響其他人/正式環境運行狀態的寫入操作」，比照 collect_all_vendor_balance 先例，先不做，需使用者裁示。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "control_center__ControlCenter__DeleteDebugRoute",
+      "service": "ControlCenter",
+      "method": "DeleteDebugRoute",
+      "rajah_ref": "rajah/services/control_center.rajah:44",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:46:30Z",
+      "updated_at": "2026-08-25T01:46:30Z",
+      "notes": "待人工裁示：同上，ControlCenter 屬獨立 infra/ops server，非 aladdin-admin 現有母表領域，是否併入需裁示。且本方法屬會影響正式環境運行中伺服器的寫入/操作類 RPC——RequestGarbageCollection 會對指定 server 端點實際觸發 Bun.gc()（agrabah/src/servers/control_center/services/control_center.ts:135-147），AddDebugRoute/DeleteDebugRoute 會寫 Redis 並對全部 server 廣播 ModifyDebugRoute message、即時變更叢集所有實例的路由行為（control_center.ts:171-194）。讓 agent 能觸發生產叢集的 GC 或即時改動 debug 路由，風險等同「會影響其他人/正式環境運行狀態的寫入操作」，比照 collect_all_vendor_balance 先例，先不做，需使用者裁示。",
+      "legacy_task_id": null
+    }
+  ]
+}

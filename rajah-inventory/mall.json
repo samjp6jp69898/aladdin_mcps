@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/mall.rajah",
+  "generated_at": "2026-08-25T00:59:58.624Z",
+  "services": [
+    "MallInfo"
+  ],
+  "tasks": [
+    {
+      "id": "mall__MallInfo__GetMallInfo",
+      "service": "MallInfo",
+      "method": "GetMallInfo",
+      "rajah_ref": "rajah/services/mall.rajah:77",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "mall__MallInfo__RefreshUserMallInfo",
+      "service": "MallInfo",
+      "method": "RefreshUserMallInfo",
+      "rajah_ref": "rajah/services/mall.rajah:79",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "mall__MallInfo__GetMallAddressList",
+      "service": "MallInfo",
+      "method": "GetMallAddressList",
+      "rajah_ref": "rajah/services/mall.rajah:81",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "mall__MallInfo__UpdateMallAddressList",
+      "service": "MallInfo",
+      "method": "UpdateMallAddressList",
+      "rajah_ref": "rajah/services/mall.rajah:83",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "mall__MallInfo__ExchangeMallCommodity",
+      "service": "MallInfo",
+      "method": "ExchangeMallCommodity",
+      "rajah_ref": "rajah/services/mall.rajah:85",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

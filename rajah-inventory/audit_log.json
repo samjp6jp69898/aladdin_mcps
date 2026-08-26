@@ -1,0 +1,39 @@
+{
+  "rajah_file": "rajah/services/audit_log.rajah",
+  "generated_at": "2026-08-25T00:59:58.618Z",
+  "services": [
+    "AuditLog"
+  ],
+  "tasks": [
+    {
+      "id": "audit_log__AuditLog__Search",
+      "service": "AuditLog",
+      "method": "Search",
+      "rajah_ref": "rajah/services/audit_log.rajah:14",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "audit_log__AuditLog__Audit",
+      "service": "AuditLog",
+      "method": "Audit",
+      "rajah_ref": "rajah/services/audit_log.rajah:16",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

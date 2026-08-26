@@ -1,0 +1,39 @@
+{
+  "rajah_file": "rajah/services/chat_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.619Z",
+  "services": [
+    "ChatSpeechSettingPlatform"
+  ],
+  "tasks": [
+    {
+      "id": "chat_back_office__ChatSpeechSettingPlatform__GetChatSpeechSetting",
+      "service": "ChatSpeechSettingPlatform",
+      "method": "GetChatSpeechSetting",
+      "rajah_ref": "rajah/services/chat_back_office.rajah:29",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-jinn",
+      "claimed_at": "2026-08-25T01:47:03Z",
+      "updated_at": "2026-08-25T02:02:53Z",
+      "notes": "commit db82f81d7（mcp-rajah/rajah-worker-jinn worktree）；真打 dev（pk-platform.alddev.com，帳號 landon001）驗證過，透過真正的 aladdin-platform MCP stdio server（Client+StdioClientTransport 走 tools/call，非繞過工具層腳本）；獨立 reviewer PASS",
+      "legacy_task_id": null
+    },
+    {
+      "id": "chat_back_office__ChatSpeechSettingPlatform__SaveChatSpeechSetting",
+      "service": "ChatSpeechSettingPlatform",
+      "method": "SaveChatSpeechSetting",
+      "rajah_ref": "rajah/services/chat_back_office.rajah:32",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-jinn",
+      "claimed_at": "2026-08-25T01:50:39Z",
+      "updated_at": "2026-08-25T02:02:53Z",
+      "notes": "commit db82f81d7（mcp-rajah/rajah-worker-jinn worktree）；真打 dev（pk-platform.alddev.com，帳號 landon001）驗證過：baseline讀取→save變更intervalSeconds→round-trip驗證其餘欄位未變→復原→再讀確認無殘留，全PASS；透過真正的 aladdin-platform MCP stdio server；獨立 reviewer PASS",
+      "legacy_task_id": null
+    }
+  ]
+}

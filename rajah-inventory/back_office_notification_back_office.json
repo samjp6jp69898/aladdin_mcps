@@ -1,0 +1,86 @@
+{
+  "rajah_file": "rajah/services/back_office_notification_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.618Z",
+  "services": [
+    "BackOfficeNotificationPerm",
+    "BackOfficeNotificationSetting",
+    "BackOfficeNotification"
+  ],
+  "tasks": [
+    {
+      "id": "back_office_notification_back_office__BackOfficeNotificationSetting__Get",
+      "service": "BackOfficeNotificationSetting",
+      "method": "Get",
+      "rajah_ref": "rajah/services/back_office_notification_back_office.rajah:190",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "back_office_notification_back_office__BackOfficeNotificationSetting__Update",
+      "service": "BackOfficeNotificationSetting",
+      "method": "Update",
+      "rajah_ref": "rajah/services/back_office_notification_back_office.rajah:193",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "back_office_notification_back_office__BackOfficeNotification__GetUnread",
+      "service": "BackOfficeNotification",
+      "method": "GetUnread",
+      "rajah_ref": "rajah/services/back_office_notification_back_office.rajah:367",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "back_office_notification_back_office__BackOfficeNotification__GetHistory",
+      "service": "BackOfficeNotification",
+      "method": "GetHistory",
+      "rajah_ref": "rajah/services/back_office_notification_back_office.rajah:369",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "back_office_notification_back_office__BackOfficeNotification__MarkAsRead",
+      "service": "BackOfficeNotification",
+      "method": "MarkAsRead",
+      "rajah_ref": "rajah/services/back_office_notification_back_office.rajah:371",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

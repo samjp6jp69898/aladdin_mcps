@@ -1,0 +1,40 @@
+{
+  "rajah_file": "rajah/services/sport_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.631Z",
+  "services": [
+    "SportInternal",
+    "SportExternalLongm"
+  ],
+  "tasks": [
+    {
+      "id": "sport_back_office__SportInternal__GetMatchDetailForLive",
+      "service": "SportInternal",
+      "method": "GetMatchDetailForLive",
+      "rajah_ref": "rajah/services/sport_back_office.rajah:37",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "sport_back_office__SportInternal__GetMatchDetailsForLive",
+      "service": "SportInternal",
+      "method": "GetMatchDetailsForLive",
+      "rajah_ref": "rajah/services/sport_back_office.rajah:39",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

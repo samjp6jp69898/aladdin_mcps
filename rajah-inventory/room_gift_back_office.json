@@ -1,0 +1,84 @@
+{
+  "rajah_file": "rajah/services/room_gift_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.629Z",
+  "services": [
+    "RoomGiftPlatform"
+  ],
+  "tasks": [
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__ListRecords",
+      "service": "RoomGiftPlatform",
+      "method": "ListRecords",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:250",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:50:50Z",
+      "updated_at": "2026-08-25T04:01:10Z",
+      "notes": "commit 21840c4e6+eee8cecc4+2d97f7674；review-E 找到 index.ts 漏掛 5 支 tool 的迴歸 bug（含波及上一 domain 的 get_audit_logs）+ id i64 漏轉 + 2 處月份/RateHelper 描述錯誤；review-F 找到金額語意錯誤（exchangeAmount/productPrice 等實為 stored 值非顯示值）+ CurrencyLink[].value 全數漏轉 Long + totalRow 恆 0 誤導 + row 層 CurrencyLink 恆空。全部已修正並重新對 pk-platform.alddev.com dev 驗證通過。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__ListRoomGifts",
+      "service": "RoomGiftPlatform",
+      "method": "ListRoomGifts",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:253",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:50:39Z",
+      "updated_at": "2026-08-25T04:01:10Z",
+      "notes": "commit b824b0853+eee8cecc4+2d97f7674；review-E 找到 index.ts 漏掛 5 支 tool 的迴歸 bug（含波及上一 domain 的 get_audit_logs）+ id i64 漏轉 + 2 處月份/RateHelper 描述錯誤；review-F 找到金額語意錯誤（exchangeAmount/productPrice 等實為 stored 值非顯示值）+ CurrencyLink[].value 全數漏轉 Long + totalRow 恆 0 誤導 + row 層 CurrencyLink 恆空。全部已修正並重新對 pk-platform.alddev.com dev 驗證通過。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__GetRoomGiftStatisticSummary",
+      "service": "RoomGiftPlatform",
+      "method": "GetRoomGiftStatisticSummary",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:256",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:50:50Z",
+      "updated_at": "2026-08-25T04:01:10Z",
+      "notes": "commit 80b60aaf5+eee8cecc4+2d97f7674；review-E 找到 index.ts 漏掛 5 支 tool 的迴歸 bug（含波及上一 domain 的 get_audit_logs）+ id i64 漏轉 + 2 處月份/RateHelper 描述錯誤；review-F 找到金額語意錯誤（exchangeAmount/productPrice 等實為 stored 值非顯示值）+ CurrencyLink[].value 全數漏轉 Long + totalRow 恆 0 誤導 + row 層 CurrencyLink 恆空。全部已修正並重新對 pk-platform.alddev.com dev 驗證通過。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__GetAnchorStatisticSummary",
+      "service": "RoomGiftPlatform",
+      "method": "GetAnchorStatisticSummary",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:259",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:50:50Z",
+      "updated_at": "2026-08-25T04:01:10Z",
+      "notes": "commit 4fec086ce+eee8cecc4+2d97f7674；review-E 找到 index.ts 漏掛 5 支 tool 的迴歸 bug（含波及上一 domain 的 get_audit_logs）+ id i64 漏轉 + 2 處月份/RateHelper 描述錯誤；review-F 找到金額語意錯誤（exchangeAmount/productPrice 等實為 stored 值非顯示值）+ CurrencyLink[].value 全數漏轉 Long + totalRow 恆 0 誤導 + row 層 CurrencyLink 恆空。全部已修正並重新對 pk-platform.alddev.com dev 驗證通過。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "room_gift_back_office__RoomGiftPlatform__GetPlatformStatisticSummary",
+      "service": "RoomGiftPlatform",
+      "method": "GetPlatformStatisticSummary",
+      "rajah_ref": "rajah/services/room_gift_back_office.rajah:262",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-scarab",
+      "claimed_at": "2026-08-25T03:50:50Z",
+      "updated_at": "2026-08-25T04:01:10Z",
+      "notes": "commit 072a06d2f+eee8cecc4+2d97f7674；review-E 找到 index.ts 漏掛 5 支 tool 的迴歸 bug（含波及上一 domain 的 get_audit_logs）+ id i64 漏轉 + 2 處月份/RateHelper 描述錯誤；review-F 找到金額語意錯誤（exchangeAmount/productPrice 等實為 stored 值非顯示值）+ CurrencyLink[].value 全數漏轉 Long + totalRow 恆 0 誤導 + row 層 CurrencyLink 恆空。全部已修正並重新對 pk-platform.alddev.com dev 驗證通過。",
+      "legacy_task_id": null
+    }
+  ]
+}

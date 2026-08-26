@@ -1,0 +1,86 @@
+{
+  "rajah_file": "rajah/services/module.rajah",
+  "generated_at": "2026-08-25T00:59:58.625Z",
+  "services": [
+    "Module",
+    "ModuleAdmin",
+    "ModulePlatform"
+  ],
+  "tasks": [
+    {
+      "id": "module__Module__GetAllPlatformModuleIds",
+      "service": "Module",
+      "method": "GetAllPlatformModuleIds",
+      "rajah_ref": "rajah/services/module.rajah:8",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "needs_clarification",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": "2026-08-25T01:48:53Z",
+      "notes": "結論性判定，不會再重試：Module service（module.rajah:6-9）整支標 @NoPublic，屬 server-to-server 內部 RPC（agrabah/src/servers/core/services/module.ts 的實作只給其他後端 server 內部查詢平台模組 id 用），非對外公開 API，Gate 對 /api/:group/:service/:method 一律帶 isPublic header 擋下，包成 MCP tool 100% 打不通，不適合做。",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModuleAdmin__GetPlatformModules",
+      "service": "ModuleAdmin",
+      "method": "GetPlatformModules",
+      "rajah_ref": "rajah/services/module.rajah:26",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:48:57Z",
+      "updated_at": "2026-08-25T01:58:54Z",
+      "notes": "commit a565d1e90（worktree mcp-rajah/rajah-worker-carpet）；真打 dev 驗證過（admin.alddev.com，含 platformId 不存在邊界）；review PASS",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModuleAdmin__EnablePlatformModule",
+      "service": "ModuleAdmin",
+      "method": "EnablePlatformModule",
+      "rajah_ref": "rajah/services/module.rajah:28",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:49:09Z",
+      "updated_at": "2026-08-25T01:58:54Z",
+      "notes": "commit 2fd0d498a（worktree mcp-rajah/rajah-worker-carpet）；真打 dev 驗證過（enable→讀回→冪等重複呼叫→還原 disable→讀回確認還原、不存在 moduleId 邊界），測試資料已還原；review PASS",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModuleAdmin__EnablePlatformModules",
+      "service": "ModuleAdmin",
+      "method": "EnablePlatformModules",
+      "rajah_ref": "rajah/services/module.rajah:31",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:49:10Z",
+      "updated_at": "2026-08-25T01:58:54Z",
+      "notes": "commit 794e1b569（worktree mcp-rajah/rajah-worker-carpet）；真打 dev 驗證過（原始完整清單 no-op round-trip、含不存在 id 確認不會部分寫入），測試資料已還原；review PASS",
+      "legacy_task_id": null
+    },
+    {
+      "id": "module__ModulePlatform__GetPlatformModules",
+      "service": "ModulePlatform",
+      "method": "GetPlatformModules",
+      "rajah_ref": "rajah/services/module.rajah:39",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "done",
+      "category": null,
+      "claimed_by": "rajah-worker-carpet",
+      "claimed_at": "2026-08-25T01:50:20Z",
+      "updated_at": "2026-08-25T01:58:54Z",
+      "notes": "commit 1e36eaa45（worktree mcp-rajah/rajah-worker-carpet）；真打 dev 驗證過（pk-platform.alddev.com，回傳筆數與 admin 端該平台啟用子集一致）；review PASS；純讀取無需清理",
+      "legacy_task_id": null
+    }
+  ]
+}

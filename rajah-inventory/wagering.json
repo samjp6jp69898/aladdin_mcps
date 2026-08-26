@@ -1,0 +1,39 @@
+{
+  "rajah_file": "rajah/services/wagering.rajah",
+  "generated_at": "2026-08-25T00:59:58.633Z",
+  "services": [
+    "Wagering"
+  ],
+  "tasks": [
+    {
+      "id": "wagering__Wagering__GetUserWageringInfo",
+      "service": "Wagering",
+      "method": "GetUserWageringInfo",
+      "rajah_ref": "rajah/services/wagering.rajah:55",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "wagering__Wagering__GetUserWageringByOrderId",
+      "service": "Wagering",
+      "method": "GetUserWageringByOrderId",
+      "rajah_ref": "rajah/services/wagering.rajah:57",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}

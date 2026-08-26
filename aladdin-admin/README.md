@@ -24,6 +24,48 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_game_vendor_admin_update_game_tag_name` | `GameVendorAdmin.UpdateGameTagName` | 更新遊戲標籤（vendorFee 廠商殺數分類/appDisplay 前端顯示分類/rebate 返水分類，三者共用同一組固定 tag enum；不支援 frontendGroup 前台自訂標籤，那是另一張表）的多語系顯示名稱；寫入前後各呼叫一次 `ListAllGameTagNamesByType` 做 before/after round-trip，`names` 只動到你列出的語系代碼——2026-08-24 dev 站台實測確認「未列出語系不受影響」與非法 tagType 回業務錯誤碼 317（gameTagTypeNotExists） |
 | `aladdin_admin_game_vendor_admin_set_game_vendor_maintenance` | 設定廠商場館（母表 game_vendors）的維護時間窗口（rajah: GameVendorAdmin.SetGameVendorMaintenance）；毫秒 epoch，無獨立開關（isMaintaining 是即時計算的衍生值），寫入後用 ListAllGameVendors 讀回驗證 |
 | `aladdin_admin_platform_management_create_platform` | `PlatformManagement.CreatePlatform` | 建立全新平台（連動建立 LoginProvider ×2、預設遊戲分類、觸發 4 個初始化 Job）。**不可逆**：全庫 rajah 沒有刪除/停用「平台」本身的 RPC，前端狀態切換按鈕是死碼（只改本地變數，不呼叫後端），呼叫成功後只能請有 DB 權限的人手動處理。`code` 有 DB unique 限制（≤4 字元）、`defaultCurrencyCode` 後端完全不驗證（TODO 註解，工具主動用 `CurrencyAdmin.GetCurrencies` 擋）、`defaultLanguageCode` 後端有驗證但工具先用 `Setting.GetSupportedLanguages` 擋出更友善訊息。回傳型別是 Empty（無 platformId），成功後重新查 `ListPlatformDetails` 用 code 讀回驗證 |
+| `aladdin_admin_module_admin_get_platform_modules` | `ModuleAdmin.GetPlatformModules` | 查詢指定平台的模組清單，含每個模組目前啟用/停用狀態；platformId 不存在時回 `platformNotExists`（不是空陣列） |
+| `aladdin_admin_module_admin_enable_platform_module` | `ModuleAdmin.EnablePlatformModule` | 啟用/停用平台的單一模組（加入/移除單一元素，非整批覆蓋），冪等（已是目標狀態時直接成功），寫入後用 `GetPlatformModules` 讀回驗證 |
+| `aladdin_admin_module_admin_enable_platform_modules` | `ModuleAdmin.EnablePlatformModules` | **整批覆蓋**平台應啟用的完整模組清單（不是增量新增，空陣列會清空該平台所有啟用模組）；若只想切換單一模組請改用單數版本 `enable_platform_module`，避免誤刪其他已啟用模組 |
+| `aladdin_admin_admin_captcha_config_get_captcha_config` | `AdminCaptchaConfig.GetCaptchaConfig` | 讀取系統層級某一驗證碼類型（numeral/arithmetic/geetest，不含 off——off 沒有對應 adapter 必回錯）的設定，geetestKey 預設遮罩尾 4 碼 |
+| `aladdin_admin_admin_captcha_config_set_captcha_config` | `AdminCaptchaConfig.GetCaptchaConfig` + `SetCaptchaConfig` | 修改系統層級驗證碼類型設定，先讀現值只覆蓋有帶到的欄位；**高風險副作用**：停用某類型會級聯把選用該類型的所有平台改成 numeral/off，且無自動復原，詳見工具說明 |
+| `aladdin_admin_admin_captcha_config_get_platform_verification_configs` | `AdminCaptchaConfig.GetPlatformVerificationConfigs` | 列出各平台的驗證碼設定；帶 `platformId` 會內部逐頁掃描到底找該平台那一筆 |
+| `aladdin_admin_admin_captcha_config_set_platform_verification_config` | `AdminCaptchaConfig.GetPlatformVerificationConfigs`（找現值）+ `SetPlatformVerificationConfig` | 修改指定平台的可用驗證碼類型清單/目前類型；因後端 proto3 空陣列地雷（見工具說明），工具每次都送完整 `availableCaptchaTypes` 陣列，不依賴後端做欄位級保護 |
+| `aladdin_admin_risk_admin_list_platform_risk_strategies` | `RiskAdmin.ListPlatformRiskStrategies` | 超管視角依 platformId 分頁查詢該平台所有風控策略；每頁固定 100 筆（無 pageSize 參數）。**已實測確認的分頁陷阱**：`totalPage` 只有 `page=1` 時後端才真的計算，`page>1` 時固定回 0（agrabah `getPageData` 實作如此），不能用它判斷「是否還有下一頁」，翻頁到底要改用 `rows.length < 100`。`riskStrategyCode`/`category` 回傳皆為 rajah enum 數值，對照見 tool description 或 `rajah/services/risk.rajah`；回傳不含 status/riskLevel，無法從列表本身判斷單筆啟用/停用 |
+| `aladdin_admin_risk_admin_get_platform_risk_strategy_for_edit` | `RiskAdmin.GetPlatformRiskStrategyForEdit` | 超管視角依 id 讀取單筆風控策略完整編輯資料（含 riskLevel）。**只吃 id，不做 platformId 跨平台隔離**（超管視角刻意如此設計）。查無此 id 回業務錯誤 errorCode=11（genie ErrorCode.idNotExists，不在 AgrabahErrorCodeEnum，errorName 會顯示「(未知錯誤碼)」，非本工具 bug），非例外。`riskStrategyCode` 建立後不可編輯（rajah `@NoEdit`），僅供顯示 |
+| `aladdin_admin_risk_admin_create_or_update_platform_risk_strategy` | `RiskAdmin.CreateOrUpdatePlatformRiskStrategy` | 新增或更新風控策略（upsert，`id=0`/留空為新增，`id>0` 為更新）。更新前自動呼叫 `GetPlatformRiskStrategyForEdit` 讀現值合併，只覆蓋呼叫端有帶的欄位，避免 protobufjs 欄位預設值 0 被 `assignKey` 誤判成「明確要歸零」覆蓋進 DB（見檔頭註解）；`riskStrategyCode` 更新時一律忽略、沿用現值（rajah `@NoEdit`）。**只能改顯示層欄位**（tagName/tagDescription/priority/category/riskLevel），不能設定策略觸發用的門檻參數。**新增無法拿到新 id**（RPC 回傳 Empty，且 riskStrategyCode 無 DB unique 限制不能拿來反查），改用呼叫前後 id 集合 diff 找出新 id 並讀回驗證；**RiskAdmin 沒有刪除/停用 API**，新增的測試資料無法透過任何 MCP tool 清除，會永久留在該環境 |
+| `aladdin_admin_in_house_game_back_office_get_game_list` | `InHouseGameBackOffice.GetGameList` | 分頁查詢自研（in-house）遊戲清單（二八槓類），可用 gameCode（精確比對，DB 有 UNIQUE INDEX）或 gameName（模糊比對）篩選；2026-08-25 dev 實測目前 5 筆（4 款正常代碼 + 1 筆 gameCode 為空字串的「關閉」停用佔位資料，該筆無法單獨用 gameCode 篩出） |
+| `aladdin_admin_in_house_game_back_office_list_available_game_codes` | `InHouseGameBackOffice.ListAvailableGameCodes` | 列出自研二八槓遊戲可用的 gameCode 全集，無參數、不分頁，直接回傳後端固定的 GameCodeEnum 靜態列舉（不查 DB）；2026-08-25 dev 實測回傳 CND28/ORG28/BIT28/MIN28 共 4 筆 |
+| `aladdin_admin_in_house_game_back_office_get_vendor_list` | `InHouseGameBackOffice.GetVendorList` | 分頁查詢自研遊戲廠商清單，可用 gameId（精確比對但非唯一，一個遊戲可對應多個廠商）或 vendorName（模糊比對）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（9 筆） |
+| `aladdin_admin_in_house_game_back_office_get_play_group_list` | `InHouseGameBackOffice.GetPlayGroupList` | 分頁查詢自研遊戲「玩法組」清單，可用 vendorId（精確但非唯一）、name（模糊）、status（enabled/disabled）篩選；與 aladdin-platform 同名 tool 共用同一份底層資料，2026-08-25 dev 實測兩端結果逐筆一致（25 筆） |
+| `aladdin_admin_in_house_game_back_office_get_game_edit` | `InHouseGameBackOffice.GetGameEdit` | 取得單一自研遊戲的完整編輯詳情（含二八槓開盤設定、開獎結果來源 apiUrl），gameId 不存在回 errorCode=14；apiUrl 已評估不含憑證但無權限節點保護，2026-08-25 dev 實測含存在/不存在 id 邊界案例 |
+| `aladdin_admin_in_house_game_back_office_get_vendor_edit` | `InHouseGameBackOffice.GetVendorEdit` | 取得單一自研遊戲廠商的完整編輯詳情，含 7 個多語富文本說明欄位（前台展示文案，非敏感資料），vendorId 不存在回 errorCode=14，2026-08-25 dev 實測含存在/不存在 id 邊界案例 |
+| `aladdin_admin_in_house_game_back_office_get_play_group_edit` | `InHouseGameBackOffice.GetPlayGroupEdit` | 取得單一自研遊戲玩法組的完整編輯詳情；**注意**後端對 playGroupId 不存在回傳的是 RPC 成功但資料為空（非一般業務錯誤碼），本 tool 已攔截轉換為明確的 `notFound` 訊號，2026-08-25 dev 實測驗證此陷阱屬實 |
+| `aladdin_admin_in_house_game_back_office_get_two_eight_odds_setting` | `InHouseGameBackOffice.GetTwoEightOddsSetting` | 取得指定玩法組的二八槓賠率設定；**注意**傳入不存在的 playGroupId 會觸發後端 null pointer 例外回傳 errorCode=1（unknown，非乾淨的 objectNotFound），已知後端邊界 bug，本 tool 在 hint 提示呼叫端先查證 playGroupId 是否存在，2026-08-25 dev 實測驗證 |
+| `aladdin_admin_in_house_game_back_office_get_two_eight_bet_limit_setting` | `InHouseGameBackOffice.GetTwoEightBetLimitSetting` | 取得指定玩法組的二八槓下注限額設定；與 get_two_eight_odds_setting 共用同一後端 helper，有一樣的 errorCode=1 陷阱；金額欄位是 stored 值（非顯示金額），2026-08-25 dev 實測驗證 |
+| `aladdin_admin_in_house_game_back_office_get_two_eight_hedge_setting` | `InHouseGameBackOffice.GetTwoEightHedgeSetting` | 取得指定玩法組的二八槓對沖策略設定；與兩個 sibling 不同，這支不查廠商幣別，playGroupId 不存在會靜默回預設值（maxItems=10）而不報錯，2026-08-25 dev 實測驗證 |
+| `aladdin_admin_in_house_game_back_office_update_vendor_status` | `InHouseGameBackOffice.UpdateVendorStatus` | 切換自研遊戲廠商啟用/停用狀態；**注意**停用會連鎖停用該廠商底下所有玩法組（不對稱，重新啟用不會恢復），呼叫前務必先查證影響範圍；同值呼叫不會誤報找不到（mysql2 FOUND_ROWS flag），2026-08-25 dev round-trip 實測驗證且測試環境已還原乾淨 |
+| `aladdin_admin_in_house_game_back_office_update_play_group_status` | `InHouseGameBackOffice.UpdatePlayGroupStatus` | 切換自研遊戲玩法組啟用/停用狀態；**注意**啟用前會檢查賠率/限額設定是否完整（不完整回 errorCode=1313，讀原始碼確認但 dev 未實測觸發過）、啟用會立即讓前台玩家可下注（機器人下一局才生效）、每次呼叫都會留下稽核日誌，2026-08-25 dev round-trip 實測驗證且測試環境已還原乾淨（業務狀態，稽核紀錄依設計保留） |
+| `aladdin_admin_audit_admin_get_audit_logs` | `AuditAdmin.GetAuditLogs` | 查詢系統管理後台（跨平台）的操作紀錄；`systemId` 省略內部固定送 -1（0 是合法值 core，不能當不篩選）；`actionId` 是 AdminActionIdEnum 字串 key（122 個值，完整列舉）；`pageSize` 只接受 10/20/30/50/100/200；2026-08-25 dev 實測 |
+| `aladdin_admin_currency_admin_get_currencies` | `CurrencyAdmin.GetCurrencies` | 列出全域幣別清單，無 @Permission；不分頁一次全撈（小型列舉表）；2026-08-25 dev 實測 |
+| `aladdin_admin_currency_admin_update_currency` | `CurrencyAdmin.UpdateCurrency` | 更新既有全域幣別的 name/symbol/displayDigits；code/type/decimalPlaces 不可改；寫入成功會全平台廣播（ReloadCurrency）；name 最長 20 字元、symbol 最長 10 字元（比照 DB VARCHAR 上限）；三值皆與現值相同時後端回 nothingChanged（本工具視為非失敗）；先讀現值合併未帶欄位、寫入後 round-trip 逐欄比對；2026-08-25 dev 實測含正常更新、nothingChanged、超長欄位、id 不存在四種情境 |
+| `aladdin_admin_core_admin_get_platform_domains` | `CoreAdmin.GetPlatformDomains` | 列出指定平台的 platform/agent gate 域名清單（不含 App 端域名，那是另一支公開但本輪未包裝的 method）；totalPage 恆為 1（無真正分頁）；不存在的 platformId 回空陣列非錯誤；2026-08-25 dev 實測 |
+| `aladdin_admin_core_admin_create_or_update_platform_domain` | `CoreAdmin.CreateOrUpdatePlatformDomain` | 新增/更新平台域名；**後端更新時完全不驗證 id 是否屬於指定的 platformId**（會把域名記錄改隸到別的平台），本工具在更新前強制先查 ownership 擋下；domain 欄位有全域 UNIQUE 約束；沒有刪除/停用 method；2026-08-25 dev 實測含正常更新 round-trip、跨平台 id 誤用防護（直呼 RPC 證實後端真的不擋）、新增、platformId 不存在四種情境，全程復原無殘留（測試新建的一筆域名因無刪除能力保留在 dev，字串已標示為測試用途） |
+| `aladdin_admin_time_based_otp_admin_list_platform_totp_modes` | `TimeBasedOtpAdmin.ListPlatformTotpModes` | 列出 admin 後台全域（platformId=0）與每個平台目前的 TOTP 模式（normal/force）；尚未設定過的一律回傳 normal（後端預設值） |
+| `aladdin_admin_time_based_otp_admin_set_mode` | `TimeBasedOtpAdmin.SetMode` | 設定 admin 全域或指定平台的 TOTP 模式；切到 force 會強制該範圍下所有後台帳號下次登入綁定 TOTP，屬高影響變更，見工具 description 的風險提示；沒有單筆查詢 method，寫入後用 `ListPlatformTotpModes` 讀回驗證 |
+| `aladdin_admin_time_based_otp_list_route_settings` | `TimeBasedOtp.ListRouteSettings` | 列出 admin gate 自己（不涉及任何平台）目前所有可設定 TOTP 二次驗證的路由與設定；rajah 目前完全未掛 `@Permission`（歷史上曾掛 `AdminManagement.Setting.Totp`，2026-07-14 commit 33b6e2dd 移除），任何登入 admin 後台的帳號皆可呼叫 |
+| `aladdin_admin_time_based_otp_update_route_setting` | `TimeBasedOtp.UpdateRouteSetting` | 調整某路由的 TOTP 驗證有效分鐘數（0=每次都需驗證），只改 validMinutes 不影響是否啟用；寫入後讀回驗證 |
+| `aladdin_admin_time_based_otp_update_route_setting_status` | `TimeBasedOtp.UpdateRouteSettingStatus` | 啟用/停用某路由的 TOTP 驗證需求，只改 status 不影響 validMinutes；寫入後讀回驗證 |
+| `aladdin_admin_deposit_admin_get_adapter_keys` | `DepositAdmin.GetAdapterKeys` | 無參數，即時列出系統已實作的充值 adapter 代碼（編譯期寫死在 adapters Map 裡，非 DB 表，2026-08-26 dev 實測 50 個）；不含任何金鑰/密碼 |
+| `aladdin_admin_deposit_admin_list_adapters` | `DepositAdmin.ListAdapters` | 分頁列出超管已設定的充值 adapter 實例（`deposit_adapters` 全表，無篩選）；**已知陷阱**：後端查詢沒有 ORDER BY，跨頁排序不保證穩定 |
+| `aladdin_admin_deposit_admin_get_adapter_for_edit` | `DepositAdmin.GetAdapterForEdit` | 依 id 讀取單一充值 adapter 完整資料；id 不存在回 errorCode=606（`paymentAdapterInstanceNotExist`） |
+| `aladdin_admin_deposit_admin_create_adapter` | `DepositAdmin.CreateAdapter` | 新增充值 adapter 實例；**已知陷阱**：`name` 欄位 DB 限制 VARCHAR(30) 但 rajah 未標 MaxLength，超長回通用 errorCode=12；`specialRequestCurrency` 雖標 `@NoEdit` 但後端真的會讀，不帶 requestCurrencyCode 時回 errorCode=682；建立後不會立刻影響任何真實金流（預設不綁定任何 platform）；沒有刪除方法，只能用 `enable_adapter` 停用 |
+| `aladdin_admin_deposit_admin_update_adapter` | `DepositAdmin.UpdateAdapter` | 更新既有充值 adapter；本工具先讀現值只覆蓋要改欄位；`adapterKey`/`specialRequestCurrency`/`requestCurrencyCode` 建立後無法再改（後端 `excludeFieldsFromUpdate`）；id 不存在時本工具在內部的讀現值步驟就會先短路失敗，回 errorCode=606（底層 `UpdateAdapter` RPC 單獨被呼叫時是不同的 errorCode=11，但走本工具不會遇到） |
+| `aladdin_admin_deposit_admin_enable_adapter` | `DepositAdmin.EnableAdapter` | 啟用/停用充值 adapter；id 不存在回 errorCode=14（objectNotFound）；status 非法值回 errorCode=9；`GetAdapterForEdit` 沒有 status 欄位，改用 `ListAdapters` 分頁讀回驗證（用 `rows.length < pageSize` 判斷翻頁終點，不依賴後端 `totalPage` 在 page>1 時不可靠的問題） |
+| `aladdin_admin_deposit_admin_list_platform_deposit_adapters` | `DepositAdmin.ListPlatformDepositAdapters` | 分頁列出某平台底下全部已啟用（母表 status=enabled）adapter 各自的綁定狀態；**已知陷阱**：`platformId` 只在 LEFT JOIN、不在 WHERE，帶不存在的 platformId 不會報錯，會回全部母表 adapter、status 落回未綁定預設值 |
+| `aladdin_admin_deposit_admin_update_platform_deposit_adapter_status` | `DepositAdmin.UpdatePlatformDepositAdapterStatus` | 更新某 adapter 在某平台底下的啟停狀態；adapterId 不存在回 errorCode=9；**已知陷阱**：platformId 完全沒有存在性驗證/外鍵，帶不存在但落在 0–65535 範圍內的 platformId 會靜默成功、插入孤兒綁定列 |
+| `aladdin_admin_deposit_admin_get_deposit_setting_for_edit` | `DepositAdmin.GetDepositSettingForEdit` | 無參數，取得全域充值設定（callbackBaseUrl/paymentAssetUrl 兩個 URL），不分平台 |
+| `aladdin_admin_deposit_admin_get_platform_deposit_setting_for_edit` | `DepositAdmin.GetPlatformDepositSettingForEdit` | 取得指定平台的充值設定；**已知陷阱（假唯讀）**：查無資料時後端會直接 INSERT 一筆帶預設值的新記錄再回傳，不是純讀取；因此本工具比照寫入類 tool 補上 H36 `assertProdConfirmed` 閘門，即使名義上是 Get |
 
 ## src/ 結構
 
@@ -49,6 +91,15 @@ src/
     list_platforms.ts
     list_platform_game_vendors.ts
     update_platform_game_vendor_status.ts
+    get_captcha_config.ts                    — 另外 export formatCaptchaConfigResult()，update 工具的回傳共用同一支格式化函式
+    update_captcha_config.ts                 — 讀現值 + 只覆蓋有帶到的欄位 + round-trip 讀回；高風險副作用見檔頭註解
+    get_platform_verification_configs.ts     — 另外 export findPlatformVerificationConfigRow()，update 工具的讀現值步驟共用
+    update_platform_verification_config.ts   — 每次都送完整 availableCaptchaTypes 陣列，規避 proto3 空陣列地雷（見檔頭註解）
+    list_platform_totp_modes.ts
+    set_platform_totp_mode.ts
+    list_totp_route_settings.ts
+    update_totp_route_setting.ts
+    update_totp_route_setting_status.ts
 ```
 
 帳號/URL 只走 `.mcp.json` 的 `env`（`process.env.*`），`session.ts`/`const.ts` 都不寫死任何 fallback 值。
@@ -63,7 +114,7 @@ src/
 | `ALADDIN_ADMIN_API_URL` | admin 後台 dev 站台，例如 `https://admin.alddev.com` |
 | `ALADDIN_ADMIN_USER` | 預設測試帳號 |
 | `ALADDIN_ADMIN_PASSWORD` | 預設測試密碼 |
-| `ALADDIN_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，三支寫入 tool（`create_game_vendor`/`upsert_game`/`update_platform_game_vendor_status`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
+| `ALADDIN_ADMIN_IS_PROD` | H36：這個實例是否是正式環境。prod 實例**必須**設為 `true`，其餘環境（dev/pre/evi）不設定或設 `false`——設為 `true` 時，寫入 tool（`create_game_vendor`/`upsert_game`/`update_platform_game_vendor_status`/`set_platform_totp_mode`）會強制要求呼叫端帶上精確字串 `confirm="CONFIRM_PROD_WRITE"` 才會執行，否則回錯誤且不打任何下游 RPC；未設定或非 `true`/`false`（大小寫、前後空白不拘）的值會讓行程啟動時直接失敗，不會被靜默當成非 prod。詳見 `src/session.ts` 的 `assertProdConfirmed`。 |
 
 TOTP：dev 環境目前不需要。若未來需要，`aladdin_admin_auth_login` 保留 `totpCode` 選填參數——由 agent 在對話中向操作者當場索取當下驗證碼再帶入，不寫死、不落地存檔。
 

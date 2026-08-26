@@ -1,0 +1,100 @@
+{
+  "rajah_file": "rajah/services/push_notification_back_office.rajah",
+  "generated_at": "2026-08-25T00:59:58.627Z",
+  "services": [
+    "NotificationAdmin",
+    "NotificationPlatform"
+  ],
+  "tasks": [
+    {
+      "id": "push_notification_back_office__NotificationAdmin__TestSendNotificationToAll",
+      "service": "NotificationAdmin",
+      "method": "TestSendNotificationToAll",
+      "rajah_ref": "rajah/services/push_notification_back_office.rajah:97",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "push_notification_back_office__NotificationAdmin__TestSendNotification",
+      "service": "NotificationAdmin",
+      "method": "TestSendNotification",
+      "rajah_ref": "rajah/services/push_notification_back_office.rajah:106",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "push_notification_back_office__NotificationAdmin__GetNotificationProfiles",
+      "service": "NotificationAdmin",
+      "method": "GetNotificationProfiles",
+      "rajah_ref": "rajah/services/push_notification_back_office.rajah:115",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "push_notification_back_office__NotificationAdmin__CreateNotificationProfile",
+      "service": "NotificationAdmin",
+      "method": "CreateNotificationProfile",
+      "rajah_ref": "rajah/services/push_notification_back_office.rajah:125",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "push_notification_back_office__NotificationAdmin__SetNotificationProfile",
+      "service": "NotificationAdmin",
+      "method": "SetNotificationProfile",
+      "rajah_ref": "rajah/services/push_notification_back_office.rajah:131",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    },
+    {
+      "id": "push_notification_back_office__NotificationPlatform__GetNotificationRecords",
+      "service": "NotificationPlatform",
+      "method": "GetNotificationRecords",
+      "rajah_ref": "rajah/services/push_notification_back_office.rajah:154",
+      "server": null,
+      "mcp_tool_id": null,
+      "status": "pending",
+      "category": null,
+      "claimed_by": null,
+      "claimed_at": null,
+      "updated_at": null,
+      "notes": "",
+      "legacy_task_id": null
+    }
+  ]
+}
