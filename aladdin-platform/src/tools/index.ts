@@ -130,6 +130,7 @@ import { registerCreateOrUpdateActivityRankingSettingTool } from './create_or_up
 import { registerListFixedRankingSettingsTool } from './list_fixed_ranking_settings.ts';
 import { registerChangeFixedRankingStatusTool } from './change_fixed_ranking_status.ts';
 import { registerUpdateFixedRankingSettingTool } from './update_fixed_ranking_setting.ts';
+import { registerListFixedRankingEntriesTool } from './list_fixed_ranking_entries.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -265,4 +266,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListFixedRankingSettingsTool(server);
     registerChangeFixedRankingStatusTool(server);
     registerUpdateFixedRankingSettingTool(server);
+    registerListFixedRankingEntriesTool(server);
 }
