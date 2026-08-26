@@ -133,6 +133,8 @@ import { registerCreateOrUpdateSupportLanguageTool } from './create_or_update_su
 import { registerGetBackofficeSupportedLanguagesTool } from './get_backoffice_supported_languages.ts';
 import { registerToggleBackofficeLanguageStatusTool } from './toggle_backoffice_language_status.ts';
 import { registerSetBackofficeDefaultLanguageTool } from './set_backoffice_default_language.ts';
+import { registerGetPlatformIdRolesTool } from './get_platform_id_roles.ts';
+import { registerNewUserTool } from './new_user.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -271,4 +273,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetBackofficeSupportedLanguagesTool(server);
     registerToggleBackofficeLanguageStatusTool(server);
     registerSetBackofficeDefaultLanguageTool(server);
+    registerGetPlatformIdRolesTool(server);
+    registerNewUserTool(server);
 }
