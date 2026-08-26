@@ -33,7 +33,9 @@
  * - **新增後端不回傳 id**（rajah 簽名沒有回傳值）：本工具靠寫入前後 ListActivityRankingSetting
  *   的 id 集合差異反推新建 id（同 create_or_update_activity_tab.ts 的既有做法）。
  * - **這組 service 沒有 Delete method**：測試資料只能用 ChangeActivityRankingSettingStatus 設為
- *   disabled，無法真正刪除；2026-08-26 dev 實測留下的 id=1021 測試列已設回 disabled。
+ *   disabled，無法真正刪除；本檔開發與後續獨立 review（vega-review-b，2026-08-26）過程中在
+ *   pk-platform.alddev.com 累積建立的測試列 id=1021/1022/1023/1024（名稱皆含「可刪」/「測試」
+ *   字樣）均已逐一確認設回 disabled、無殘留 enabled 狀態，可安全忽略。
  * - **RankingPlatform 沒有帶業務鍵（id）的直接查詢 method**（唯一同名的 GetActivityRankingSetting
  *   定義在 @NoPublic 的 RankingInternal，不對外、且回傳精簡版 Essential 模型），`findById()` 依
  *   method-category-checklist.md 第 5 節規則改為逐頁掃描到 totalPage（pageSize 用 PageSizeEnum

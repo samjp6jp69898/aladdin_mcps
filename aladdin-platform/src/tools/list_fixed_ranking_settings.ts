@@ -14,14 +14,19 @@
  *
  * 2026-08-26 dev 實測（pk-platform.alddev.com，帳號 landon001）：回傳 3 筆
  * （kind=1 流水榜／kind=2 盈利榜／kind=3 等级榜），皆 status=1 enabled。
- * `updatedAtTimestamp` 實測回傳的是十進位字串（非 number、也非 protobufjs Long 物件，
- * const.ts 的 deepFixLongs 抓不到這種形狀），額外用 Number() 轉成一般數字。
+ * `updatedAtTimestamp` 是 i64，實測回傳一個真正的 protobufjs Long 物件（`{low, high, unsigned,
+ * toNumber, ...}`）——2026-08-26 review（vega-review-b）指出原本這裡誤寫成「十進位字串、
+ * deepFixLongs 抓不到」：程式碼原本用裸 `Number(row.updatedAtTimestamp)` 之所以結果仍正確，
+ * 是因為 JS 對沒有自訂 `valueOf` 的物件做 `ToNumber` 時會 fallback 到 `toString()`（Long 的
+ * `toString()` 剛好印出正確十進位字串），屬巧合正確而非設計如此；已改用 const.ts 既有的
+ * `toPlainNumber`（本來就會處理 Long duck-typing），不再依賴這種隱性轉型行為。
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
+import { toPlainNumber } from '../const.ts';
 
 export function registerListFixedRankingSettingsTool(server: McpServer): void {
     server.registerTool(
@@ -43,7 +48,7 @@ export function registerListFixedRankingSettingsTool(server: McpServer): void {
         async () => {
             const r = await withAutoRelogin(() => remote.rankingBackOffice.fixedRankingPlatform.ListFixedRankingSettings());
             if (r.failed) return asErrorResult(r);
-            const rows = (r.data?.rows ?? []).map((row) => ({ ...row, updatedAtTimestamp: Number(row.updatedAtTimestamp) }));
+            const rows = (r.data?.rows ?? []).map((row) => ({ ...row, updatedAtTimestamp: toPlainNumber(row.updatedAtTimestamp) }));
             return asTextResult({ success: true, rows });
         },
     );
