@@ -126,6 +126,7 @@ import { registerUpdateOtpSmsSettingsTool } from './update_otp_sms_settings.ts';
 import { registerListActivityRankingSettingsTool } from './list_activity_ranking_settings.ts';
 import { registerGetPlatformRankingActivityListTool } from './get_platform_ranking_activity_list.ts';
 import { registerChangeActivityRankingSettingStatusTool } from './change_activity_ranking_setting_status.ts';
+import { registerCreateOrUpdateActivityRankingSettingTool } from './create_or_update_activity_ranking_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -257,4 +258,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListActivityRankingSettingsTool(server);
     registerGetPlatformRankingActivityListTool(server);
     registerChangeActivityRankingSettingStatusTool(server);
+    registerCreateOrUpdateActivityRankingSettingTool(server);
 }

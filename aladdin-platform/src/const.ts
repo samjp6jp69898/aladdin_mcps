@@ -248,6 +248,23 @@ export const GAME_DISPLAY_TAG_MAP: Record<(typeof GAME_DISPLAY_TAG_KEYS)[number]
     slot: 1, board: 2, fish: 3, live: 4, sport: 5, eSport: 6, lottery: 7,
 };
 
+// RankingTypeEnum（rajah/services/ranking.rajah:2-7），供 RankingPlatform.CreateOrUpdateActivityRankingSetting 使用。
+export const RANKING_TYPE_MAP = { winLose: 1, validBet: 2 } as const;
+export type RankingTypeKey = keyof typeof RANKING_TYPE_MAP;
+export const RANKING_TYPE_KEYS = Object.keys(RANKING_TYPE_MAP) as [ RankingTypeKey, ...RankingTypeKey[] ];
+
+// RankingTargetEnum（ranking_back_office.rajah:1-8），供 RankingPlatform.CreateOrUpdateActivityRankingSetting 使用。
+export const RANKING_TARGET_MAP = { gameBrand: 1, game: 2, all: 3 } as const;
+export type RankingTargetKey = keyof typeof RANKING_TARGET_MAP;
+export const RANKING_TARGET_KEYS = Object.keys(RANKING_TARGET_MAP) as [ RankingTargetKey, ...RankingTargetKey[] ];
+
+// ActivityRankingPeriodResetEnum（ranking_back_office.rajah:10-17），供
+// RankingPlatform.CreateOrUpdateActivityRankingSetting 的 periodReset 使用。none=0 是合法值
+// （未啟用週期重置），必須收錄，不能比照下面 unknown=0 系列排除。
+export const ACTIVITY_RANKING_PERIOD_RESET_MAP = { none: 0, daily: 1, weekly: 2 } as const;
+export type ActivityRankingPeriodResetKey = keyof typeof ACTIVITY_RANKING_PERIOD_RESET_MAP;
+export const ACTIVITY_RANKING_PERIOD_RESET_KEYS = Object.keys(ACTIVITY_RANKING_PERIOD_RESET_MAP) as [ ActivityRankingPeriodResetKey, ...ActivityRankingPeriodResetKey[] ];
+
 export function toPlainNumber(value: unknown): number | undefined {
     if (value === null || value === undefined) return undefined;
     if (typeof value === 'number') return value;
