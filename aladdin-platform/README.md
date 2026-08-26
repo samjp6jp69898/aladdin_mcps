@@ -19,7 +19,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_message_board_platform_get_post_gift_records` | `MessageBoardPlatform.GetPostGiftRecords` | 查詢單一貼文底下的打賞送禮紀錄；無 pageSize 參數（後端固定用預設值）；uid 是會員 UID 數字（非帳號字串） |
 | `aladdin_platform_message_board_platform_get_message_board_comments` | `MessageBoardPlatform.GetMessageBoardComments` | 跨貼文評論管理列表（評論管理頁用），postId 選填篩選；同樣有 pageSize=0 陷阱，工具層固定送 100 |
 | `aladdin_platform_message_board_platform_review_post` | `MessageBoardPlatform.ReviewPost` | 單筆審核（approved/rejected）待審核貼文，僅一般會員貼文；rajah 無真實 `@Permission`（service 標頭的權限敘述是死註解），可能完全無後端權限保護 |
-| `aladdin_platform_message_board_platform_batch_review_posts` | `MessageBoardPlatform.BatchReviewPosts` | 批量審核 1~100 筆貼文，fail-fast 逐筆處理、已成功不回滾、RPC 無法得知哪些成功，失敗需另外查詢確認 |
+| `aladdin_platform_message_board_platform_batch_review_posts` | `MessageBoardPlatform.BatchReviewPosts` | 批量審核 1~100 筆貼文，fail-fast 逐筆處理、已成功不回滾、RPC 無法得知哪些成功，失敗需另外查詢確認；rajah 同樣無真實 `@Permission`（見 review_post） |
 | `aladdin_platform_message_board_platform_delist_post` | `MessageBoardPlatform.DelistPost` | 下架已通過審核的貼文，支援官方/一般會員貼文；id 不存在時因後端死碼 bug 回泛用 unknown(1) 而非 messageBoardPostNotExists |
 | `aladdin_platform_message_board_platform_relist_post` | `MessageBoardPlatform.RelistPost` | 已下架貼文重新上架回 approved，delist_post 的鏡像操作，同樣受上述 id 不存在死碼 bug 影響 |
 | `aladdin_platform_message_board_platform_set_is_pinned_post` | `MessageBoardPlatform.SetIsPinnedPost` | 設定/取消貼文置頂，僅一般會員貼文；平台 globalPinMode 關閉時一律拒絕；已是目標狀態回 nothingChanged |
