@@ -319,3 +319,51 @@ export function toPlainCurrencyLinks(
 ): { code: string | null | undefined; value: number | undefined }[] {
     return (links ?? []).map((l) => ({ code: l.code, value: toPlainNumber(l.value) }));
 }
+
+// security_restriction_back_office domain（SecurityRestrictionPlatform 系列 tool）共用的 enum 對照表。
+
+// FieldRequirementEnum（common.rajah:2108-2115），RegistrationFieldConfig 每個註冊欄位的顯示要求。
+export const FIELD_REQUIREMENT_MAP = { hidden: 1, optional: 2, required: 3 } as const;
+
+// RegistrationTypeEnum（common.rajah:2119-2124）。dev 實測發現除了 user/agent 兩個列舉值，
+// 資料庫還存在一筆 registrationType=0 的既有列（疑似歷史遺留的預設/共用設定，不在列舉定義內），
+// get_registration_field_configs.ts 用 describeEnum() 對照不到時原樣回傳數字 0，不視為錯誤。
+export const REGISTRATION_TYPE_MAP = { user: 1, agent: 2 } as const;
+
+// RegistrationLimitPeriodTypeEnum（common.rajah:2184-2191）
+export const REGISTRATION_LIMIT_PERIOD_MAP = { day: 1, week: 2, permanent: 3 } as const;
+
+// LoginVerificationTypeEnum（common.rajah:2099-2104）
+export const LOGIN_VERIFICATION_TYPE_MAP = { otp: 1, realName: 2 } as const;
+
+// PasswordResetPeriodUnitEnum（common.rajah:2172-2181）
+export const PASSWORD_RESET_PERIOD_UNIT_MAP = { day: 1, week: 2, month: 3, year: 4 } as const;
+
+// TradePasswordLockRecordStatusEnum（common.rajah:2408-2414，唯讀顯示用，四個值皆可能出現在回傳資料）
+export const TRADE_PASSWORD_LOCK_STATUS_MAP = { warn: 1, lock: 2, unlock: 3, clear: 4 } as const;
+
+// ActiveStatusTradePasswordLockRecordStatusEnum（common.rajah:2416-2420），
+// ListTradePasswordLockRecordSearch.status 篩選專用，只收斂 lock/unlock 兩態（後端故意隱藏 warn/clear 選項）。
+export const ACTIVE_TRADE_PASSWORD_LOCK_STATUS_MAP = { lock: 2, unlock: 3 } as const;
+
+// VerifyLimitTypeEnum（common.rajah:2422-2426）
+export const VERIFY_LIMIT_TYPE_MAP = { every: 1, hour: 2, day: 3 } as const;
+
+// TradeVerifyTypeEnum（common.rajah:2429-2438），交易密碼驗證涵蓋的操作類型；
+// TradePasswordLockConfigEdit 用同名 bool 欄位（bindFiat/bindCrypto/...）逐一開關，
+// ListTradePasswordLockRecordSearch.tradeVerifyType 與 TradePasswordLockRecordEssential.tradeVerifyType
+// 則是單一數值（哪一種操作觸發的鎖定），兩處共用這張對照表。
+export const TRADE_VERIFY_TYPE_MAP = {
+    bindFiat: 1, bindCrypto: 2, bindWallet: 4, withdraw: 8, goldDeposit: 16,
+    buyRoomTicket: 32, buyCar: 64, giftGiving: 128, donate: 256,
+} as const;
+
+// FreezeDurationUnitEnum（service_common.rajah:2340-2344）
+export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as const;
+
+/** 數字 → 對照表 key 的字串；查不到已知 key 時原樣回傳數字，不讓未知值消失。 */
+export function describeEnum<T extends Record<string, number>>(map: T, value: number | null | undefined): string | number {
+    if (value === null || value === undefined) return value as never;
+    const hit = Object.entries(map).find(([ , v ]) => v === value);
+    return hit ? hit[ 0 ] : value;
+}
