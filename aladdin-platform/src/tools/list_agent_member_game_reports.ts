@@ -19,14 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { AgentMemberGameReportSearchParams } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { deepFixLongs } from '../const.ts';
-
-function maskIp(ip: string | null | undefined): string | null | undefined {
-    if (!ip) return ip;
-    const parts = ip.split('.');
-    if (parts.length !== 4) return ip;
-    return `${ parts[0] }.*.*.${ parts[3] }`;
-}
+import { deepFixLongs, maskIp } from '../const.ts';
 
 export function registerListAgentMemberGameReportsTool(server: McpServer): void {
     server.registerTool(
@@ -47,7 +40,7 @@ export function registerListAgentMemberGameReportsTool(server: McpServer): void 
                 'lastLoginIp 預設遮罩中間兩段（如 1.2.3.4 → 1.*.*.4），revealLastLoginIp=true 才回傳完整值——' +
                 '不在既有 SensitiveFieldEnum 保護範圍內，屬本 tool 自行加上的保護（同 method-category-checklist.md ' +
                 '第 8 節「一般 PII」判定，比照 list_agent_report_details.ts 的處理方式）。userAccountName 為帳號' +
-                '字串，非真實姓名，不需額外遮罩。' +
+                '字串，非真實姓名，不需額外遮罩。⚠️ ip 遮罩只認 4 段式 IPv4，非此格式（含 IPv6）原樣回傳、不遮罩。' +
                 '⚠️ 分頁陷阱：totalPage 存在但無 totalRow；pageSize 只接受 10/20/30/50/100/200 ' +
                 '這幾個離散值（PageSizeEnum，帶其他值後端回 errorCode=9）。' +
                 '2026-08-26 dev 實測：agentId 不存在回 errorCode=2702 agentAgentNotFound；' +

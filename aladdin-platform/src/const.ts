@@ -298,6 +298,21 @@ export function deepFixLongs<T>(value: T): T {
     return result as T;
 }
 
+/**
+ * 遮罩 IPv4 位址中間兩段（如 1.2.3.4 → 1.*.*.4），供 list_agent_report_details.ts /
+ * list_agent_member_game_reports.ts / list_agent_login_histories.ts 共用（2026-08-26 review
+ * 發現三處各自複製貼上同一份邏輯，抽成共用函式避免日後改一處忘記改其他處）。
+ * ⚠️ 只認 4 段式 IPv4：非此格式（含 IPv6、空字串以外的異常值）原樣回傳、不遮罩——呼叫端若資料庫
+ * 存在 IPv6 登入紀錄（agent_login_histories 用 INET6_ATON 儲存，理論上可存 IPv6），這裡不會遮罩，
+ * 各呼叫端 tool description 需自行提及此例外。
+ */
+export function maskIp(ip: string | null | undefined): string | null | undefined {
+    if (!ip) return ip;
+    const parts = ip.split('.');
+    if (parts.length !== 4) return ip;
+    return `${ parts[0] }.*.*.${ parts[3] }`;
+}
+
 // PointTransactionCategoryEnum（common.rajah:2282-2298），供 PointPlatform.ListPointTransactions 的
 // search.category 篩選使用。unknown=0 在後端語意是「不篩選」，不收錄成可選值。
 export const POINT_TRANSACTION_CATEGORY_KEYS = [

@@ -30,14 +30,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { AgentLoginHistorySearch } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { deepFixLongs } from '../const.ts';
-
-function maskIp(ip: string | null | undefined): string | null | undefined {
-    if (!ip) return ip;
-    const parts = ip.split('.');
-    if (parts.length !== 4) return ip;
-    return `${ parts[0] }.*.*.${ parts[3] }`;
-}
+import { deepFixLongs, maskIp } from '../const.ts';
 
 export function registerListAgentLoginHistoriesTool(server: McpServer): void {
     server.registerTool(
@@ -51,10 +44,14 @@ export function registerListAgentLoginHistoriesTool(server: McpServer): void {
                 '查詢範圍是「目前登入平台底下全部會員的登入紀錄」，不限於任何特定代理的下線會員——' +
                 '不要假設這支只回傳「該代理團隊」的資料。' +
                 'identifier 是會員登入帳號（非代理帳號），appUserId 是會員外部 id（字串），查無對應' +
-                '內部紀錄時回空結果非錯誤。lastLoginIp 是精確比對（完全相等），origin 是模糊比對（LIKE）。' +
+                '內部紀錄時回空結果非錯誤。lastLoginIp（搜尋條件）是精確比對（完全相等），origin 是模糊比對' +
+                '（LIKE）；回傳欄位叫 ip，跟搜尋條件 lastLoginIp 是同一個概念，只是 rajah model 命名不同源' +
+                '（AgentLoginHistorySearch.lastLoginIp vs AgentLoginHistory.ip），不是兩件事。' +
                 '固定只回傳 remark ∈ {登入成功/密碼錯誤/驗證失敗} 三種狀態，其餘登入狀態不會出現。' +
                 'ip 欄位預設遮罩中間兩段（如 1.2.3.4 → 1.*.*.4），revealIp=true 才回傳完整值——' +
                 '不在既有 SensitiveFieldEnum 保護範圍內，屬本 tool 自行加上的保護。' +
+                '⚠️ 只認 4 段式 IPv4，非此格式（含 IPv6，agent_login_histories 用 INET6_ATON 儲存，' +
+                '理論上可存 IPv6）原樣回傳、不遮罩。' +
                 'page/pageSize 是內嵌在搜尋參數裡（與同 service 其他分頁方法不同，那些是獨立的 method 參數）；' +
                 'pageSize 只接受 10/20/30/50/100/200 這幾個離散值（PageSizeEnum）。' +
                 '回傳同時有 totalPage 與 totalRow，可直接用 totalRow 判斷筆數，不受無 totalRow 的' +

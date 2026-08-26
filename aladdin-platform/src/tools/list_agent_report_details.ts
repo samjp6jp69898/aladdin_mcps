@@ -22,14 +22,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SearchAgentReportDetailsParams } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { deepFixLongs } from '../const.ts';
-
-function maskIp(ip: string | null | undefined): string | null | undefined {
-    if (!ip) return ip;
-    const parts = ip.split('.');
-    if (parts.length !== 4) return ip; // 非典型 IPv4 格式（如 IPv6/空字串以外的異常值）原樣保留，不硬套遮罩
-    return `${ parts[0] }.*.*.${ parts[3] }`;
-}
+import { deepFixLongs, maskIp } from '../const.ts';
 
 export function registerListAgentReportDetailsTool(server: McpServer): void {
     server.registerTool(
@@ -53,7 +46,8 @@ export function registerListAgentReportDetailsTool(server: McpServer): void {
                 '⚠️ 2026-08-26 dev 實測：agentId/agentName 比對的是「已在 AgentPlatform 系統註冊為代理帳號」的' +
                 '身分，不是任意會員 id——用某代理報表列（rows）裡 isAgent=true 的 userId 當 agentId 查詢會回' +
                 'errorCode=2702 agentAgentNotFound，該 userId 需先確認是否真的是已註冊代理。' +
-                'lastLoginIp 預設遮罩中間兩段（如 1.2.3.4 → 1.*.*.4），revealLastLoginIp=true 才回傳完整值。',
+                'lastLoginIp 預設遮罩中間兩段（如 1.2.3.4 → 1.*.*.4），revealLastLoginIp=true 才回傳完整值。' +
+                '⚠️ 只認 4 段式 IPv4，非此格式（含 IPv6）原樣回傳、不遮罩。',
             inputSchema: {
                 agentId: z.number().int().optional().describe('代理 UID，精確比對'),
                 agentName: z.string().optional().describe('代理帳號，精確比對'),
