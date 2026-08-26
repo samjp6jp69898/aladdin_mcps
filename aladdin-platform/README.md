@@ -135,6 +135,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_agent_platform_get_agent_game_reports` | `AgentPlatform.GetAgentGameReports` | 分頁查詢某代理團隊會員的遊戲報表（每列一個遊戲品牌），agentId 必填，可用 displayTag/brandId 篩選；⚠️ displayTag 省略在後端會被誤判成 0 而非全部，本 tool 已用 default(-1) 防呆；statisticsDateStart/End 省略只抓最近 7 天；無 PII 欄位 |
 | `aladdin_platform_agent_platform_get_agent_bet_records` | `AgentPlatform.GetAgentBetRecords` | 分頁查詢某代理團隊會員的投注紀錄，agentId 必填，可用 accountName/userId 精確鎖定會員；⚠️ totalBetAmount 等彙總欄位是當頁合計非全條件彙總；userAccountName 非真實姓名，無 PII 遮罩需求 |
 | `aladdin_platform_agent_platform_get_agent_member_game_reports` | `AgentPlatform.GetAgentMemberGameReports` | 分頁查詢某代理團隊會員的遊戲報表（每列一會員），agentId 必填，accountName 可精確鎖定；`lastLoginIp` 預設遮罩，`revealLastLoginIp=true` 才回傳完整值 |
+| `aladdin_platform_agent_platform_get_agent_login_histories` | `AgentPlatform.GetAgentLoginHistories` | 分頁查詢會員登入紀錄；⚠️ 儘管掛在代理權限模組，實作完全沒有 agentId 篩選，是整個平台範圍的查詢，非限定某代理團隊；`ip` 預設遮罩，`revealIp=true` 才回傳完整值 |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
