@@ -1,6 +1,11 @@
 @echo off
 chcp 65001 > nul
-setlocal enabledelayedexpansion
+REM disabledelayedexpansion（=預設值，這裡明寫是為了說明原因）：下面
+REM 啟動 MSIX 封裝版本會用到 shell:AppsFolder\PackageFamilyName!AppId
+REM 這種本身就帶一個 "!" 的字串，delayed expansion 模式下有機會被誤判
+REM 成 !var! 語法吃掉；腳本其他地方都沒有真的依賴 delayed expansion，
+REM 關掉沒有副作用。
+setlocal DisableDelayedExpansion
 REM 開始使用-Windows-圖形介面.bat — 給企劃雙擊執行的啟動器（Windows，開啟
 REM Claude 桌面應用程式本身，不開 cmd 視窗跑 CLI）。
 REM
@@ -166,6 +171,37 @@ if not defined GUI_APP if exist "%PROGRAMFILES%\Claude\Claude.exe" call :CheckGu
 
 del "%SUBSYS_PS1%" >nul 2>&1
 
+REM ── 若上面都沒找到：改查是否透過 Microsoft Store／MSIX 封裝安裝 ─────
+REM 2026-08-26 另一位使用者實測發現：桌面版也可能是 MSIX 封裝安裝
+REM （C:\Program Files\WindowsApps\...\Claude.exe），這種安裝一般使用者
+REM 沒有權限直接讀取／執行該資料夾底下的 exe（連 PowerShell 讀 bytes 都
+REM 會被拒絕），前面的 PE Subsystem 檢查對它必然失敗、也不該對它硬試。
+REM MSIX app 官方規定的啟動方式不是呼叫 exe 路徑，而是透過 App 使用者
+REM 模型 ID（PackageFamilyName!AppId）走 shell:AppsFolder\ 這個虛擬資料
+REM 夾觸發。PackageFamilyName 依安裝版本／發佈者雜湊而定，不同機器不
+REM 保證一樣，所以用 Get-AppxPackage 動態查、不寫死。用 -notlike "*Code*"
+REM 排除掉 Claude Code CLI 如果也用 MSIX 封裝安裝的情況。
+set "APPX_ID="
+set "APPX_PS1=%TEMP%\aladdin-appx-find.ps1"
+if not defined GUI_APP (
+    (
+        echo try {
+        echo     $pkg = Get-AppxPackage -Name "*Claude*" ^| Where-Object { $_.Name -notlike "*Code*" } ^| Select-Object -First 1
+        echo     if ^($pkg^) {
+        echo         $manifest = Get-AppxPackageManifest -Package $pkg.PackageFullName
+        echo         $app = $manifest.Package.Applications.Application
+        echo         if ^($app -is [System.Array]^) { $app = $app[0] }
+        echo         if ^($app^) {
+        echo             $out = $pkg.PackageFamilyName + "!" + $app.Id
+        echo             Write-Output $out
+        echo         }
+        echo     }
+        echo } catch {}
+    ) > "%APPX_PS1%"
+    for /f "delims=" %%A in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%APPX_PS1%" 2^>nul') do set "APPX_ID=%%A"
+    del "%APPX_PS1%" >nul 2>&1
+)
+
 REM 把路徑複製到剪貼簿，等一下在 Claude 視窗裡「選擇資料夾」可以直接貼上
 REM （clip 是 Windows 內建指令，不需要額外安裝）。
 <nul set /p "=%KIT_PATH%" | clip
@@ -173,6 +209,9 @@ REM （clip 是 Windows 內建指令，不需要額外安裝）。
 if defined GUI_APP (
     start "" "%GUI_APP%"
     echo   [OK] 已開啟 Claude，資料夾路徑已複製到剪貼簿，到「選擇資料夾」直接貼上即可。
+) else if defined APPX_ID (
+    start "" explorer.exe shell:AppsFolder\%APPX_ID%
+    echo   [OK] 已開啟 Claude（Microsoft Store／MSIX 版），資料夾路徑已複製到剪貼簿，到「選擇資料夾」直接貼上即可。
 ) else if defined FOUND_CLI_ONLY (
     echo   [!] 只找到 Claude 的命令列（CLI）版本，沒找到桌面圖形介面版本
     echo.
@@ -191,6 +230,8 @@ if defined GUI_APP (
     echo   請自己從「開始」選單搜尋「Claude」並點開它，資料夾路徑已複製到剪貼簿，
     echo   到「選擇資料夾」直接貼上即可
     echo   （如果還沒安裝，到 https://claude.com/download 下載安裝）。
+    echo.
+    echo   （除錯資訊，回報問題時請附上這行：GUI_APP=[%GUI_APP%] APPX_ID=[%APPX_ID%] FOUND_CLI_ONLY=[%FOUND_CLI_ONLY%]）
     echo.
     pause
 )
