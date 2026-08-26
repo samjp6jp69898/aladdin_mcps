@@ -35,8 +35,7 @@ export function registerGetSupportedLanguagesTool(server: McpServer): void {
                 '取得當前平台（依登入 token 綁定的 platformId）支援的語言設定（rajah: Platform.GetSupportedLanguages，' +
                 '無 @Permission，只要登入後台即可查詢）。無輸入參數。回傳 defaultLanguageCode（預設語言代碼）與 ' +
                 'languages（支援的語言代碼陣列）。若需要更詳細的語言物件（含 id/status，適用於管理頁面編輯），' +
-                '對應的是同 service 另一支 rajah method ListPlatformSupportedLanguages（目前尚未包裝成 MCP tool）。' +
-                '純讀取查詢，可安全重複呼叫。',
+                '改用 aladdin_platform_platform_list_platform_supported_languages。純讀取查詢，可安全重複呼叫。',
             inputSchema: {},
         },
         async () => {
