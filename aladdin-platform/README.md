@@ -131,6 +131,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_ranking_platform_get_platform_ranking_activity_list` | `RankingPlatform.GetPlatformRankingActivityList` | 取得展示期間**尚未結束**的活動排行榜 id+名稱精簡清單（非全部），供下拉選單使用；2026-08-26 dev 實測 14 筆全量中只有 5 筆展示中 |
 | `aladdin_platform_ranking_platform_change_activity_ranking_setting_status` | `RankingPlatform.ChangeActivityRankingSettingStatus` | 切換單一活動排行榜設定狀態；後端有做 affectedRows 檢查，id 不存在正確回 objectNotFound（不是靜默成功）；2026-08-26 dev 實測含不存在 id、非法列舉值、round-trip 三種情境 |
 | `aladdin_platform_ranking_platform_create_or_update_activity_ranking_setting` | `RankingPlatform.CreateOrUpdateActivityRankingSetting` | 新增或編輯活動排行榜設定；編輯時 5 個時間欄位與 status 一律沿用建立時原值（呼叫端傳什麼都無效），**periodReset 是已驗證的後端保護缺口**（rajah 標 @NoEdit 但編輯時實測真的能改動）；先讀現值只覆蓋有帶到的欄位；新增無回傳 id，靠清單 id 集合差異反推；此 service 無 Delete，下架用狀態切換工具。2026-08-26 dev 實測含過去時間新增被拒絕、不存在 id 編輯被拒絕、真實新增/編輯/periodReset 缺口驗證，測試資料已設回 disabled |
+| `aladdin_platform_fixed_ranking_platform_list_fixed_ranking_settings` | `FixedRankingPlatform.ListFixedRankingSettings` | 列出本平台三種固定榜單（流水/盈利/等級）設定，無參數；2026-08-26 dev 實測回傳 3 筆，`updatedAtTimestamp` 為十進位字串已轉換成數字 |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
