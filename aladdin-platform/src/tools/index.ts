@@ -123,6 +123,16 @@ import { registerGetCurrenciesTool } from './get_currencies.ts';
 import { registerUpdateCurrencyStatusTool } from './update_currency_status.ts';
 import { registerGetOtpSmsSettingsTool } from './get_otp_sms_settings.ts';
 import { registerUpdateOtpSmsSettingsTool } from './update_otp_sms_settings.ts';
+import { registerGetRegistrationIpQuotaConfigTool } from './get_registration_ip_quota_config.ts';
+import { registerUpdateRegistrationIpQuotaConfigTool } from './update_registration_ip_quota_config.ts';
+import { registerListRegistrationIpQuotasTool } from './list_registration_ip_quotas.ts';
+import { registerExportRegistrationIpQuotasTool } from './export_registration_ip_quotas.ts';
+import { registerToggleRegistrationIpQuotaStatusTool } from './toggle_registration_ip_quota_status.ts';
+import { registerReleaseRegistrationIpQuotaTool } from './release_registration_ip_quota.ts';
+import { registerListRegistrationIpUsersTool } from './list_registration_ip_users.ts';
+import { registerGetUserEnterHistoryAppDomainsTool } from './get_user_enter_history_app_domains.ts';
+import { registerGetUserEnterHistoryDomainReportTool } from './get_user_enter_history_domain_report.ts';
+import { registerGetUserEnterHistoryDeviceReportTool } from './get_user_enter_history_device_report.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -251,4 +261,14 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateCurrencyStatusTool(server);
     registerGetOtpSmsSettingsTool(server);
     registerUpdateOtpSmsSettingsTool(server);
+    registerGetRegistrationIpQuotaConfigTool(server);
+    registerUpdateRegistrationIpQuotaConfigTool(server);
+    registerListRegistrationIpQuotasTool(server);
+    registerExportRegistrationIpQuotasTool(server);
+    registerToggleRegistrationIpQuotaStatusTool(server);
+    registerReleaseRegistrationIpQuotaTool(server);
+    registerListRegistrationIpUsersTool(server);
+    registerGetUserEnterHistoryAppDomainsTool(server);
+    registerGetUserEnterHistoryDomainReportTool(server);
+    registerGetUserEnterHistoryDeviceReportTool(server);
 }
