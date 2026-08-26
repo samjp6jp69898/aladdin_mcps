@@ -11,6 +11,7 @@ import { registerGetDailyPaymentHighNetWorthUsersTool } from './get_daily_paymen
 import { registerGetDailyUserGameVendorTagBetSummaryTool } from './get_daily_user_game_vendor_tag_bet_summary.ts';
 import { registerGetDailyUserGameVendorTagBetUserSummaryTool } from './get_daily_user_game_vendor_tag_bet_user_summary.ts';
 import { registerGetTodayPlatformStatisticTool } from './get_today_platform_statistic.ts';
+import { registerGetYesterdayPlatformStatisticTool } from './get_yesterday_platform_statistic.ts';
 import { registerListGameVendorsTool } from './list_game_vendors.ts';
 import { registerListVendorGamesTool } from './list_vendor_games.ts';
 import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
@@ -261,4 +262,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetDailyUserGameVendorTagBetSummaryTool(server);
     registerGetDailyUserGameVendorTagBetUserSummaryTool(server);
     registerGetTodayPlatformStatisticTool(server);
+    registerGetYesterdayPlatformStatisticTool(server);
 }
