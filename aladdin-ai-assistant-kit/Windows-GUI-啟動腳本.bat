@@ -149,10 +149,18 @@ set "SUBSYS_PS1=%TEMP%\aladdin-gui-subsystem-check.ps1"
 REM 候選清單：先掃 PATH 上所有叫 Claude.exe 的檔案（涵蓋 WindowsApps 這種
 REM alias 位置），再補上幾個常見的桌面版安裝猜測路徑當備援。每個候選都
 REM 用上面的 PE 檢查，只認 Subsystem=2；是 CLI（3）就跳過、繼續找下一個。
+REM
+REM %LOCALAPPDATA%\AnthropicClaude\claude.exe 是 2026-08-26 由使用者同事
+REM 那台機器實測確認的路徑：桌面版採 Squirrel 風格 per-user 安裝（跟
+REM Slack／Discord 同一種機制），這個資料夾底下的 claude.exe 是固定不變
+REM 的 launcher stub（自動導向 app-<版本號>\ 底下當前版本的實際執行檔），
+REM 版本更新後路徑也不會變。這個資料夾通常不在 PATH 上，所以上面的
+REM where 掃不到它，因此在候選清單裡明確加入。
 set "GUI_APP="
 set "FOUND_CLI_ONLY="
 
 for /f "delims=" %%F in ('where Claude.exe 2^>nul') do call :CheckGuiCandidate "%%~F"
+if not defined GUI_APP if exist "%LOCALAPPDATA%\AnthropicClaude\claude.exe" call :CheckGuiCandidate "%LOCALAPPDATA%\AnthropicClaude\claude.exe"
 if not defined GUI_APP if exist "%LOCALAPPDATA%\Programs\Claude\Claude.exe" call :CheckGuiCandidate "%LOCALAPPDATA%\Programs\Claude\Claude.exe"
 if not defined GUI_APP if exist "%PROGRAMFILES%\Claude\Claude.exe" call :CheckGuiCandidate "%PROGRAMFILES%\Claude\Claude.exe"
 
