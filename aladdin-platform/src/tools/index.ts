@@ -12,6 +12,7 @@ import { registerOnboardVendorGameTool } from './onboard_vendor_game.ts';
 import { registerGetMessageBoardSettingTool } from './get_message_board_setting.ts';
 import { registerUpdateMessageBoardSettingTool } from './update_message_board_setting.ts';
 import { registerGetMessageBoardPostsTool } from './get_message_board_posts.ts';
+import { registerGetPostCommentsTool } from './get_post_comments.ts';
 import { registerGetPostGiftRecordsTool } from './get_post_gift_records.ts';
 import { registerGetGameLocalizationsTool } from './get_game_localizations.ts';
 import { registerListTwoEightGamesTool } from './list_two_eight_games.ts';
@@ -142,6 +143,7 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetMessageBoardSettingTool(server);
     registerUpdateMessageBoardSettingTool(server);
     registerGetMessageBoardPostsTool(server);
+    registerGetPostCommentsTool(server);
     registerGetPostGiftRecordsTool(server);
     registerGetGameLocalizationsTool(server);
     registerListTwoEightGamesTool(server);
