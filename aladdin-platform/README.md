@@ -128,7 +128,8 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_risk_platform_ip_region_delete_ip_region` | `RiskPlatformIpRegion.DeleteIpRegion` | **硬刪除**單一規則，無法復原。id 不存在/屬於別平台回業務錯誤，不會誤刪 |
 | `aladdin_platform_risk_platform_ip_region_batch_delete_ip_region` | `RiskPlatformIpRegion.BatchDeleteIpRegion` | **硬刪除**多筆規則，無法復原。**部分成功語意**：回傳 deleted 只含真的存在且屬於當前平台的 id，沒出現的 id 沒有被誤刪 |
 | `aladdin_platform_agent_platform_get_phone_number_visibility` | `AgentPlatform.GetPhoneNumberVisibility` | 查詢目前登入操作者對代理會員手機號碼欄位的臨時可視性授權（Redis cache key，TTL 1 小時）是否仍有效；無參數，只認目前登入身分 |
-| `aladdin_platform_agent_platform_view_phone_number` | `AgentPlatform.ViewPhoneNumber` | 開通目前登入操作者查看代理會員手機號碼明碼的授權，效期 1 小時，冪等（重複呼叫只延長效期）；本身不回傳手機號碼，只影響其他清單 method（尚未包裝）的遮罩行為；掛 `@Permission` + `@Totp` |
+| `aladdin_platform_agent_platform_view_phone_number` | `AgentPlatform.ViewPhoneNumber` | 開通目前登入操作者查看代理會員手機號碼明碼的授權，效期 1 小時，冪等（重複呼叫只延長效期）；本身不回傳手機號碼，只影響其他清單 method（尚未包裝）的遮罩行為；掛 `@Permission` + `@Totp`；無撤銷機制 |
+| `aladdin_platform_agent_platform_get_reports` | `AgentPlatform.GetReports` | 分頁查詢代理數據報表，所有搜尋欄位選填，agentId/agentName 可精確鎖定單一代理；⚠️ rajah 定義比目前 abu/platform 生成的 client 多 6 個較新搜尋欄位（淨利潤/負盈利/新增直屬有效人數），本 tool 尚未支援；`realName` 預設遮罩，`revealRealName=true` 才回傳完整姓名；⚠️ 省略 statisticsDateStart/End 會回 errorCode=2778 agentReportCrossMonthNotAllowed |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
