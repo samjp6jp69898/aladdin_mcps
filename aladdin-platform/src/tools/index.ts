@@ -19,6 +19,7 @@ import { registerReviewPostTool } from './review_post.ts';
 import { registerBatchReviewPostsTool } from './batch_review_posts.ts';
 import { registerDelistPostTool } from './delist_post.ts';
 import { registerRelistPostTool } from './relist_post.ts';
+import { registerSetIsPinnedPostTool } from './set_is_pinned_post.ts';
 import { registerGetGameLocalizationsTool } from './get_game_localizations.ts';
 import { registerListTwoEightGamesTool } from './list_two_eight_games.ts';
 import { registerListInHouseVendorsTool } from './list_in_house_vendors.ts';
@@ -155,6 +156,7 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerBatchReviewPostsTool(server);
     registerDelistPostTool(server);
     registerRelistPostTool(server);
+    registerSetIsPinnedPostTool(server);
     registerGetGameLocalizationsTool(server);
     registerListTwoEightGamesTool(server);
     registerListInHouseVendorsTool(server);
