@@ -11,12 +11,12 @@
 # 理由：這是明碼憑證，不是可以事後補救的東西）。
 dist/
 
-# H17：TOTP 驗證碼的單次暫存檔（見 .claude/skills/login/SKILL.md）——login.sh
+# H17：TOTP 驗證碼的單次暫存檔（見 .claude/skills/aladdin-mcp-login/SKILL.md）——login.sh
 # 讀到後立刻刪除，正常情況下這個檔案不該長期存在，但防手滑一併排除。
-.claude/skills/login/.totp-code.tmp
+.claude/skills/aladdin-mcp-login/.totp-code.tmp
 # H17 review 第三輪收尾（N1）：記錄「上一次公告需要 TOTP 的環境別名」的
 # 暫存檔，跟上面那個同一時間點一起消耗，不該長期存在。
-.claude/skills/login/.totp-pending-alias.tmp
+.claude/skills/aladdin-mcp-login/.totp-pending-alias.tmp
 
 # H18：上傳圖片 skill 的單次暫存檔（見 .claude/skills/upload-image/SKILL.md）——
 # upload.sh 讀到後立刻刪除，正常情況下這個檔案不該長期存在，但防手滑一併排除。

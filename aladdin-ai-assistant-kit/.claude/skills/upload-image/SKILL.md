@@ -107,7 +107,7 @@ fileId」，不要把這一輪拿到的 `fileId` 存起來給下一張不同的�
 - **上傳成功**：把腳本印出的 `fileId` 原樣告訴使用者（或直接接著呼叫圖片類
   tool），並告知這個 `fileId` 只能用在指定的那個環境、只能用這一次。
 - **上傳被拒絕（HTTP 401）**：Bearer token 可能已失效，先重跑登入 skill
-  （`bash .claude/skills/login/login.sh`）確認這個環境仍能正常登入，再重試
+  （`bash .claude/skills/aladdin-mcp-login/login.sh`）確認這個環境仍能正常登入，再重試
   一次上傳；如果登入沒問題但上傳仍然 401，聯絡工程師確認 `.mcp.json` 設定。
 - **檔案大小超過上限 / 型別不在白名單內（僅接受 png/jpeg/webp，以檔案內容
   判定，不是看副檔名）**：把腳本印出的訊息原樣告訴使用者，換一張符合條件的

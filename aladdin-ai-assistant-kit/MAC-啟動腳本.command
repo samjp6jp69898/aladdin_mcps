@@ -36,7 +36,7 @@ echo ""
 
 # ── 檢查 1：Node.js 是否已安裝 ─────────────────────────────
 # login／upload-image 這兩個 skill 內部都是用 node 執行實際的登入／上傳
-# 邏輯（理由見 .claude/skills/login/login.sh 檔頭）。原本假設「Claude Code
+# 邏輯（理由見 .claude/skills/aladdin-mcp-login/login.sh 檔頭）。原本假設「Claude Code
 # 本身依賴 Node.js，所以 node 一定存在」，但 2026-08-21 實測發現不少企劃
 # 電腦上沒有另外裝 Node.js——這裡提早攔下來，壞在使用者看得懂中文的地方，
 # 而不是壞在對話裡說「幫我登入」時噴一句英文的 command not found。

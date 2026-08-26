@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(curl -s https://mcp.aladdin-assistant.cc/health)",
-      "Bash(bash .claude/skills/login/login.sh)",
+      "Bash(bash .claude/skills/aladdin-mcp-login/login.sh)",
       "Bash(bash .claude/skills/upload-image/upload.sh)"
     ],
     "deny": [
@@ -43,7 +43,7 @@
     "（curl http://127.0.0.1:8789/health），那不是企劃端該有的能力。",
     "H17／H18 兩支 skill 內部真正需要帶 token／帳密／檔案路徑等動態內容的 curl，",
     "一定要包在一支不吃額外參數的固定 wrapper script 裡（agent 只呼叫",
-    "`bash .claude/skills/login/login.sh`／`bash .claude/skills/upload-image/upload.sh`",
+    "`bash .claude/skills/aladdin-mcp-login/login.sh`／`bash .claude/skills/upload-image/upload.sh`",
     "這兩個完全固定的指令字串，動態值由 script 內部自己從 .env／.mcp.json 讀），",
     "不要讓 agent 自己在對話裡組出一行帶著 token 的 curl 指令——",
     "那種指令本質上就沒有辦法用這裡的萬用字元語法安全地 allowlist。",

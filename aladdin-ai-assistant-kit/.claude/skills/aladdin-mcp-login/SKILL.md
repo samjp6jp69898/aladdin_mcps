@@ -1,9 +1,9 @@
 ---
-name: login
+name: aladdin-mcp-login
 description: 登入 agrabah 後台（dev/pre/evi 等環境），讓 .mcp.json 裡的 MCP tool 能正常呼叫。Use when 第一次要操作 agrabah 後台工具之前、或任何 MCP tool 回傳「需要重新登入」（HOSTED_RELOGIN_REQUIRED）之類的訊號時；也用在使用者提供 TOTP 動態驗證碼、要求你重新完成登入的時候。
 ---
 
-# aladdin-login — 登入 agrabah 後台（密碼不進對話紀錄）
+# aladdin-mcp-login — 登入 agrabah 後台（密碼不進對話紀錄）
 
 ## 何時使用
 
@@ -20,7 +20,7 @@ description: 登入 agrabah 後台（dev/pre/evi 等環境），讓 .mcp.json �
 呼叫 Bash 工具時，指令字串必須**逐字**是：
 
 ```
-bash .claude/skills/login/login.sh
+bash .claude/skills/aladdin-mcp-login/login.sh
 ```
 
 **不要**在這行後面加任何參數（帳號、密碼、環境名稱、TOTP 驗證碼都不行）。
@@ -60,9 +60,9 @@ Bearer token／密碼一起送出去的風險開了一個口）。
 1. 跟使用者說清楚：「這個環境需要你 App 上目前顯示的 6 位數動態驗證碼」，
    請他直接在對話裡告訴你。
 2. 使用者提供驗證碼後，用 **Write 工具**（不是 Bash）把這組數字寫進固定
-   檔案 `.claude/skills/login/.totp-code.tmp`（純文字，只放驗證碼本身，
+   檔案 `.claude/skills/aladdin-mcp-login/.totp-code.tmp`（純文字，只放驗證碼本身，
    不要加其他內容）。
-3. 寫完後，再次用 Bash 呼叫**同一個固定指令** `bash .claude/skills/login/login.sh`
+3. 寫完後，再次用 Bash 呼叫**同一個固定指令** `bash .claude/skills/aladdin-mcp-login/login.sh`
    （還是 zero-args，不要把驗證碼接在指令列上）。腳本會自動讀到這個檔案、
    立刻刪除它、把驗證碼用在這一輪的登入嘗試上。
 

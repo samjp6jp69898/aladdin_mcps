@@ -2,8 +2,10 @@
  * make-starter-kit.ts — H19：按企劃逐人產生 starter kit，預填個人 Bearer token。
  *
  * 用法：
- *   bun make-starter-kit.ts --id <企劃唯一id> --name <顯示名> [--grants admin-dev,platform-dev-pk] [--rotate]
+ *   bun make-starter-kit.ts --id <企劃唯一id> --name <顯示名> [--grants admin-dev,platform-dev-pk|all] [--rotate]
  *   bun make-starter-kit.ts --list        # 列出兩份名冊目前已核發的 id/顯示名/核發時間（不含 token 值）
+ *   bun make-starter-kit.ts --revoke --id <id> --grants env1,env2|all   # 撤銷指定環境的 token（立即生效）
+ *   bun make-starter-kit.ts --rename --id <id> --name <新顯示名>        # 只改 display_name（token 不變，不需重新交付）
  *
  * ── id 是什麼 ──────────────────────────────────────────────────────────
  * --id 同時是 (1) token 名冊裡的唯一 id（H3 契約：程式當 key，不可重複、不可
@@ -35,7 +37,15 @@
  * 重啟任何服務），並整個重新產生 dist/<id>/ 目錄。
  * 注意：--rotate 只動這次 --grants 指定的環境；如果這個人先前被發過而這次
  * --grants 沒包含的環境，那個環境的舊 token 不會被動到，也不會被撤銷——
- * 用 --grants 縮小範圍不等於撤權，撤權要用專門的撤銷流程（H28）。
+ * 用 --grants 縮小範圍不等於撤權，撤權用 --revoke（見下）。
+ *
+ * ── 撤銷（--revoke，2026-08-26 加入；tg-monitor「Token 權限」頁也走這裡）──
+ * --revoke --id <id> --grants <envs|all>：把該 id 從指定環境的名冊移除。
+ * --grants 必填、不給預設值，避免誤撤。名冊 fail-closed、每個 request 現讀
+ * 檔案，移除後下一個 request 就 401，不需重啟任何服務。撤完重掃全部名冊：
+ * 還有存活環境就重建 dist/<id>/（.mcp.json 只含仍有效的 token，對齊
+ * h19-review-correctness「dist 必須反映名冊現況」的既有結論）；一個不剩就
+ * 整個刪除 dist/<id>/（裡面只剩死 token，留著沒有意義還多一份外洩面）。
  *
  * ── 名冊寫入安全（踩坑第 6 點：暫存檔 + mv，絕不就地覆寫）───────────────
  * 名冊是 fail-closed 且每個 request 現讀檔案，就地覆寫（先清空再寫入）的
@@ -198,8 +208,8 @@ const STATIC_FILES = [
     '.gitattributes',
     '.gitignore',
     '.claude/settings.json',
-    '.claude/skills/login/SKILL.md',
-    '.claude/skills/login/login.sh',
+    '.claude/skills/aladdin-mcp-login/SKILL.md',
+    '.claude/skills/aladdin-mcp-login/login.sh',
     '.claude/skills/upload-image/SKILL.md',
     '.claude/skills/upload-image/upload.sh',
     'MAC-啟動腳本.command',
@@ -209,7 +219,7 @@ const STATIC_FILES = [
 ];
 
 const EXECUTABLE_FILES = new Set([
-    '.claude/skills/login/login.sh',
+    '.claude/skills/aladdin-mcp-login/login.sh',
     '.claude/skills/upload-image/upload.sh',
     'MAC-啟動腳本.command',
     'MAC-GUI-啟動腳本.command',
@@ -251,10 +261,12 @@ function buildMcpJson(grants: string[], token: string | ((grant: string) => stri
 
 function printUsageAndExit(code: number): never {
     console.error(`用法：
-  bun make-starter-kit.ts --id <企劃唯一id> --name <顯示名> [--grants ${ Object.keys(ALLOWED_GRANTS).join(',') }] [--rotate]
+  bun make-starter-kit.ts --id <企劃唯一id> --name <顯示名> [--grants ${ Object.keys(ALLOWED_GRANTS).join(',') }|all] [--rotate]
+  bun make-starter-kit.ts --revoke --id <id> --grants <envs|all>   # 撤銷指定環境的 token（立即生效）
+  bun make-starter-kit.ts --rename --id <id> --name <新顯示名>      # 只改 display_name（token 不變）
   bun make-starter-kit.ts --list
 
-目前支援的 --grants（預設兩個都給，可用逗號分隔指定子集）：
+目前支援的 --grants（預設給 ${ DEFAULT_GRANTS.join(' + ') }，可用逗號分隔指定子集；all = 全部）：
 ${ Object.entries(ALLOWED_GRANTS).map(([k, v]) => `  ${ k } → ${ v.alias }（${ v.urlPrefix }）`).join('\n') }
 `);
     process.exit(code);
@@ -274,6 +286,82 @@ function cmdList(): void {
     }
 }
 
+/**
+ * --rename：把 id 在所有名冊裡的 display_name 換掉。token 與 issued_at 完全
+ * 不動（display_name 只供人類閱讀，不參與認證），dist/<id>/ 的 .mcp.json 也
+ * 不含顯示名，所以不需要重建、不需要重新交付。
+ */
+function cmdRename(id: string, newName: string): void {
+    const updated: string[] = [];
+    for (const g of Object.keys(ALLOWED_GRANTS)) {
+        const cfg = ALLOWED_GRANTS[g];
+        const registry = loadRegistryFile(cfg.registryPath);
+        const entry = findEntry(registry, id);
+        if (!entry) continue;
+        entry.display_name = newName;
+        writeRegistryFileAtomic(cfg.registryPath, registry);
+        updated.push(g);
+        console.log(`[${ g }] display_name 已更新（${ cfg.registryPath }）`);
+    }
+    if (updated.length === 0) {
+        console.error(`id "${ id }" 不存在於任何名冊，本次不做任何修改。`);
+        process.exit(1);
+    }
+    console.log(`\n完成：id "${ id }" 的 display_name 已改為「${ newName }」（${ updated.join('、') }）。token 與核發時間不變，不需要重新交付 kit。`);
+}
+
+/** --revoke：把 id 從指定環境的名冊移除，並讓 dist/<id>/ 對齊名冊現況（見檔頭說明）。 */
+function cmdRevoke(id: string, requestedGrants: string[]): void {
+    // ── 第一階段：只檢查，不寫入 ──────────────────────────────────────
+    const toRemove: string[] = [];
+    for (const g of requestedGrants) {
+        const registry = loadRegistryFile(ALLOWED_GRANTS[g].registryPath);
+        if (findEntry(registry, id)) toRemove.push(g);
+    }
+    if (toRemove.length === 0) {
+        console.error(`id "${ id }" 在指定環境（${ requestedGrants.join(', ') }）的名冊裡都沒有條目，本次不做任何修改。`);
+        process.exit(1);
+    }
+
+    // ── 第二階段：逐名冊移除（atomic 寫入；fail-closed 名冊即時生效）───
+    for (const g of toRemove) {
+        const cfg = ALLOWED_GRANTS[g];
+        const registry = loadRegistryFile(cfg.registryPath);
+        registry.tokens = registry.tokens.filter(t => t.id !== id);
+        writeRegistryFileAtomic(cfg.registryPath, registry);
+        console.log(`[${ g }] 已撤銷（${ cfg.registryPath }）`);
+    }
+
+    // 重掃全部名冊決定 dist/<id>/ 去留：還有存活環境就重建（.mcp.json 只含
+    // 仍有效 token）；一個不剩就整個移除。
+    const remaining: string[] = [];
+    const tokensForOutput: Record<string, string> = {};
+    for (const g of Object.keys(ALLOWED_GRANTS)) {
+        const entry = findEntry(loadRegistryFile(ALLOWED_GRANTS[g].registryPath), id);
+        if (entry) {
+            remaining.push(g);
+            tokensForOutput[g] = entry.token;
+        }
+    }
+    const distDir = join(KIT_DIR, 'dist', id);
+    if (remaining.length === 0) {
+        if (existsSync(distDir)) rmSync(distDir, { recursive: true, force: true });
+        console.log(`\nid "${ id }" 已無任何環境權限，dist/${ id }/ 已一併移除。`);
+    } else if (existsSync(distDir)) {
+        rmSync(distDir, { recursive: true, force: true });
+        mkdirSync(distDir, { recursive: true });
+        copyStaticFiles(distDir);
+        const mcpJsonPath = join(distDir, '.mcp.json');
+        writeFileSync(mcpJsonPath, JSON.stringify(buildMcpJson(remaining, g => tokensForOutput[g]), null, 2) + '\n', 'utf-8');
+        chmodSync(mcpJsonPath, 0o600);
+        JSON.parse(readFileSync(mcpJsonPath, 'utf-8'));
+        console.log(`\ndist/${ id }/ 已重建，僅含仍有效環境：${ remaining.join('、') }。對方手上的舊 kit 仍含被撤環境的死 token，記得把更新後的 kit 重新交付。`);
+    } else {
+        console.log(`\n仍有效環境：${ remaining.join('、') }（dist/${ id }/ 不存在，未重建）。`);
+    }
+    console.log('撤銷即刻生效：名冊 fail-closed、每個 request 現讀檔案，被撤環境的舊 token 下一個 request 起 401。');
+}
+
 function main(): void {
     const { values } = parseArgs({
         options: {
@@ -281,6 +369,8 @@ function main(): void {
             name: { type: 'string' },
             grants: { type: 'string' },
             rotate: { type: 'boolean', default: false },
+            revoke: { type: 'boolean', default: false },
+            rename: { type: 'boolean', default: false },
             list: { type: 'boolean', default: false },
             help: { type: 'boolean', default: false },
         },
@@ -292,10 +382,11 @@ function main(): void {
         return;
     }
 
+    const revoke = values.revoke === true;
     const id = values.id;
     const displayName = values.name;
-    if (!id || !displayName) {
-        console.error('缺少 --id 或 --name。\n');
+    if (!id || (!revoke && !displayName)) {
+        console.error(revoke ? '缺少 --id。\n' : '缺少 --id 或 --name。\n');
         printUsageAndExit(1);
     }
     if (!ID_PATTERN.test(id)) {
@@ -303,10 +394,21 @@ function main(): void {
         process.exit(1);
     }
 
+    if (values.rename === true) {
+        if (!displayName) {
+            console.error('--rename 需要 --name（新的顯示名）。\n');
+            printUsageAndExit(1);
+        }
+        cmdRename(id, displayName);
+        return;
+    }
+
     // 去重：--grants admin-dev,admin-dev 這種輸入不該讓同一個環境的 token
     // 被重複簽發兩次（結果雖然不錯——最後寫進名冊的就是最後一次生成的那把
     // ——但白白多產生一把不會被用到的 token、多寫一次名冊，沒有意義）。
-    const requestedGrants = [...new Set(values.grants ? values.grants.split(',').map(s => s.trim()).filter(Boolean) : DEFAULT_GRANTS)];
+    // `all` 捷徑：展開成 ALLOWED_GRANTS 全部；可與其他名字混寫，展開後照樣去重。
+    const rawGrants = values.grants ? values.grants.split(',').map(s => s.trim()).filter(Boolean) : DEFAULT_GRANTS;
+    const requestedGrants = [...new Set(rawGrants.flatMap(g => g.toLowerCase() === 'all' ? Object.keys(ALLOWED_GRANTS) : [g]))];
     if (requestedGrants.length === 0) {
         console.error('--grants 不能是空字串。');
         process.exit(1);
@@ -320,6 +422,20 @@ function main(): void {
             console.error(`「${ g }」不是合法的 grant 名稱。目前支援：${ Object.keys(ALLOWED_GRANTS).join(', ') }`);
             process.exit(1);
         }
+    }
+
+    if (revoke) {
+        if (!values.grants) {
+            console.error('--revoke 必須明確指定 --grants（要撤哪些環境；all = 全部），不提供預設值以免誤撤。');
+            process.exit(1);
+        }
+        cmdRevoke(id, requestedGrants);
+        return;
+    }
+    if (!displayName) {
+        // 理論上到不了（前面已擋），這裡只為了讓後續型別收斂成 string。
+        console.error('缺少 --name。\n');
+        printUsageAndExit(1);
     }
 
     const rotate = values.rotate === true;

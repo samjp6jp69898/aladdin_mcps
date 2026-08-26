@@ -4,7 +4,7 @@
 #
 # 硬性契約（見 ../../settings.json 的 _securityNote 與這個目錄下 SKILL.md）：
 # Claude 呼叫這支腳本時，Bash 指令字串必須永遠逐字等於
-#   bash .claude/skills/login/login.sh
+#   bash .claude/skills/aladdin-mcp-login/login.sh
 # 不吃任何命令列參數。所有動態值（帳密、Bearer token、要打哪個環境、選填的
 # TOTP 驗證碼）一律由本腳本自己從 .env／.mcp.json 讀，或從下面說明的固定
 # 暫存檔讀，絕不出現在呼叫這支腳本的指令列上。
