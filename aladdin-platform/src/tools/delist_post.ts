@@ -64,7 +64,7 @@ export function registerDelistPostTool(server: McpServer): void {
                 'messageBoardPostUpdateFailed。不確定目前狀態可先用 get_message_board_posts 查一次。',
             inputSchema: {
                 id: z.number().int().min(1).describe('大舞台動態貼文 id，必須目前處於 approved（已通過審核）狀態'),
-                reason: z.string().min(1).describe('下架原因，必填非空字串，會存入貼文的下架原因欄位'),
+                reason: z.string().min(1).max(500).describe('下架原因，必填非空字串，會存入貼文的下架原因欄位（500 字上限為工具層保守設定，非已查證的後端 DB 欄位長度限制）'),
                 isOfficial: z.boolean().describe('true=下架官方動態，false=下架一般會員動態；兩者是獨立實體表'),
             },
         },
