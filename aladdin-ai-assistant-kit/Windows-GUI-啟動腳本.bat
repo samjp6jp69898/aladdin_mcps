@@ -122,12 +122,41 @@ if not exist ".mcp.json" (
 )
 
 REM ── 找 Claude 桌面應用程式（GUI 版，不是 CLI）─────────────────
-REM 依序嘗試幾個可能的位置；官方文件沒有明確寫出 Windows 版桌面應用程式的
-REM 安裝路徑，這裡列的是常見 Electron app 安裝慣例，不保證每台電腦都對。
+REM 官方文件沒有明確寫出 Windows 版桌面應用程式的安裝路徑，而且
+REM %LOCALAPPDATA%\Microsoft\WindowsApps\ 這個資料夾同時是 Store app 跟
+REM 許多 CLI 工具（含 Claude Code CLI）用 App Execution Alias 註冊執行
+REM 檔的地方——Windows 檔名不分大小寫，光看「有沒有一個叫 Claude.exe 的
+REM 檔案」分不出找到的究竟是桌面版還是 CLI（2026-08-26 已證實：舊版腳本
+REM 只看路徑存在與否，實際抓到的是 CLI）。
+REM
+REM 改用 PE 檔頭的 Subsystem 欄位判斷：GUI 執行檔是 2
+REM （IMAGE_SUBSYSTEM_WINDOWS_GUI），CLI／主控台程式是 3
+REM （IMAGE_SUBSYSTEM_WINDOWS_CUI）。這個欄位在 PE32 與 PE32+（32/64 位元）
+REM 都位在「Optional Header 起始位置 + 68 bytes」，Optional Header 起始
+REM 位置又是「PE 簽章位置（存在檔案 offset 0x3C）+ 24 bytes」，兩者相加
+REM 等於 PE 簽章位置 + 92 bytes——不管檔名或路徑是什麼，這樣才能確定抓到
+REM 的真的是圖形介面程式。
+set "SUBSYS_PS1=%TEMP%\aladdin-gui-subsystem-check.ps1"
+(
+    echo param^([string]$Path^)
+    echo try {
+    echo     $bytes = [IO.File]::ReadAllBytes^($Path^)
+    echo     $peOffset = [BitConverter]::ToInt32^($bytes, 60^)
+    echo     [BitConverter]::ToInt16^($bytes, $peOffset + 92^)
+    echo } catch { -1 }
+) > "%SUBSYS_PS1%"
+
+REM 候選清單：先掃 PATH 上所有叫 Claude.exe 的檔案（涵蓋 WindowsApps 這種
+REM alias 位置），再補上幾個常見的桌面版安裝猜測路徑當備援。每個候選都
+REM 用上面的 PE 檢查，只認 Subsystem=2；是 CLI（3）就跳過、繼續找下一個。
 set "GUI_APP="
-if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\Claude.exe" set "GUI_APP=%LOCALAPPDATA%\Microsoft\WindowsApps\Claude.exe"
-if not defined GUI_APP if exist "%LOCALAPPDATA%\Programs\Claude\Claude.exe" set "GUI_APP=%LOCALAPPDATA%\Programs\Claude\Claude.exe"
-if not defined GUI_APP if exist "%PROGRAMFILES%\Claude\Claude.exe" set "GUI_APP=%PROGRAMFILES%\Claude\Claude.exe"
+set "FOUND_CLI_ONLY="
+
+for /f "delims=" %%F in ('where Claude.exe 2^>nul') do call :CheckGuiCandidate "%%~F"
+if not defined GUI_APP if exist "%LOCALAPPDATA%\Programs\Claude\Claude.exe" call :CheckGuiCandidate "%LOCALAPPDATA%\Programs\Claude\Claude.exe"
+if not defined GUI_APP if exist "%PROGRAMFILES%\Claude\Claude.exe" call :CheckGuiCandidate "%PROGRAMFILES%\Claude\Claude.exe"
+
+del "%SUBSYS_PS1%" >nul 2>&1
 
 REM 把路徑複製到剪貼簿，等一下在 Claude 視窗裡「選擇資料夾」可以直接貼上
 REM （clip 是 Windows 內建指令，不需要額外安裝）。
@@ -136,6 +165,18 @@ REM （clip 是 Windows 內建指令，不需要額外安裝）。
 if defined GUI_APP (
     start "" "%GUI_APP%"
     echo   [OK] 已開啟 Claude，資料夾路徑已複製到剪貼簿，到「選擇資料夾」直接貼上即可。
+) else if defined FOUND_CLI_ONLY (
+    echo   [!] 只找到 Claude 的命令列（CLI）版本，沒找到桌面圖形介面版本
+    echo.
+    echo   這台電腦上偵測到的 Claude 是指令列工具，不是桌面應用程式。
+    echo   如果你要的其實是指令列版本，請改用「Windows-啟動腳本.bat」
+    echo   （不是這支 GUI 版）。
+    echo.
+    echo   如果你要的是桌面應用程式，請自己從「開始」選單搜尋「Claude」
+    echo   並點開它，資料夾路徑已複製到剪貼簿，到「選擇資料夾」直接貼上即可
+    echo   （如果還沒安裝，到 https://claude.com/download 下載安裝）。
+    echo.
+    pause
 ) else (
     echo   [!] 沒能自動找到 Claude 桌面應用程式的安裝位置
     echo.
@@ -145,3 +186,17 @@ if defined GUI_APP (
     echo.
     pause
 )
+
+goto :eof
+
+:CheckGuiCandidate
+if defined GUI_APP goto :eof
+set "CANDIDATE=%~1"
+set "SUBSYS="
+for /f %%S in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%SUBSYS_PS1%" -Path "%CANDIDATE%" 2^>nul') do set "SUBSYS=%%S"
+if "%SUBSYS%"=="2" (
+    set "GUI_APP=%CANDIDATE%"
+) else if "%SUBSYS%"=="3" (
+    set "FOUND_CLI_ONLY=1"
+)
+goto :eof
