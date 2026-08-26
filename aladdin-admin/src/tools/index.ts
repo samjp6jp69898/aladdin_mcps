@@ -55,6 +55,7 @@ import { registerUpdateTotpRouteSettingTool } from './update_totp_route_setting.
 import { registerUpdateTotpRouteSettingStatusTool } from './update_totp_route_setting_status.ts';
 import { registerGetDepositAdapterKeysTool } from './get_deposit_adapter_keys.ts';
 import { registerListDepositAdaptersTool } from './list_deposit_adapters.ts';
+import { registerGetDepositAdapterForEditTool } from './get_deposit_adapter_for_edit.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -117,4 +118,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdateTotpRouteSettingStatusTool(server);
     registerGetDepositAdapterKeysTool(server);
     registerListDepositAdaptersTool(server);
+    registerGetDepositAdapterForEditTool(server);
 }
