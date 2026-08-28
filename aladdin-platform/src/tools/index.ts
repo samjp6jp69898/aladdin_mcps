@@ -217,6 +217,16 @@ import { registerGetAppVersionForEditTool } from './get_app_version_for_edit.ts'
 import { registerListDownloadLinksTool } from './list_download_links.ts';
 import { registerListIosHighRiskRegionsTool } from './list_ios_high_risk_regions.ts';
 import { registerListIosRegionNameOptionsTool } from './list_ios_region_name_options.ts';
+import { registerListUserLevelStrategiesTool } from './list_user_level_strategies.ts';
+import { registerGetUserLevelNameListTool } from './get_user_level_name_list.ts';
+import { registerListUserLevelsTool } from './list_user_levels.ts';
+import { registerListUserLevelUsersTool } from './list_user_level_users.ts';
+import { registerGetUserLevelChangeReportTool } from './get_user_level_change_report.ts';
+import { registerGetUserLevelChangeReportDetailTool } from './get_user_level_change_report_detail.ts';
+import { registerAddUserLevelTool } from './add_user_level.ts';
+import { registerUpdateUserLevelTool } from './update_user_level.ts';
+import { registerDeleteUserLevelTool } from './delete_user_level.ts';
+import { registerLockUserLevelTool } from './lock_user_level.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -439,4 +449,14 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListDownloadLinksTool(server);
     registerListIosHighRiskRegionsTool(server);
     registerListIosRegionNameOptionsTool(server);
+    registerListUserLevelStrategiesTool(server);
+    registerGetUserLevelNameListTool(server);
+    registerListUserLevelsTool(server);
+    registerListUserLevelUsersTool(server);
+    registerGetUserLevelChangeReportTool(server);
+    registerGetUserLevelChangeReportDetailTool(server);
+    registerAddUserLevelTool(server);
+    registerUpdateUserLevelTool(server);
+    registerDeleteUserLevelTool(server);
+    registerLockUserLevelTool(server);
 }
