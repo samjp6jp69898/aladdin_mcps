@@ -201,6 +201,7 @@ import { registerGetRouletteConfigNameListTool } from './get_roulette_config_nam
 import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
 import { registerListUserWageringsTool } from './list_user_wagerings.ts';
 import { registerGetWageringScopesTool } from './get_wagering_scopes.ts';
+import { registerGetUserUnWageringDetailTool } from './get_user_un_wagering_detail.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -407,4 +408,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRouletteRewardNameListTool(server);
     registerListUserWageringsTool(server);
     registerGetWageringScopesTool(server);
+    registerGetUserUnWageringDetailTool(server);
 }

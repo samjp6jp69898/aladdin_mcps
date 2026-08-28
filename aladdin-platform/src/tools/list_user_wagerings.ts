@@ -48,8 +48,8 @@ export function registerListUserWageringsTool(server: McpServer): void {
                 '不是「你這次篩出來那些列的小計」——用時間區間篩完再讀這個值會得到誤導性的數字。' +
                 '另注意：identifier 帶了但查無此會員時，回傳與「這位會員真的沒有稽核紀錄」完全一樣' +
                 '（success=true、rows=[]、totalPage=0、userWageringInfo=null），本工具無法替你區分這兩種情況，' +
-                '要確認會員是否存在請改用 aladdin_platform_wagering_platform_get_manual_add_user_wagering_info' +
-                '（查無會員時回 userNotExists 錯誤）。' +
+                '要確認會員是否存在，請改用 aladdin_platform_wagering_platform_get_user_un_wagering_detail' +
+                '（吃 userId，查無會員時回 errorCode 204 userNotExists，不是靜默回空）。' +
                 '本工具純讀取；手動加/變更/解除單一會員稽核的寫入類 method（ManualAddUserWagering / ' +
                 'BatchManualChangeUserWagering / BatchManualRemoveUserWagering）會直接改動個別會員的提款門檻，' +
                 '本 MCP 未提供對應 tool。',
