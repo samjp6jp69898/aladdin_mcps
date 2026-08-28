@@ -504,3 +504,29 @@ export const TRADE_VERIFY_TYPE_MAP = {
 
 // FreezeDurationUnitEnum（service_common.rajah:2340-2344）
 export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as const;
+
+/**
+ * App 版本相關 enum 的「數值 -> 可讀名稱」對照（rajah 檔行號見各項註解）。
+ * 目前供 list_app_versions / get_app_version_for_edit 兩支讀取型 tool 翻譯回傳值用；
+ * 刻意只提供 *_NAMES，不預先加上 *_MAP / *_KEYS——那兩種是給 zod 入參用的，等真的有寫入型
+ * tool 需要時再加，不先放沒人用的常數。
+ */
+// rajah/services/app.rajah:92-97（AppUpdateModeEnum）
+export const APP_UPDATE_MODE_NAMES: Record<number, string> = { 0: 'normal（一般更新）', 1: 'force（強制更新）' };
+
+// rajah/services/app.rajah:73-84（ShellDeviceEnum）
+export const SHELL_DEVICE_NAMES: Record<number, string> = {
+    0: 'unknown（純 H5）', 1: 'iosH5（iOS 包 H5）', 2: 'androidH5（Android 包 H5）',
+    3: 'iosPacked（iOS 打包 H5）', 4: 'androidPacked（Android 打包 H5）',
+};
+
+// rajah/services/app_back_office.rajah:57-64（AppPublishStatusEnum）
+export const APP_PUBLISH_STATUS_NAMES: Record<number, string> = { 0: 'Draft（草稿）', 1: 'Published（已發布）', 2: 'Archived（已封存）' };
+
+/**
+ * AppPlatform.ListAppVersions 的實際每頁筆數。後端 methodListAppVersions 把呼叫端的 pageSize 只用在
+ * totalPage 計算上，真正的 SQL LIMIT 走 `withPage(page)` 的預設值
+ * （agrabah/src/common/database_helper.ts:11 DefaultPageSize = 100，app_platform.ts:260 沒傳 pageSize），
+ * 所以工具固定送這個值，讓 totalPage 與實際每頁筆數一致。
+ */
+export const APP_VERSION_SERVER_PAGE_SIZE = 100;
