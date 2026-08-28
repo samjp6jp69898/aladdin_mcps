@@ -204,6 +204,7 @@ import { registerSwitchRouletteConfigStatusTool } from './switch_roulette_config
 import { registerGetRouletteRewardListTool } from './get_roulette_reward_list.ts';
 import { registerGetRouletteRewardByIdTool } from './get_roulette_reward_by_id.ts';
 import { registerGetRouletteRecordListTool } from './get_roulette_record_list.ts';
+import { registerCreateOrUpdateRouletteConfigTool } from './create_or_update_roulette_config.ts';
 import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
@@ -414,5 +415,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRouletteRewardListTool(server);
     registerGetRouletteRewardByIdTool(server);
     registerGetRouletteRecordListTool(server);
+    registerCreateOrUpdateRouletteConfigTool(server);
     registerGetRouletteRewardNameListTool(server);
 }
