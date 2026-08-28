@@ -206,6 +206,7 @@ import { registerGetManualAddUserWageringInfoTool } from './get_manual_add_user_
 import { registerGetWageringSettingTool } from './get_wagering_setting.ts';
 import { registerGetTurnoverMultiplierSettingTool } from './get_turnover_multiplier_setting.ts';
 import { registerListUserWageringsByUserTool } from './list_user_wagerings_by_user.ts';
+import { registerGetImmediateUserWageringTool } from './get_immediate_user_wagering.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -417,4 +418,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetWageringSettingTool(server);
     registerGetTurnoverMultiplierSettingTool(server);
     registerListUserWageringsByUserTool(server);
+    registerGetImmediateUserWageringTool(server);
 }
