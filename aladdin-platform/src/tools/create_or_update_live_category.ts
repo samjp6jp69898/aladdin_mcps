@@ -51,6 +51,19 @@
  * `UpdateLiveCategoryStatus(1007, enabled)` 復原成 1。透過本工具做同一件事（只帶 name）則
  * 讀回 status 仍是 1——地雷確實存在，且確實被本工具擋住。
  *
+ * ⚠️ **併發覆蓋窗口（read-then-write 的固有限制，已盡量縮到最小）**：本工具先讀現值再寫入，
+ * 中間沒有樂觀鎖——後端沒有版本欄位也沒有 CAS，呼叫端做不出真正的樂觀鎖，「送出前再讀一次比對」
+ * 只會把窗口變窄而非消滅，所以不做那種假保護。實際做法是能不送的就不送
+ * （2026-08-28 dev 實測確認省略欄位確實不會被覆蓋）：
+ * - `name`：只送呼叫端指定的語系 → **無窗口**。
+ * - 四張圖：**update 時**沒指定就完全不進 payload → **無窗口**。
+ *   **create 時相反、必須全部帶齊**：insert 走的是另一條路徑，這四欄在 DB 是 NOT NULL 且無
+ *   預設值，省略會讓 INSERT 直接失敗（2026-08-28 dev 實測回 errorCode=12 unknownDatabaseError；
+ *   這一條是實測抓到的，光讀 update 分支的行為會推論錯）。新增時沒指定的圖片一律送空字串。
+ * - `status`：如上一段所述，不送會被寫成 0，**非送不可** → 這是唯一無法從呼叫端消除的窗口：
+ *   若讀取與寫入之間有人改了這個分類的狀態，會被復原成讀取當下的值。要完全消除必須後端
+ *   把 `status` 從這支 upsert 的寫入範圍拿掉（它在 rajah 上本來就標 `@Readonly`）。
+ *
  * ══════════════════════════════════════════════════════════════════════════
  * 其他已查證的後端行為
  * ══════════════════════════════════════════════════════════════════════════
@@ -106,22 +119,6 @@ const localizedTextSchema = z.array(z.object({
     code: z.string().describe('語系代碼，例如 zh-CN、zh-TW、en-US'),
     value: z.string().describe('該語系下的分類名稱'),
 }));
-
-function mergeLocalizedStrings(
-    entries: { code: string; value: string }[] | undefined,
-    existing: { code?: string | null; value?: string | null }[] | null | undefined,
-): { code: string; value: string }[] {
-    const merged = (existing ?? []).map((ls) => ({ code: ls.code ?? '', value: ls.value ?? '' }));
-    if (!entries) return merged;
-
-    for (const { code, value } of entries) {
-        const idx = merged.findIndex((ls) => ls.code === code);
-        if (idx !== -1) merged[ idx ] = { code, value };
-        else merged.push({ code, value });
-    }
-
-    return merged;
-}
 
 export function registerCreateOrUpdateLiveCategoryTool(server: McpServer): void {
     server.registerTool(
@@ -190,7 +187,8 @@ export function registerCreateOrUpdateLiveCategoryTool(server: McpServer): void 
                 }
             }
 
-            const nextName = mergeLocalizedStrings(name, current?.name);
+            // 只送呼叫端指定的語系（理由與作法同 create_or_update_live_tab，見檔頭「併發覆蓋窗口」）。
+            const nextName = name ?? [];
             if (!isEdit && nextName.length === 0) {
                 return asTextResult({ success: false, message: '新增直播分類時 name 為必填（至少一組 {code, value}）' });
             }
@@ -201,12 +199,10 @@ export function registerCreateOrUpdateLiveCategoryTool(server: McpServer): void 
             const inputs: Record<CategoryImageField, LiveImageInput | undefined> = {
                 icon, background, squareImage, bannerImage,
             };
-            const resolved: Record<CategoryImageField, string> = {
-                icon: current?.icon ?? '',
-                background: current?.background ?? '',
-                squareImage: current?.squareImage ?? '',
-                bannerImage: current?.bannerImage ?? '',
-            };
+            // 只放呼叫端指定的圖片欄位；沒指定的**完全不進 payload**。2026-08-28 dev 實測確認：
+            // 省略字串欄位時後端不會覆蓋（assignKey 對 '' 不成立，見檔頭第 2 點），因此這樣做
+            // 既維持「不動未指定欄位」的語意，又消掉了「把現值寫回去」帶來的併發覆蓋窗口。
+            const resolved: Partial<Record<CategoryImageField, string>> = {};
             for (const field of Object.keys(inputs) as CategoryImageField[]) {
                 const input = inputs[ field ];
                 if (input === undefined) continue;
@@ -221,13 +217,18 @@ export function registerCreateOrUpdateLiveCategoryTool(server: McpServer): void 
                 });
             }
 
+            // create 與 update 對「沒指定的圖片欄位」必須採取相反做法，見檔頭「併發覆蓋窗口」：
+            // update 省略才不會覆蓋別人的改動；create 則**不能**省略——insert 走的是另一條路徑，
+            // 四個圖片欄位在 DB 是 NOT NULL 且無預設值，省略會讓 INSERT 失敗
+            // （2026-08-28 dev 實測回 errorCode=12 unknownDatabaseError）。
+            const imageFields = isEdit
+                ? resolved
+                : { icon: '', background: '', squareImage: '', bannerImage: '', ...resolved };
+
             const payload = LiveCategoryEdit.create({
                 id: id ?? 0,
                 name: nextName,
-                icon: resolved.icon,
-                background: resolved.background,
-                squareImage: resolved.squareImage,
-                bannerImage: resolved.bannerImage,
+                ...imageFields,
                 // 見檔頭：不帶 status 會被後端當成「要設成 0」寫進 DB，一律原樣帶回現值。
                 // 新增時後端會自己覆寫成 enabled，這裡帶什麼都不影響。
                 ...(isEdit ? { status: current!.status } : {}),

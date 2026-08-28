@@ -16,7 +16,7 @@
  *
  * ⚠️ **LivePlatform 底下 8 支 method 一個生效的 `@Permission` 都沒有**，但成因分兩種
  * （2026-08-28 逐行核對 live_back_office.rajah:62-89）：
- * - 7 條 `@Permission` 是**被 `#` 註解掉的**——service 級一條（:62）與 6 支 method 各一條
+ * - 8 條 `@Permission` 是**被 `#` 註解掉的**——service 級一條（:62）與 7 支 method 各一條
  *   （:64/:66/:68/:71/:73/:75/:78，`Live.Tab`／`Live.Tab.Edit`／`Live.Category`／
  *   `Live.Category.Edit`／`Live.Lives`）。`#` 在 rajah 是註解，不是屬性。
  * - `GetUploadImageToken`（:81）則是**從頭到尾沒有宣告過** `@Permission`，不是被註解掉。

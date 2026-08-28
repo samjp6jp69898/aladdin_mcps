@@ -65,6 +65,19 @@
  * 再上傳）。該 helper 與 `create_or_update_live_category.ts` 共用，`GetUploadImageToken` 因此
  * 沒有被包成獨立對外 tool，理由見那個 helper 的檔頭。
  *
+ * ⚠️ **併發覆蓋窗口（read-then-write 的固有限制，已盡量縮到最小）**：本工具會先讀現值再寫入，
+ * 中間沒有樂觀鎖——後端這支 RPC 既沒有版本欄位也沒有 CAS，呼叫端**做不出**真正的樂觀鎖，
+ * 「送出前再讀一次比對」只會把窗口變窄、不會消滅它，所以本工具不做那種假保護。
+ * 實際做法是**能不送的就不送**，讓對應欄位的窗口直接消失（2026-08-28 dev 實測確認）：
+ * - `name`／`icon`：只送呼叫端指定的語系，其餘語系完全不出現在 payload 裡 → **無窗口**。
+ * - `position`：後端 update 分支就是拿 payload 的 position 去覆寫，不送會被 protobuf 預設值 0
+ *   當成「要設成 0」，**因此非送不可** → 呼叫端沒指定時本工具送讀到的現值，這裡有一個
+ *   無法從呼叫端消除的窗口：若讀取與寫入之間有人改了 position，會被復原成讀取當下的值。
+ * - `layout`：後端無條件解參照，不送會拋例外，**同樣非送不可** → 同上，有窗口，且因為
+ *   `SectionLayoutManager.updateById` 是整包覆蓋，影響是整組版位被復原。
+ * 也就是說：只改名稱／圖示是安全的；只要這次呼叫沒有明確指定 position 或 layout，
+ * 就存在「把別人同時間對這兩個欄位的改動蓋回去」的可能。要完全消除必須後端補版本欄位。
+ *
  * ⚠️ **新增時後端不回傳新 id**（RPC 無回傳值），本工具比照
  * `create_or_update_activity_tab.ts` 的既有作法，用「寫入前後 GetLiveTabs 的 id 集合差異」
  * 反推新 id；差異不只一筆（同時間有別人也在新增）時列出全部候選、不猜。
@@ -97,27 +110,6 @@ const localizedImageSchema = z.array(liveImageInputSchema.extend({
 
 /** SectionLayoutRowEnum（rajah/services/common.rajah:1139-1143）：two=0、banner=1、oneBigTwoSmall=2。 */
 const sectionLayoutRowSchema = z.array(z.number().int().min(0).max(2));
-
-/**
- * 逐語系合併：只覆蓋呼叫端帶到的語系代碼，其餘沿用現值。這與後端
- * LocalizationManager.updateById 的實際語意一致（逐語系 UPDATE、沒帶到的不動），
- * 這裡先合併是為了讓 round-trip 比對時能拿到完整的預期值。
- */
-function mergeLocalizedStrings(
-    entries: { code: string; value: string }[] | undefined,
-    existing: { code?: string | null; value?: string | null }[] | null | undefined,
-): { code: string; value: string }[] {
-    const merged = (existing ?? []).map((ls) => ({ code: ls.code ?? '', value: ls.value ?? '' }));
-    if (!entries) return merged;
-
-    for (const { code, value } of entries) {
-        const idx = merged.findIndex((ls) => ls.code === code);
-        if (idx !== -1) merged[ idx ] = { code, value };
-        else merged.push({ code, value });
-    }
-
-    return merged;
-}
 
 export function registerCreateOrUpdateLiveTabTool(server: McpServer): void {
     server.registerTool(
@@ -201,7 +193,10 @@ export function registerCreateOrUpdateLiveTabTool(server: McpServer): void {
             const currentPosition = current?.position ?? 0;
             const nextPosition = position !== undefined ? position : currentPosition;
 
-            const nextName = mergeLocalizedStrings(name, current?.name);
+            // 只送呼叫端指定的語系，不把讀到的現值一起送回去（見檔頭「併發覆蓋窗口」）。
+            // 後端 LocalizationManager.updateById 是逐語系 UPDATE、沒帶到的語系原樣保留，
+            // 空陣列等於什麼都不做，所以這樣做的最終狀態與送全量一致，但少了覆蓋別人改動的風險。
+            const nextName = name ?? [];
 
             // 圖示：每個語系各自把 path/filePath/fileId 解析成後端路徑（需要時上傳），
             // 任何一筆有問題就整批中止、不做部分成功。
@@ -219,7 +214,7 @@ export function registerCreateOrUpdateLiveTabTool(server: McpServer): void {
                     errors: iconErrors,
                 });
             }
-            const nextIcon = mergeLocalizedStrings(icon === undefined ? undefined : resolvedIcon, current?.icon);
+            const nextIcon = icon === undefined ? [] : resolvedIcon;
             const nextLayout = SectionLayout.create({
                 normalRows: layout ? layout.normalRows : (current?.layout?.normalRows ?? []),
                 repeatedRows: layout ? layout.repeatedRows : (current?.layout?.repeatedRows ?? []),

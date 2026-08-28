@@ -2,7 +2,7 @@
  * tools/get_merchant_list.ts — aladdin_platform_external_stream_platform_get_merchant_list
  *
  * rajah: ExternalStreamPlatform.GetMerchantList() (row [MerchantData] 1)
- * （rajah/services/external_stream_back_office.rajah:62；`MerchantData` 定義於同檔 2-12 行（service 本體 59-92 行）；
+ * （rajah/services/external_stream_back_office.rajah:62；`MerchantData` 定義於同檔 1-12 行（service 本體 59-92 行）；
  * service 需要 `@Permission "Room.ExternalStream.MerchantList"`，service 級節點是
  * `Room.ExternalStream`；client 路徑 remote.externalStreamBackOffice.externalStreamPlatform）。
  *
@@ -17,7 +17,7 @@
  *   這裡記一筆是因為同一個 service 內就有這顆地雷。）
  * - service 沒有 `@NoPublic`。
  * - agrabah 對應實作確認為真實 override：agrabah/src/servers/external_stream_back_office/
- *   services/external_stream_platform.ts:50-61（methodGetMerchantList），實作是
+ *   services/external_stream_platform.ts:50-62（methodGetMerchantList），實作是
  *   `loadObjects(DbMerchant, 'platform_id = ?', [context.platformId], '', '')`。
  *
  * 分類：method-category-checklist.md 第 2 節「讀取清單」——回傳陣列、**完全不分頁**（where 只有
@@ -54,6 +54,8 @@ export function registerGetMerchantListTool(server: McpServer): void {
                 'name（商戶名稱）、code（商戶代碼，廠商端 raw API 請求要帶的 clientCode）、' +
                 'status（StatusEnum，1=enabled／2=disabled；商戶被停用後 externalStream 側的 raw ' +
                 'endpoint 會拒絕該商戶的所有請求）。' +
+                '⚠️ 本清單**不過濾狀態**，被停用的商戶仍會列出；本 service 也沒有任何 delete ' +
+                'method，商戶一旦建立就無法刪除（停用是最接近「刪除」的操作）。' +
                 '⚠️ 本清單**不含商戶密鑰**（後端 MerchantData model 根本沒有 secret 欄位），' +
                 '密鑰屬敏感資訊、有獨立權限節點，也沒有被包成 MCP tool。' +
                 '純讀取查詢，不修改任何資料，可安全重複呼叫。',

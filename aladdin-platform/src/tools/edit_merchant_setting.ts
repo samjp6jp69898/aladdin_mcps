@@ -2,7 +2,7 @@
  * tools/edit_merchant_setting.ts — aladdin_platform_external_stream_platform_edit_merchant_setting
  *
  * rajah: ExternalStreamPlatform.EditMerchantSetting(id i32 1, setting MerchantSettingEdit 2) ()（無回傳值）
- * （rajah/services/external_stream_back_office.rajah:78；`MerchantSettingEdit` 定義於同檔 28-35 行；
+ * （rajah/services/external_stream_back_office.rajah:78；`MerchantSettingEdit` 定義於同檔 27-35 行；
  * 需要權限節點 `Room.ExternalStream.MerchantList.EditSetting`；client 路徑
  * remote.externalStreamBackOffice.externalStreamPlatform）。
  *
@@ -16,7 +16,7 @@
  * 命名，但吃一個 `XxxEdit` model、語意是局部更新，所以套第 4 節的檢查項。三件關鍵的後端事實
  * （2026-08-28 讀 source 查證）：
  *
- * 1. **後端這次真的有做局部合併，而且是用 truthy 判斷**（:203-208）：
+ * 1. **後端這次真的有做局部合併，而且是用 truthy 判斷**（:198-203）：
  *    ```
  *    if (setting.appUserCreatable) { updateObject.appUserCreatable = setting.appUserCreatable; }
  *    if (setting.defaultCharacterId) { updateObject.defaultCharacterId = setting.defaultCharacterId; }
@@ -27,7 +27,7 @@
  *    `appUserCreatable` 限制成 enabled/disabled（皆非 0）、`defaultCharacterId` 限制成 >= 1，
  *    不讓呼叫端送出一個「送得出去但不會生效」的請求。
  *
- * 2. **`updateObject(updateObject, true)`（:209）的 `notModifiedIsError` 是 `true`**
+ * 2. **`updateObject(updateObject, true)`（:204）的 `notModifiedIsError` 是 `true`**
  *    （對照 `ToggleMerchantStatus` 用的是 `false`）——`updateObject`
  *    （agrabah/src/engines/relational_database/mysql/mysql_relational_database_engine.ts:206-236）
  *    是在 **JS 層**把要寫的物件跟剛讀出來的原值逐欄比對算出 `keys`，`keys.length === 0` 時
@@ -40,6 +40,12 @@
  * 3. **目標不存在時**：後端先 `ensureObject(DbMerchantSetting, 'platform_id = ? AND merchant_id = ?')`
  *    （:191），查無資料回 `objectNotFound`(14)。本工具因為要先讀現值，會先用
  *    `GetMerchantSetting` 打到同一條件，所以不存在的 id 根本不會送出寫入請求。
+ *
+ * **併發覆蓋窗口**：本工具先讀現值再寫入，中間沒有樂觀鎖（後端沒有版本欄位也沒有 CAS，
+ * 呼叫端做不出真正的樂觀鎖；「送出前再讀一次」只會把窗口變窄而非消滅，故不做）。不過因為後端
+ * 本身就是逐欄 truthy 合併，本工具**只送呼叫端指定的欄位**、未指定的完全不進 payload，
+ * 由後端沿用它自己剛讀到的值——所以這支**兩個欄位都沒有覆蓋窗口**。先讀現值在這裡只用於
+ * 存在性檢查與「是否真的有變更」的判斷，不參與 payload 組裝。
  *
  * 第 4 節其餘要求：要求 2（round-trip 逐欄比對）本工具寫入後會再讀一次回傳給呼叫端；
  * 要求 3（id=0 新增／id>0 更新的分流）不適用——本 method 只能更新既有設定，沒有新增分支
@@ -145,9 +151,12 @@ export function registerEditMerchantSettingTool(server: McpServer): void {
                 });
             }
 
+            // 只送呼叫端指定的欄位，不把未指定欄位的現值一起送回去。後端本身就是逐欄 truthy
+            // 合併（見檔頭第 1 點），未出現在 payload 的欄位會沿用它**自己剛讀到的**值，
+            // 所以最終狀態一致，但少了「把別人同時間的改動蓋回讀取當下值」的窗口。
             const payload = MerchantSettingEdit.create({
-                appUserCreatable: nextAppUserCreatable,
-                defaultCharacterId: nextDefaultCharacterId,
+                ...(appUserCreatable !== undefined ? { appUserCreatable: ACTIVE_STATUS_MAP[ appUserCreatable ] } : {}),
+                ...(defaultCharacterId !== undefined ? { defaultCharacterId } : {}),
             });
 
             const writeR = await withAutoRelogin(

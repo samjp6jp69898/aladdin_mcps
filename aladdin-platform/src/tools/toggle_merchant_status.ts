@@ -38,6 +38,13 @@
  * 而且「狀態切換不會刪除商戶的主播或房間資料，僅影響後續 API 請求的驗證」。停用等於把該廠商
  * 的串接切斷，請確認影響範圍後再操作。
  *
+ * ⚠️ **本 service 同樣沒有任何 delete/remove method**（external_stream_back_office.rajah:59-92
+ * 只有 GetMerchantList／ToggleMerchantStatus／GetMerchantSecret／EditMerchantSecret／
+ * GetMerchantSetting／EditMerchantSetting／AddMerchant／EditMerchantData 八支，加上一個
+ * placeholder），結構上與直播頁籤/分類那一族相同：**商戶一旦用 `AddMerchant` 建立就無法刪除**，
+ * 停用（本工具）是最接近「刪除」的操作，而且 `GetMerchantList` 不過濾狀態，被停用的商戶仍會
+ * 留在清單裡。
+ *
  * ⚠️ 失敗碼是 genie 框架層 `ErrorCode`（objectNotFound=14／invalidData=9），
  * `asErrorResult` 反查用的 `AgrabahErrorCodeEnum` 從 101 起，所以 `errorName` 會顯示
  * 「(未知錯誤碼)」，看 `errorCode` 數字即可（全 server 共通現象）。
@@ -67,6 +74,8 @@ export function registerToggleMerchantStatusTool(server: McpServer): void {
                 '安全的 no-op（後端 updateObject 的 notModifiedIsError=false），不會報錯。' +
                 '⚠️ errorCode 是 genie 框架層錯誤碼，回應裡的 errorName 會顯示「(未知錯誤碼)」，' +
                 '請直接看 errorCode 數字。' +
+                '⚠️ 本 service 沒有任何 delete method——商戶一旦建立就無法刪除，停用是最接近' +
+                '「刪除」的操作，而且 get_merchant_list 不過濾狀態，停用後仍會留在清單裡。' +
                 '本工具在寫入後會自動重讀商戶清單，回傳該筆商戶供你核對實際結果。' +
                 'prod 執行前確認：當這個 server 是正式環境（prod）時，執行本工具前必須先用 ' +
                 'AskUserQuestion（或功能相同的方式）向使用者明確詢問是否要在正式環境執行，取得明確' +

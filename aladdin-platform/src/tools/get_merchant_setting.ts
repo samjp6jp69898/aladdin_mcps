@@ -2,14 +2,14 @@
  * tools/get_merchant_setting.ts — aladdin_platform_external_stream_platform_get_merchant_setting
  *
  * rajah: ExternalStreamPlatform.GetMerchantSetting(id i32 1) (setting MerchantSettingEdit 1)
- * （rajah/services/external_stream_back_office.rajah:75；`MerchantSettingEdit` 定義於同檔 28-35 行；
+ * （rajah/services/external_stream_back_office.rajah:75；`MerchantSettingEdit` 定義於同檔 27-35 行；
  * 需要權限節點 `Room.ExternalStream.MerchantList.GetSetting`；client 路徑
  * remote.externalStreamBackOffice.externalStreamPlatform）。
  *
  * method-category-checklist.md 第 0 節排除規則已過：非 Placeholder（同 service 尾端的
  * `placeholderRoomExternalStream()` 是第 0 節點名的小寫 p 陷阱，與本 method 無關）、
  * service 無 `@NoPublic`、agrabah 對應實作為真實 override
- * （agrabah/src/servers/external_stream_back_office/services/external_stream_platform.ts:162-175，
+ * （agrabah/src/servers/external_stream_back_office/services/external_stream_platform.ts:162-174，
  * methodGetMerchantSetting）。
  *
  * 分類：method-category-checklist.md 第 1 節「讀取單筆（by id，回傳單一 model）」。逐條：
@@ -24,7 +24,7 @@
  * - **回傳欄位審視**：`MerchantSettingEdit` 只有 `appUserCreatable`、`defaultCharacterId` 兩個欄位，
  *   **不含任何密鑰或個資**（`secret` 在 `merchant` 主表、且有獨立的 `GetMerchantSecret` 方法與
  *   獨立權限節點）。DB 上的 `DbMerchantSetting` 其實還有 `defaultLevelId`／`defaultTagId`
- *   （agrabah/src/database_types/external_stream.ts:24-29），但 rajah model 沒有宣告，
+ *   （agrabah/src/database_types/external_stream.ts:24-30），但 rajah model 沒有宣告，
  *   所以不會被回傳、也無法透過本 service 修改。
  * - 第 8 節（敏感資料）不適用，理由同上。
  *
