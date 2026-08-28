@@ -134,6 +134,19 @@ Tool 命名規則另見 `tool-naming-convention.md`(同層目錄)——挑到候
 - **Import***:多為兩段式(先 `GetUploadXxxToken` 拿 token、上傳檔案、再引用 token 呼叫 Import),不接受檔案 binary。tool 包裝必須涵蓋完整兩段。回傳常有 `failedRows`,同第 6 節部分成功處理要求。
 - **Login/Register**:輸入輸出常見明文密碼/`loginToken`/`totpSecret`,同第 8 節敏感資料規則處理。
 
+## 10.5 回傳欄位「整個不見了」——包 tool 前必須分辨的兩種機制（2026-08-28 實測補充）
+
+包任何 method 之前，若發現回傳的 JSON 缺了 rajah model 有宣告的欄位，**不要直接歸因**。有兩種成因，症狀相同但處理方式相反：
+
+- **(a) 後端條件式賦值**：agrabah 在 `if (...) { msg.field = ... }` 裡才指派，沒進分支時該欄位**不是 own property**、資料真的沒過線，客戶端無法還原。tool description 要教呼叫端「用 key 在不在判斷」。
+- **(b) 序列化層丟棄**：後端有賦值、own property 一直都在，是 protobufjs 的 `Message.prototype.toJSON` → `Type.toObject(msg, util.toJSONOptions)` 把**長度 0 的 repeated 欄位**丟掉的。**這種可以救**，改序列化路徑即可。
+
+**判別規則（省事版）**：看欄位在 rajah 是不是 **repeated**。repeated 欄位在 decode 後一定是 own property（未賦值時為 `[]`），所以它缺席只可能是 (b)；scalar / message 欄位缺席才可能是 (a)。要確認就用 `Object.prototype.hasOwnProperty.call(msg, 'field')`，且**必須拿原始 message 測**——先過任何會做 own-property 過濾的轉換（例如 `aladdin-platform` 的 `deepFixLongs`）就分辨不出來了。
+
+⚠️ **同一支 method 內兩種機制可以並存**（`FundAdjustmentPlatform.ListUserFundAdjustment` 已實證：`reviewOperator` 是 (a)、`bonusName` 是 (b)），**不要驗一個欄位就套用到全部欄位**；同一個 server 內不同 tool 的行為也可能相反，因為決定權在「你怎麼把 message 變成 JSON」。
+
+完整機制對照、決定性測法、三種解法選項與實測數據見 `obsidian/Rules/protobufjs 欄位缺席的兩種機制.md`。
+
 ## 11. 其他必須逐案處理、不能套模板的特殊個案
 
 - **回傳陣列內每筆各自帶 `errorCode`/`success` 欄位**(如 `ReWithdrawPayWithdrawOrder`):RPC 外層不報錯不代表業務成功,必須解析陣列內容逐筆回報。
