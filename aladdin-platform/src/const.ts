@@ -566,3 +566,41 @@ export const USER_LEVEL_TYPE_MAP: Record<(typeof USER_LEVEL_TYPE_KEYS)[number], 
     auto: 0,
     static: 1,
 };
+// ── 世界盃活動（world_cup_back_office domain，service WorldCupPlatform）──────────────
+// 以下 enum 分散定義在 rajah/services/world_cup_common.rajah，被 get_milestone_record /
+// get_goal_sprint_record / get_world_cup_knockout_records 及其總額統計 tool 共用，
+// 集中在此避免各 tool 各自宣告一份（README 第二節：兩個以上 tool 會用到的 enum 對照表一律放 const.ts）。
+
+// LuckyTeamsEnum（world_cup_common.rajah:102-107）——注意 DB 欄位 lucky_teams 存的是 0/1，
+// 而這個對外 enum 是 1=是 / 2=否，後端 getWorldCupMilestoneRecord 有做轉換
+// （agrabah/src/servers/sport_back_office/models/world_cup_platform_db.ts:188-197、234-239），
+// 呼叫端一律用這裡的 1/2，不要直接送 0/1。
+export const WORLD_CUP_LUCKY_TEAMS_MAP = { isLuckyTeams: 1, notLuckyTeams: 2 } as const;
+export const WORLD_CUP_LUCKY_TEAMS_KEYS = [ 'isLuckyTeams', 'notLuckyTeams' ] as const;
+
+// ActivityTypeEnum（world_cup_common.rajah:1-14）：世界盃任務分類
+export const WORLD_CUP_ACTIVITY_TYPE_MAP = {
+    miles: 1, invite: 2, signIn: 3, goal: 4, oneTime: 5, knockout: 6,
+} as const;
+export const WORLD_CUP_ACTIVITY_TYPE_KEYS = [ 'miles', 'invite', 'signIn', 'goal', 'oneTime', 'knockout' ] as const;
+
+// ActivityMissionTypeEnum（world_cup_common.rajah:25-44）：活動任務（達成條件的種類）
+export const WORLD_CUP_ACTIVITY_MISSION_TYPE_MAP = {
+    accrueMiles: 1, inviteAndDeposit: 2, dayDepositAndBetCount: 3, daySportBet: 4,
+    dayDeposit: 5, dayBetCount: 6, goal: 7, accrueDeposit: 8, accrueBet: 9,
+} as const;
+export const WORLD_CUP_ACTIVITY_MISSION_TYPE_KEYS = [
+    'accrueMiles', 'inviteAndDeposit', 'dayDepositAndBetCount', 'daySportBet',
+    'dayDeposit', 'dayBetCount', 'goal', 'accrueDeposit', 'accrueBet',
+] as const;
+
+// KnockoutConditionEnum（world_cup_common.rajah:66-81）：晉級爭冠賽的晉級條件
+export const WORLD_CUP_KNOCKOUT_CONDITION_MAP = {
+    firstPlace: 1, secondPlace: 2, thirdPlace: 3, fourthPlace: 4,
+    reachTopFour: 5, reachTopEight: 6, reachTopSixTeen: 7,
+} as const;
+export const WORLD_CUP_KNOCKOUT_CONDITION_KEYS = [
+    'firstPlace', 'secondPlace', 'thirdPlace', 'fourthPlace',
+    'reachTopFour', 'reachTopEight', 'reachTopSixTeen',
+] as const;
+

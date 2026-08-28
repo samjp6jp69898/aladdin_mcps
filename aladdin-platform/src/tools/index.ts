@@ -227,6 +227,17 @@ import { registerAddUserLevelTool } from './add_user_level.ts';
 import { registerUpdateUserLevelTool } from './update_user_level.ts';
 import { registerDeleteUserLevelTool } from './delete_user_level.ts';
 import { registerLockUserLevelTool } from './lock_user_level.ts';
+import { registerGetWorldCupInfoListTool } from './get_world_cup_info_list.ts';
+import { registerGetWorldCupFixturesInfoTool } from './get_world_cup_fixtures_info.ts';
+import { registerGetMilestoneRecordTool } from './get_milestone_record.ts';
+import { registerGetMilestoneTotalAwardAndMilesTool } from './get_milestone_total_award_and_miles.ts';
+import { registerGetGoalSprintRecordTool } from './get_goal_sprint_record.ts';
+import { registerGetGoalSprintTotalAwardAndMilesTool } from './get_goal_sprint_total_award_and_miles.ts';
+import { registerGetWorldCupKnockoutRecordsTool } from './get_world_cup_knockout_records.ts';
+import { registerGetWorldCupKnockoutTotalAwardTool } from './get_world_cup_knockout_total_award.ts';
+import { registerGetUploadWorldCupImageTokenTool } from './get_upload_world_cup_image_token.ts';
+import { registerSaveWorldCupFixturesInfoTool } from './save_world_cup_fixtures_info.ts';
+import { registerSaveWorldCupInfoTool } from './save_world_cup_info.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -459,4 +470,15 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerUpdateUserLevelTool(server);
     registerDeleteUserLevelTool(server);
     registerLockUserLevelTool(server);
+    registerGetWorldCupInfoListTool(server);
+    registerGetWorldCupFixturesInfoTool(server);
+    registerGetMilestoneRecordTool(server);
+    registerGetMilestoneTotalAwardAndMilesTool(server);
+    registerGetGoalSprintRecordTool(server);
+    registerGetGoalSprintTotalAwardAndMilesTool(server);
+    registerGetWorldCupKnockoutRecordsTool(server);
+    registerGetWorldCupKnockoutTotalAwardTool(server);
+    registerGetUploadWorldCupImageTokenTool(server);
+    registerSaveWorldCupFixturesInfoTool(server);
+    registerSaveWorldCupInfoTool(server);
 }
