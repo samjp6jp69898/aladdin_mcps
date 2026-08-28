@@ -530,3 +530,30 @@ export const APP_PUBLISH_STATUS_NAMES: Record<number, string> = { 0: 'Draft（�
  * 所以工具固定送這個值，讓 totalPage 與實際每頁筆數一致。
  */
 export const APP_VERSION_SERVER_PAGE_SIZE = 100;
+
+/**
+ * StatusEnum 數值 -> 可讀名稱（rajah/services/common.rajah 的 enum StatusEnum）。
+ * 與同檔既有的 STATUS_MAP（名稱 -> 數值，給 zod 入參用）互為反向，這張是給「回傳值翻譯」用的。
+ */
+export const STATUS_NAMES: Record<number, string> = {
+    0: 'unknown', 1: 'enabled（啟用）', 2: 'disabled（停用）', 3: 'frozen（凍結）', 10: 'deleted（已刪除）',
+};
+
+// rajah/services/app.rajah:161-178（DownloadLinkTypeEnum）
+export const DOWNLOAD_LINK_TYPE_NAMES: Record<number, string> = {
+    1: 'ios（IOS 入口）', 2: 'iosConfigProfile（IOS 輕量包）', 3: 'android（ANDROID 入口）',
+    4: 'androidSuperSign（ANDROID 超級簽）', 5: 'pcSite（PC 主站地址）', 6: 'pc（PC 下載地址）',
+    7: 'iosAppStoreApp（IOS 上架包／APP 下載頁）', 8: 'iosAppStoreAgent（IOS 上架包／代理推廣下載頁）',
+};
+
+// rajah/services/app_back_office.rajah:114-119（DownloadLinkUrlTypeEnum）
+export const DOWNLOAD_LINK_URL_TYPE_NAMES: Record<number, string> = {
+    0: 'directDownload（直接使用連結地址）', 1: 'externalUrl（呼叫外部 API 取得實際下載網址）',
+};
+
+/**
+ * AppPlatform.CreateOrUpdateDownloadLink 對單一 App 的下載連結數量上限
+ * （agrabah/src/servers/app_back_office/services/app_platform.ts:66 的 MAX_DOWNLOAD_LINKS）。
+ * 只在 id=0（新增）分支檢查，超過回 appDownloadLinkExceedLimit。
+ */
+export const MAX_DOWNLOAD_LINKS = 20;
