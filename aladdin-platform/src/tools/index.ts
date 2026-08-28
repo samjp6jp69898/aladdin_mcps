@@ -209,6 +209,7 @@ import { registerGetWorldCupKnockoutRecordsTool } from './get_world_cup_knockout
 import { registerGetWorldCupKnockoutTotalAwardTool } from './get_world_cup_knockout_total_award.ts';
 import { registerGetUploadWorldCupImageTokenTool } from './get_upload_world_cup_image_token.ts';
 import { registerSaveWorldCupFixturesInfoTool } from './save_world_cup_fixtures_info.ts';
+import { registerSaveWorldCupInfoTool } from './save_world_cup_info.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -423,4 +424,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetWorldCupKnockoutTotalAwardTool(server);
     registerGetUploadWorldCupImageTokenTool(server);
     registerSaveWorldCupFixturesInfoTool(server);
+    registerSaveWorldCupInfoTool(server);
 }
