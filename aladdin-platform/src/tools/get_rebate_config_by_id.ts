@@ -7,13 +7,25 @@
  * 非 Placeholder）——後台「優惠中心 >
  * 返水管理 > 返水配置」的單筆編輯表單資料來源。
  *
- * agrabah 對應實作：rebate_platform.ts:478-586 methodGetRebateConfigById，確認有真實 override
+ * agrabah 對應實作：rebate_platform.ts:478-589 methodGetRebateConfigById，確認有真實 override
  * （真的查 rebate_configs + CurrencyLink 六個金額欄位 + 標籤群組/遊戲群組兩層巢狀），
  * 不是 notImplemented stub。
  *
  * 分類：method-category-checklist.md 第 1 節「讀取單筆（Get by id，回傳單一 model）」。
  * 該節各條檢查項的處理：
- * - 「實測 id 不存在的實際行為」：見下方 dev 驗證第 2 點（實打不存在的 id）。
+ * - 「實測 id 不存在的實際行為」：checklist 列的三種可能（回錯誤碼／空值 struct／拋例外）中，
+ *   這支實際是**拋例外**，而不是後端有意回一個錯誤碼。完整成因鏈（逐段讀源碼確認）：
+ *   `loadObject` 查無資料時回的是 `ServiceResult.fromData(null)`——**success 不是 failed**
+ *   （mysql/mysql_relational_database_engine.ts:293-296）→ 所以 rebate_platform.ts:482 的
+ *   `loadResult.failed` 為 false（該行上方 :480 的註解「// 確認存在」名不副實）→ 流程走到 :486
+ *   `RebateConfigEdit.fromObject(null)`，該函式第一件事就是讀 `d.id`，對 null 直接 TypeError
+ *   → 被 agrabah 的 catch-all（common/server.ts:225-227）轉成
+ *   `GenieResponse.fromObject({ errorCode: ErrorCode.unknown })`、**不帶 message**。
+ *   這正好解釋 dev 觀測到的 errorCode=1 + message 空字串，也解釋「不存在」與「已軟刪除」為何
+ *   無法區分。本 server 對這個 pattern 已有既定寫法（delist_post.ts / relist_post.ts /
+ *   remove_post.ts 都標註「errorCode=1(unknown) = 已知後端 bug，id 不存在時的正常反應」），
+ *   本檔比照。⚠️ 也因為 errorCode=1 是 catch-all，它**不等於「查無資料」**——任何未捕捉的
+ *   後端例外都會回同一個碼，hint 的措辭已避免把兩者畫上等號。
  * - 「跨租戶風險」：**源碼層已保證**——查詢條件是 `id = ? AND platform_id = ? AND deleted = 0`
  *   （rebate_platform.ts:481），platformId 來自登入態的 RequestContext、不是呼叫端參數，
  *   所以無法用別平台的 id 撈到資料。另外 `deleted = 0` 代表**已軟刪除的配置也查不到**
@@ -31,16 +43,20 @@
  *   等讀取呼叫，沒有任何 insert/update/transaction，確為唯讀。
  *
  * 資料格式陷阱（讀源碼查證）：
- * - 六個金額欄位（dailyRebateMax/minDrawAmount/singleBetLimit/dailyDrawMax/
- *   wageringMultiplier/singleBetMin）是 `[CurrencyLink]` 多幣別陣列，元素形狀為
- *   `{ code, value }`（common.rajah:1179-1182），value 是 i64、不是單一數字。
- *   本 tool 回傳前套用 const.ts 的 deepFixLongs 把 protobufjs Long（含巢狀在 CurrencyLink
- *   內的 value 與 minRoundValue 這類 i64）轉成一般 number——這是讓呼叫端能把讀回值直接餵給
- *   create_or_update tool 的 z.number() schema 的必要處理（const.ts:410-414 記錄了這個已在
- *   dev 復現過的失敗模式）。
- * - `ratio`（未知返水標籤返水比例）與 rebateTagRatioList 內的 `ratio` 是
- *   `@Type "Percent:10000"`（rebate_back_office.rajah:219-220 與 180-182）——**放大 10000 倍的整數**，
- *   例如 10000 代表 1%、5000 代表 0.5%，不是百分比原值。
+ * - `[CurrencyLink]` 多幣別陣列（元素形狀 `{ code, value }`，common.rajah:1179-1182，
+ *   value 原始型別是 i64）出現在**八個**位置，不只頂層那些：頂層五個金額欄位
+ *   dailyRebateMax/minDrawAmount/singleBetLimit/dailyDrawMax/singleBetMin（@Type "Currency"）、
+ *   頂層 wageringMultiplier（**@Type "Rate"，是稽核倍數不是金額**，rajah:204-206），
+ *   以及巢狀的 rebateTagRatioList[].minBetAmount（rajah:141-142）與
+ *   rebateGameRatioList[].minBetAmount（rajah:162-163）。八處都是陣列、不是單一數字。
+ *   本 tool 回傳前套用 const.ts 的 `deepFixLongs`（該函式自己的 docblock 記錄了 2026-08-25
+ *   dev 復現的 UpdateVipPointSetting 失敗模式）把 protobufjs Long 遞迴轉成一般 number，
+ *   否則 JSON.stringify 會把它們變成十進位字串。
+ * - `@Type "Percent:10000"`（**放大 10000 倍的整數**，10000 = 1%、5000 = 0.5%）共有三處，
+ *   缺一不可：頂層 `ratio`（未知返水標籤返水比例，rajah:219-220）、
+ *   `rebateTagRatioList[].ratios[].ratio`（rajah:180-182）、
+ *   `rebateGameRatioList[].ratio`（rajah:167-168）。第三處特別容易漏——dev 實測該欄位值是
+ *   1000，照字面會被誤讀成 1000%，實際是 0.1%。
  * - `rebateTagRatioList[].ratios[]` 的 vendorId 是廠商編號、rebateTag 是返水標籤編號；
  *   `rebateGameRatioList[].gameIds` 是特殊遊戲 id 陣列（來自 AmountLink 關聯表）。
  * - `id` 在 model 上標了 @Hide（僅代表後台表單不顯示），API 仍會回傳。
@@ -93,22 +109,35 @@ export function registerGetRebateConfigByIdTool(server: McpServer): void {
                 '⚠️ 後端查詢條件是 `id = ? AND platform_id = ? AND deleted = 0`：' +
                 '已軟刪除的配置查不到（會回錯誤），所以從名稱清單拿到的 id 不保證查得到；' +
                 'platformId 取自登入態、不是參數，查不到別平台的配置。' +
-                '⚠️ 資料格式：六個金額欄位（dailyRebateMax/minDrawAmount/singleBetLimit/' +
-                'dailyDrawMax/wageringMultiplier/singleBetMin）都是多幣別陣列 ' +
-                '[{ code, value }]（common.rajah:1179-1182），value 是 i64 stored value、' +
-                '本 tool 回傳前已用 deepFixLongs 轉成一般數字（否則會是十進位字串，無法直接餵回寫入 tool）；' +
-                'ratio 與 rebateTagRatioList[].ratios[].ratio 是 Percent:10000 格式的整數' +
-                '（10000 = 1%），不是百分比原值。' +
-                '純讀取查詢，不修改任何資料，可安全重複呼叫。' +
-                '要修改內容請用 aladdin_platform_rebate_platform_create_or_update_rebate_config，' +
-                '該 tool 會自己先呼叫本 method 讀現值再合併。',
+                '⚠️ 資料格式一：多幣別陣列 [{ code, value }] 出現在八個位置——五個金額欄位' +
+                '（dailyRebateMax/minDrawAmount/singleBetLimit/dailyDrawMax/singleBetMin）、' +
+                'wageringMultiplier（這個是稽核**倍數**不是金額，型別同樣是多幣別陣列）、' +
+                '以及巢狀的 rebateTagRatioList[].minBetAmount 與 rebateGameRatioList[].minBetAmount。' +
+                'value 原始型別是 i64，本 tool 已轉成一般數字（不是十進位字串）。' +
+                '⚠️ 資料格式二：Percent:10000 格式的整數（10000 = 1%、1000 = 0.1%）共三處——' +
+                '頂層 ratio、rebateTagRatioList[].ratios[].ratio、rebateGameRatioList[].ratio，' +
+                '三處都不是百分比原值。' +
+                '⚠️ 失敗語意：id 不存在或已軟刪除時，後端回 errorCode=1（genie 的 unknown）、' +
+                'message 空字串——這是已知的後端行為（查無資料時仍往下走、對 null 取欄位拋例外，' +
+                '被最外層 catch 成 unknown），不是本工具的問題，也**無法**從回應區分「不存在」與' +
+                '「已刪除」。又因為 errorCode=1 是 catch-all，它不等於「查無資料」，' +
+                '其他後端例外也會回同一個碼。' +
+                '純讀取查詢，不修改任何資料，可安全重複呼叫。',
             inputSchema: {
                 id: z.number().int().min(1).describe('返水配置 id，來自 get_rebate_configs 或 get_rebate_config_name_list'),
             },
         },
         async ({ id }) => {
             const r = await withAutoRelogin(() => remote.rebateBackOffice.rebatePlatform.GetRebateConfigById(id));
-            if (r.failed) return asErrorResult(r, { requestedId: id, hint: '查不到時最常見的原因是這筆配置已被軟刪除（後端條件含 deleted = 0），或這個 id 不屬於本平台。可用 aladdin_platform_rebate_platform_get_rebate_configs 確認目前生效中的 id。' });
+            if (r.failed) {
+                return asErrorResult(r, {
+                    requestedId: id,
+                    hint: 'errorCode=1（genie unknown、message 空）是這支 method 查無資料時的已知後端行為（非本工具問題）：'
+                        + '最可能的原因是這個 id 已被軟刪除（後端條件含 deleted = 0）或根本不存在，兩者的回應無法區分；'
+                        + '但 errorCode=1 是後端最外層的 catch-all，也可能是其他未捕捉例外。'
+                        + '可用 aladdin_platform_rebate_platform_get_rebate_configs 確認目前未刪除的 id。',
+                });
+            }
 
             return asTextResult({
                 success: true,
