@@ -68,10 +68,22 @@
  *   回讀後 mismatchedVsSent 為空（存進去的值與送出值完全一致）。
  *   ⚠️ **這筆 id=1036（名稱「MCP驗證用-可停用」）留在 dev 上無法刪除**——本 domain 沒有任何
  *   Delete API，只能停用（已是停用狀態）。需要清掉的話得由有 DB 權限的人手動處理。
- * - 沒有測試 costType 由 currency 改成 item 後舊 CurrencyLink 是否殘留這個情境的完整還原路徑
- *   （會在 dev 留下難以還原的中間狀態），該行為的結論來自後端原始碼（roulette_platform.ts:180-185
- *   只有 currency 分支會呼叫 currencyLinkManager），未經實測驗證，description 已據實標示為
- *   「不會被清掉」的推論。
+ * - **2026-08-28 最終覆核（final-reviewer A/B）後的修正與複測**：
+ *   (1) `costType` 由 currency 改成 item 時，`currencyAmount` 讀回必為空陣列（後端讀寫兩端都只在
+ *       currency 分支處理 CurrencyLink），初版會把這個**完全正確**的操作誤報成「本工具動到了你沒指定的
+ *       欄位」。已把該欄位排除在比對之外並附說明。複測：對 id=1030 執行 currency→item，
+ *       verificationFailed=false、unchangedFieldsOk=true、附上 currencyAmountNotCompared 說明。
+ *   (2) `currencyAmount` / `costItemId` / `costItemAmount` 的必填檢查改成只在「新增」或「這次明確碰到
+ *       消費相關欄位」時才生效——初版用合併後的值無條件判斷，會讓 DB 裡既有的
+ *       「costType=currency 但 CurrencyLink 為空」的列連只改 expireDays 都被擋下（後端本身接受這種
+ *       payload，本工具比後端更嚴且錯怪呼叫端）。複測：明確指定 costType=currency 但不帶
+ *       currencyAmount 仍正確擋下；id=1030 已用同一支 tool 完整還原，與最初快照逐欄比對**完全一致**。
+ *   (3) 加上頂層 `verificationFailed` 旗標（success 維持 true——新增分支不冪等，
+ *       success:false 會誘使呼叫端重試而建出第二筆刪不掉的設定）。
+ * - costType 由 currency 改成 item 後「舊 CurrencyLink 不會被清掉」這條，來源是後端原始碼
+ *   （roulette_platform.ts:180-185 只有 currency 分支會呼叫 currencyLinkManager）。
+ *   2026-08-28 最終覆核的複測有實際執行 currency→item→currency 的來回並完整還原，
+ *   但「殘留值是否真的還在 DB 裡」無法從這支 API 讀出來（item 時固定回空陣列），仍屬原始碼推論。
  */
 
 import { z } from 'zod';
@@ -158,7 +170,11 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
                 '回傳的 createdIdSource=diff 就是這個意思；極端情況（同時有別人也在新增）可能推導不出來。' +
                 '只想改啟用/停用狀態請改用 aladdin_platform_roulette_platform_switch_roulette_config_status，' +
                 '不要用這支（那支有獨立權限節點且不會覆蓋其他欄位）。' +
-                '寫入後本工具一律 round-trip 讀回並逐欄比對，結果放在 verification 欄位。',
+                '寫入後本工具一律 round-trip 讀回並逐欄比對，結果放在 verification 欄位；' +
+                '⚠️ 驗證揭露問題時 **success 仍然是 true**（RPC 確實成功了），請改看頂層的 verificationFailed 旗標——' +
+                '這支的新增分支不冪等，把 success 設成 false 會誘使呼叫端重試而建出第二筆刪不掉的設定。' +
+                '⚠️ costType=item 時後端讀不出 currencyAmount（固定回空陣列，但 DB 裡的舊值仍在），' +
+                '所以把 costType 改成 item 的那一次，本工具不會把 currencyAmount 列入比對。',
             inputSchema: {
                 id: z.number().int().min(1).optional().describe('要更新的轉盤設定 id；**省略代表新增一筆全新設定（無法刪除，請謹慎）**'),
                 name: localizedTextSchema.optional().describe('轉盤名稱（多語）。新增時必填；更新時省略則沿用現值'),
@@ -222,10 +238,16 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
             if (merged.name.length === 0) problems.push('name 是必填（多語名稱至少一個語系）');
             if (!merged.rewardId) problems.push('rewardId 是必填，請先用 aladdin_platform_roulette_platform_get_reward_name_list 取得合法值');
             if (merged.expireDays < 1) problems.push('expireDays 必須 >= 1（後端對 <1 直接回 invalidData）');
-            if (merged.costType === ROULETTE_COST_TYPE_MAP.currency && merged.currencyAmount.length === 0) {
+            // F11（2026-08-28 最終覆核）：這條只在「新增」或「這次明確指定 costType/currencyAmount」時才擋。
+            // 後端本身接受 costType=currency 且 CurrencyLink 為空的 payload（roulette_platform.ts:180-185
+            // 不擋空陣列），DB 裡因此可能已存在這種列；若無條件用合併後的值判斷，呼叫端想只改 expireDays
+            // 也會被一個他沒打算碰的欄位擋下——那是本工具比後端更嚴、且錯怪呼叫端。
+            const touchesCurrency = !isUpdate || input.costType !== undefined || input.currencyAmount !== undefined;
+            if (touchesCurrency && merged.costType === ROULETTE_COST_TYPE_MAP.currency && merged.currencyAmount.length === 0) {
                 problems.push('costType=currency 時 currencyAmount 是必填');
             }
-            if (merged.costType === ROULETTE_COST_TYPE_MAP.item) {
+            const touchesItem = !isUpdate || input.costType !== undefined || input.costItemId !== undefined || input.costItemAmount !== undefined;
+            if (touchesItem && merged.costType === ROULETTE_COST_TYPE_MAP.item) {
                 if (!merged.costItemId) problems.push('costType=item 時 costItemId 是必填');
                 if (!merged.costItemAmount) problems.push('costType=item 時 costItemAmount 是必填');
             }
@@ -235,7 +257,7 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
 
             // costType=item：後端完全不驗證 costItemId 是否存在（見檔頭），不存在的 id 會被安靜寫進 DB。
             // GetItemNamesById 對任何 id 都固定回一列，所以存在與否要看 name 是不是空的。
-            if (merged.costType === ROULETTE_COST_TYPE_MAP.item) {
+            if (touchesItem && merged.costType === ROULETTE_COST_TYPE_MAP.item) {
                 const itemR = await withAutoRelogin(() => remote.inventoryBackOffice.inventoryPlatform.GetItemNamesById([ merged.costItemId ]));
                 if (itemR.failed) {
                     return asErrorResult(itemR, { hint: `驗證 costItemId=${ merged.costItemId } 是否存在時失敗，未執行任何寫入`, mode: isUpdate ? 'update' : 'create' });
@@ -307,9 +329,17 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
             const expectedReadable = readable({ ...merged, id: newId } as PlainConfig);
 
             // 逐欄比對：哪些欄位跟寫入前不同（更新才有基準可比）、以及實際結果是否等於預期送出值。
+            // F5（2026-08-28 最終覆核）：`currencyAmount` 在 costType=item 時**讀不出來**——後端寫入端
+            // 只有 costType=currency 才呼叫 currencyLinkManager.updateById（roulette_platform.ts:180-185），
+            // 讀取端也只有 costType=currency 才查（同檔 :252-258），item 時固定回空陣列。
+            // 因此「把 costType 由 currency 改成 item」這個完全正確的操作，會讓 currencyAmount 從
+            // [{CNY,10000}] 變成 []，被誤報成「本工具動到了你沒指定的欄位」。實際上 DB 裡的
+            // CurrencyLink 一根寒毛都沒動，只是這個 method 讀不出來。這裡把它排除在比對之外並明說原因。
+            const currencyAmountUnreadable = (afterReadable.costType === 'item');
             const changed: string[] = [];
             const mismatched: string[] = [];
             for (const key of Object.keys(afterReadable) as (keyof typeof afterReadable)[]) {
+                if (key === 'currencyAmount' && currencyAmountUnreadable) continue;
                 if (beforeReadable && JSON.stringify(beforeReadable[ key ]) !== JSON.stringify(afterReadable[ key ])) changed.push(key);
                 if (JSON.stringify(expectedReadable[ key ]) !== JSON.stringify(afterReadable[ key ])) mismatched.push(key);
             }
@@ -320,6 +350,13 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
                 id: newId,
                 createdIdSource,
                 verified: true,
+                // A3（2026-08-28 最終覆核）：驗證揭露出問題時，只看第一層 success 的呼叫端也要看得到。
+                // 這裡刻意**不**把 success 改成 false（與 switch_roulette_config_status 不同）：那支是冪等的
+                // 狀態設定、重試無害；這支的新增分支不冪等，success:false 會誘使呼叫端重試而建出第二筆
+                // 刪不掉的設定。因此保留 success:true（RPC 確實成功了）並用 verificationFailed 頂層旗標
+                // 表達「寫入完成，但驗證結果與你的意圖不符，需要人工確認」。
+                verificationFailed: mismatched.length > 0
+                    || (beforeReadable ? !changed.every((k) => Object.prototype.hasOwnProperty.call(input, k)) : false),
                 verification: {
                     requestedFields: Object.keys(input).filter((k) => k !== 'id' && k !== 'confirm'),
                     changedFields: changed,
@@ -327,6 +364,9 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
                         ? changed.every((k) => Object.prototype.hasOwnProperty.call(input, k))
                         : null,
                     mismatchedVsSent: mismatched,
+                    currencyAmountNotCompared: currencyAmountUnreadable
+                        ? 'costType=item 時後端讀不出 currencyAmount（固定回空陣列，但 DB 裡的舊值仍在），故本次不比對這個欄位'
+                        : undefined,
                     note: 'changedFields 應該只包含你這次明確指定的欄位；mismatchedVsSent 非空代表後端存進去的值跟送出的不一致（例如金額精度或 enum 轉換），需人工確認',
                 },
                 before: beforeReadable,

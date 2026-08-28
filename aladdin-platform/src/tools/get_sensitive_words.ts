@@ -20,7 +20,7 @@
  * - 本工具維持單純的分頁清單，**不**在內部做任何「用文字找特定敏感詞」的查找，避免踩到第 2 節
  *   明令禁止的「只查第一頁就宣稱找不到」。
  * - 需要依 id 取現值的場景（CreateOrUpdateSensitiveWord 更新前的「先讀現值」）由
- *   create_or_update_sensitive_word.ts 內的 `findSensitiveWordById()` 處理，那支有依第 2 節
+ *   create_or_update_sensitive_word.ts 內的 `scanAllSensitiveWords()` 處理，那支有依第 2 節
  *   規定實作完整的逐頁掃描到底 + 掃描上限 + 逾時保護 + 觸頂時回結構化狀態。
  *
  * 2026-08-28 讀 agrabah 後端原始碼查證：
@@ -112,6 +112,8 @@ export function registerGetSensitiveWordsTool(server: McpServer): void {
             return asTextResult({
                 success: true,
                 page,
+                // F12：明確回報本次生效的頁大小，讓「rows 筆數 < pageSize 即最後一頁」這個判斷可用。
+                effectivePageSize: input.pageSize ?? SENSITIVE_WORD_LIMITS.defaultPageSize,
                 totalPage: page === 1 ? (r.data?.totalPage ?? 0) : null,
                 pagingNote: page === 1
                     ? '本 method 不回傳 totalRow，無法得知總筆數'

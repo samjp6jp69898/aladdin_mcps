@@ -52,6 +52,9 @@
  *   `scan: { beforeScannedPages, beforeScannedRows, afterScannedPages, afterScannedRows, hitScanCap }`，
  *   實測刪除 id=607 時正確回報 before 5 筆 / after 4 筆 / hitScanCap=false；本平台資料量小、
  *   觸頂分支（notSeenInScanIds）在 dev 上無法自然重現，該分支的正確性靠程式碼審查而非實測。
+ * - 2026-08-28 最終覆核（final-reviewer A）指出檔頭原本宣稱「與姐妹檔 create_or_update_sensitive_word.ts
+ *   對同一情境的處理口徑一致」當時並不成立（那支只有一條分支揭露 hitScanCap）。該檔已於同一輪補齊，
+ *   現在兩支的口徑才真的一致。
  */
 
 import { z } from 'zod';

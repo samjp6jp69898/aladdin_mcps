@@ -59,7 +59,7 @@ export function registerGetRouletteRewardListTool(server: McpServer): void {
                 '分頁查詢本平台的轉盤獎勵配置列表（rajah: RoulettePlatform.GetRouletteRewardList，需要權限節點 ' +
                 'BonusCenter.Lottery.RewardConfig；後台「優惠中心／抽獎機制／獎勵配置」列表頁）。' +
                 '獎勵配置（Reward）是轉盤的獎項版面，一個轉盤設定（Config）關聯一個 Reward，Reward 內含多個獎項格子（Slot）。' +
-                'id 可精準鎖定單一筆（傳 0 或省略 = 不篩選）；**id 不存在時回空清單、不報錯**' +
+                'id 可精準鎖定單一筆（**省略**即不篩選——本工具的 schema 要求 id >= 1，不要傳 0）；**id 不存在時回空清單、不報錯**' +
                 '（跟 get_roulette_config_by_id 回 idNotExists 錯誤的語意不同）。name 是純字串模糊搜尋（單一語系，' +
                 '不像轉盤設定的名稱那樣需要搭配語言代碼）。' +
                 '**refCount 是關鍵欄位**：它是「目前有幾個**啟用中**的轉盤設定引用這個獎勵配置」，' +
@@ -101,9 +101,14 @@ export function registerGetRouletteRewardListTool(server: McpServer): void {
             }));
 
             const page = input.page ?? 1;
+            // F12（2026-08-28 最終覆核）：pagingNote 叫呼叫端用「rows 筆數 < pageSize」判斷終點，
+            // 但省略 pageSize 時它並不知道實際頁大小（後端把 0 當 serverDefault 套用 DefaultPageSize=100，
+            // agrabah/src/common/database_helper.ts:11）。這裡明確回報本次真正生效的頁大小。
+            const effectivePageSize = input.pageSize ?? 100;
             return asTextResult({
                 success: true,
                 page,
+                effectivePageSize,
                 totalPage: page === 1 ? (r.data?.totalPage ?? 0) : null,
                 pagingNote: page === 1
                     ? '本 method 不回傳 totalRow，無法得知總筆數'

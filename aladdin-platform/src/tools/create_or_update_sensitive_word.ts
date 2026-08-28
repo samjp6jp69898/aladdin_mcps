@@ -97,6 +97,20 @@
  *       after 是 "Manual"，同一份輸出兩種表示法會被誤讀成欄位被改）。
  *   (3) 更新分支（id=608 只改 remarks）仍為 changedFields=["remarks"]、unchangedFieldsOk=true。
  *   複測用的 607/608 皆已硬刪，最終重掃確認本平台仍是原本 4 筆、無殘留。
+ * - **2026-08-28 最終覆核（final-reviewer A/B）後的修正與複測**：
+ *   (1) 更新分支的 5000 字上限改成比 **normalize 後**的長度——後端更新路徑先 normalize 再比
+ *       （sensitive_word_manager.ts:288/:291），只有新增路徑比原始長度（:221）。初版寫在分支外用原始
+ *       長度比，會誤拒後端其實會接受的輸入。複測：建立 id=609 後送「原始 5030 字 / normalize 後 30 字」
+ *       的更新，正確放行且存進去是 30 字（初版會拒絕）。
+ *   (2) 「normalize 後為空」的擋門理由改成據實——後端的**更新**路徑對這個情況**沒有任何檢查**
+ *       （requestNotValid 那條只存在於新增路徑 :240-242），直接送出會成功把敏感詞內容清成空字串。
+ *       初版謊稱「後端會回 requestNotValid」。擋門保留（寫空敏感詞更糟），但理由改為本工具主動擋下。
+ *       複測：訊息已據實說明。
+ *   (3) 新增/更新成功分支一律附 `scan`，並在掃描觸頂時改寫歸因——清單是 id ASC 排序、上限 4000 筆，
+ *       表一旦超過 4000 筆，新建的列（id 最大）**必然**落在掃描範圍外、差集恆為空，初版會把這個結構性
+ *       限制誤診成「主從延遲、稍後再看」，把呼叫端導向一個永遠不會發生的等待。
+ *   (4) 加上頂層 `verificationFailed` 旗標。
+ *   複測用的 id=609 已硬刪，最終重掃確認本平台仍是原本 4 筆、無殘留。
  */
 
 import { z } from 'zod';
@@ -264,13 +278,24 @@ export function registerCreateOrUpdateSensitiveWordTool(server: McpServer): void
             // ---- 3. 送出前檢查（與後端同一組規則，轉成可行動的中文訊息） ----
             const problems: string[] = [];
             if (!word) problems.push('sensitiveWord 是必填（新增時必須提供；修改時若省略會沿用現值，現值為空代表資料異常）');
-            if (word.length > SENSITIVE_WORD_LIMITS.maxAddLength) problems.push(`sensitiveWord 整串長度 ${ word.length } 超過後端上限 ${ SENSITIVE_WORD_LIMITS.maxAddLength }`);
             if (isUpdate) {
-                // 後端比的是 normalize 之後的長度（sensitive_word_manager.ts:293/:300），不是原始長度。
+                // F2/F3（2026-08-28 最終覆核）：**更新分支的兩條長度上限，後端比的都是 normalize 之後的
+                // 長度**（sensitive_word_manager.ts:288 先 normalize，:291 比 5000、:295 比 50），
+                // 只有**新增**分支的 5000 那條比的是原始長度（:221）。初版把 5000 那條寫在分支外、用原始
+                // 長度比，會誤拒「原始 5030 字、normalize 後只有 30 字」這種後端其實會接受的輸入。
                 const normalized = normalizeSensitiveWord(word);
-                if (normalized.length === 0) problems.push('sensitiveWord 經後端正規化（轉小寫、去空白與零寬字元）後會變成空字串，後端會回 requestNotValid');
+                if (normalized.length > SENSITIVE_WORD_LIMITS.maxAddLength) problems.push(`sensitiveWord 正規化後長度 ${ normalized.length } 超過後端上限 ${ SENSITIVE_WORD_LIMITS.maxAddLength }`);
                 if (normalized.length > SENSITIVE_WORD_LIMITS.maxItemLength) problems.push(`修改時整串就是單一敏感詞，正規化後長度 ${ normalized.length } 超過單筆上限 ${ SENSITIVE_WORD_LIMITS.maxItemLength }`);
+                // F3：後端的**更新**路徑沒有「normalize 後為空」的檢查（那條只存在於新增路徑 :240-242），
+                // 直接送出會成功把該筆敏感詞的內容清成空字串。本工具仍然擋下（寫入空敏感詞更糟），
+                // 但理由必須據實說明是本工具主動擋的，不能謊稱後端有防呆。
+                if (normalized.length === 0) {
+                    problems.push('sensitiveWord 經正規化（轉小寫、去空白與零寬字元）後會變成空字串。'
+                        + '⚠️ 後端的**更新**路徑對這個情況沒有任何檢查，直接送出會成功把這筆敏感詞的內容清成空字串——'
+                        + '這是本工具主動擋下的，不是後端會擋。真的要清空請先確認這是你要的結果。');
+                }
             } else {
+                if (word.length > SENSITIVE_WORD_LIMITS.maxAddLength) problems.push(`sensitiveWord 整串原始長度 ${ word.length } 超過後端上限 ${ SENSITIVE_WORD_LIMITS.maxAddLength }（新增分支後端比的是原始長度，不是正規化後的長度）`);
                 // 與後端逐字對齊：split(',') → normalize → 濾掉空字串 → 去重（sensitive_word_manager.ts:225-230）。
                 const items = Array.from(new Set(word.split(',').map((w) => normalizeSensitiveWord(w)).filter((w) => w.length > 0)));
                 if (items.length === 0) problems.push('sensitiveWord 用逗號拆分並經後端正規化（轉小寫、去空白與零寬字元）後沒有任何非空內容，後端會回 requestNotValid');
@@ -309,12 +334,26 @@ export function registerCreateOrUpdateSensitiveWordTool(server: McpServer): void
                 });
             }
 
+            // F4（2026-08-28 最終覆核）：掃描是 `id ASC` + 上限 4000 筆
+            // （sensitive_word_manager.ts:194 的排序、本檔 SCAN_PAGE_CAP）。表一旦超過 4000 筆，
+            // **新建的列（id 最大）必然落在掃描範圍外**，差集恆為空。初版把這個結構性限制單一歸因成
+            // 「主從延遲、稍後再看」，會把呼叫端導向一個永遠不會發生的等待。所有用掃描結果下結論的
+            // 分支，一律附上 scan 狀態，並在觸頂時改寫歸因。
+            const scanTruncated = before.hitScanCap || after.hitScanCap;
+            const scanInfo = {
+                beforeScannedPages: before.scannedPages, beforeScannedRows: before.scannedRows,
+                afterScannedPages: after.scannedPages, afterScannedRows: after.scannedRows,
+                hitScanCap: scanTruncated,
+            };
+
             if (isUpdate) {
                 const now = after.rows.find((r) => r.id === input.id);
                 if (!now) {
                     return asTextResult({
-                        success: true, mode: 'update', id: input.id, verified: false,
-                        message: '寫入的 RPC 已成功回應，但回讀時找不到這筆資料（本 method 讀唯讀副本，可能是主從延遲）。請稍後自行覆核，這不代表寫入失敗。',
+                        success: true, mode: 'update', id: input.id, verified: false, scan: scanInfo,
+                        message: scanTruncated
+                            ? '寫入的 RPC 已成功回應，但回讀掃描已觸頂（未掃到底），這筆資料可能落在掃描範圍之外而不是不存在。請自行用 aladdin_platform_sensitive_word_platform_get_sensitive_words 翻頁覆核，這不代表寫入失敗。'
+                            : '寫入的 RPC 已成功回應，但回讀時找不到這筆資料（本 method 讀唯讀副本，可能是主從延遲）。請稍後自行覆核，這不代表寫入失敗。',
                     });
                 }
                 const changed = (['sensitiveWord', 'sensitiveWordGroupId', 'remarks'] as const).filter((k) => base![k] !== now[k]);
@@ -324,6 +363,10 @@ export function registerCreateOrUpdateSensitiveWordTool(server: McpServer): void
                     mode: 'update',
                     id: input.id,
                     verified: true,
+                    scan: scanInfo,
+                    // A3：驗證揭露問題時 success 仍為 true（RPC 確實成功），改用頂層旗標表達。
+                    // 不把 success 設成 false 的理由同姐妹檔：新增分支不冪等，重試會建出重複資料。
+                    verificationFailed: !changed.every((k) => requested.includes(k)),
                     verification: {
                         requestedFields: requested,
                         changedFields: changed,
@@ -348,9 +391,15 @@ export function registerCreateOrUpdateSensitiveWordTool(server: McpServer): void
                 createdCount: created.length,
                 createdIdSource: 'diff（本 method 空回傳、拿不到 id，改用寫入前後清單差集推導）',
                 created: created.map((r) => ({ ...r, sensitiveWordSourceType: numberToMapKey(SENSITIVE_WORD_SOURCE_TYPE_MAP, r.sensitiveWordSourceType) })),
-                message: created.length === 0
-                    ? '寫入的 RPC 已成功回應，但回讀時看不到新資料（本 method 讀唯讀副本，可能是主從延遲）。請稍後自行覆核，這不代表寫入失敗。'
-                    : undefined,
+                scan: scanInfo,
+                message: created.length > 0
+                    ? undefined
+                    : (scanTruncated
+                        ? '寫入的 RPC 已成功回應，但回讀掃描已觸頂（未掃到底）。敏感詞清單是依 id 由小到大排序的，'
+                            + '新建的列 id 最大、必然排在最後，一旦總筆數超過掃描上限就**永遠**不會出現在差集裡——'
+                            + '這不是主從延遲、再等也不會出現，新增其實很可能已經成功。請用 '
+                            + 'aladdin_platform_sensitive_word_platform_get_sensitive_words 翻到最後一頁自行覆核。'
+                        : '寫入的 RPC 已成功回應，但回讀時看不到新資料（本 method 讀唯讀副本，可能是主從延遲）。請稍後自行覆核，這不代表寫入失敗。'),
                 deleteHint: '要刪除請用 aladdin_platform_sensitive_word_platform_batch_remove_sensitive_word（硬刪除，不可復原）',
             });
         },

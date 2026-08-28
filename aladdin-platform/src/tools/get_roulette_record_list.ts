@@ -144,14 +144,19 @@ export function registerGetRouletteRecordListTool(server: McpServer): void {
             }));
 
             const page = input.page ?? 1;
+            // F12（2026-08-28 最終覆核）：pagingNote 叫呼叫端用「rows 筆數 < pageSize」判斷終點，
+            // 但省略 pageSize 時它並不知道實際頁大小（後端把 0 當 serverDefault 套用 DefaultPageSize=100，
+            // agrabah/src/common/database_helper.ts:11）。這裡明確回報本次真正生效的頁大小。
+            const effectivePageSize = input.pageSize ?? 100;
             return asTextResult({
                 success: true,
                 page,
+                effectivePageSize,
                 totalPage: page === 1 ? (r.data?.totalPage ?? 0) : null,
                 totalRow: page === 1 ? (r.data?.totalRow ?? 0) : null,
                 pagingNote: page === 1
-                    ? null
-                    : 'totalPage / totalRow 只有 page=1 時才是真值（後端只在第一頁跑 count），故此處為 null。判斷是否最後一頁請用「rows 筆數 < pageSize」',
+                    ? 'totalPage / totalRow 在 page=1 是真值；其他頁一律為 null（後端只在第一頁跑 count），屆時請用「rows 筆數 < effectivePageSize」判斷是否最後一頁'
+                    : 'totalPage / totalRow 只有 page=1 時才是真值（後端只在第一頁跑 count），故此處為 null。判斷是否最後一頁請用「rows 筆數 < effectivePageSize」',
                 piiNote: 'account 是真實玩家登入帳號，請勿寫入持久化紀錄；userId=0 代表全服而非個別玩家',
                 rows,
             });

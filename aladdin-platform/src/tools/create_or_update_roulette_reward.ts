@@ -83,6 +83,15 @@
  *   沒帶 icon 的那格 icon 維持空陣列。
  *   ⚠️ **這筆 reward id=1038（名稱「MCP驗證用獎勵配置」，含 slot 1078/1079）留在 dev 上無法刪除**
  *   ——本 domain 沒有任何 Delete API。需要清掉得由有 DB 權限的人手動處理。
+ * - **2026-08-28 最終覆核（final-reviewer A/B）後的修正與複測**：
+ *   (1) 新增分支補上 `rouletteType` 必填檢查——初版 schema 寫明必填卻沒有任何檢查，省略時會靜默套用
+ *       sixPocketRoulette，而本 domain 沒有 Delete API、建錯的配置刪不掉。複測：省略 rouletteType
+ *       被正確擋下。
+ *   (2) 把不需要上傳結果就能判斷的參數檢查全部提前到任何圖片上傳之前——初版先上傳再驗參數，
+ *       參數不合法時雖回「未執行任何寫入」，圖片其實已經傳到檔案服務上、留下無人引用的孤兒檔。
+ *       複測：同一個請求現在回「未執行任何寫入，也未上傳任何圖片」。
+ *   (3) round-trip 補 `mismatchedVsSent`（呼叫端明確指定的欄位，存進去的值是否等於送出值）與頂層
+ *       `verificationFailed` 旗標——初版只算「有沒有變」，後端若把值存成別的內容仍會回 verified:true。
  * - 未實測 `removeSlotIds`（會在 dev 產生刪不掉的孤兒列，且無法還原），該路徑的行為結論來自
  *   後端 `amountLinkManager.syncAmounts` 的原始碼（roulette_platform.ts:594-597），
  *   description 已據實標示為「解除關聯、不刪除」。
@@ -247,7 +256,11 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 '送出前本工具會用與後端 checkReward 相同的規則自行驗證：slots 不可為空、miss 格子不可設上限、' +
                 'item 格子的上限不可用 amount 型、progress 格子的 progressKey 不可為空、只要有任一格設了上限就必須有一格是 miss。' +
                 '所有金額/機率/倍率欄位都是 stored 原始值（非百分比、非顯示金額），probability 陣列 index 對應 VIP 等級。' +
-                '寫入後一律 round-trip 讀回比對，結果放在 verification 欄位。',
+                '寫入後一律 round-trip 讀回比對，結果放在 verification 欄位：changedSlotIds/changedTopLevelFields 是「有沒有變」，' +
+                'mismatchedVsSent 是「**你明確指定的欄位**存進去的值是否等於送出值」（沒指定的欄位沿用現值、不在比對範圍；' +
+                '新增的格子因為 id 由後端配發、讀回無法可靠對應，也不比對）。' +
+                '⚠️ 驗證揭露問題時 **success 仍然是 true**（RPC 確實成功了），請改看頂層的 verificationFailed 旗標——' +
+                '這支的新增分支不冪等，把 success 設成 false 會誘使呼叫端重試而建出第二筆刪不掉的資料。',
             inputSchema: {
                 id: z.number().int().min(1).optional().describe('要更新的獎勵配置 id；**省略代表新增一筆全新配置（無法刪除，請謹慎）**'),
                 name: z.string().optional().describe('獎勵配置名稱（後端 @Rules "Required"）。新增時必填；更新時省略則沿用現值'),
@@ -299,7 +312,40 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 }
             }
 
-            // ---- 2. 圖片上傳並合併 ----
+            // ---- 2. 前置參數檢查（**必須在任何上傳之前**）----
+            // F7（2026-08-28 最終覆核）：初版把四張圖與 slot icon 的上傳排在參數檢查之前，
+            // 參數不合法時雖然回「未執行任何寫入」，但檔案其實已經真的傳到檔案服務上了，
+            // 留下無人引用的孤兒檔（檔案服務同樣沒有刪除介面）。凡是不需要上傳結果就能判斷的條件，
+            // 一律先擋。剩下真的依賴上傳結果的錯誤（token 取得失敗、檔案不存在）才在上傳後才知道。
+            const preflight: string[] = [];
+            const removeIdsPre = new Set(input.removeSlotIds ?? []);
+            const notFoundRemoveIdsPre = [ ...removeIdsPre ].filter((id) => !baseSlots.some((s) => s.id === id));
+            if (notFoundRemoveIdsPre.length > 0) preflight.push(`removeSlotIds 裡的 ${ notFoundRemoveIdsPre.join(',') } 不屬於這個獎勵配置`);
+            for (const patch of input.slots ?? []) {
+                if (patch.id && !baseSlots.some((s) => s.id === patch.id && !removeIdsPre.has(s.id ?? 0))) {
+                    preflight.push(`slots 裡指定的 id=${ patch.id } 不屬於這個獎勵配置（或已被 removeSlotIds 移除）`);
+                }
+            }
+            if (!(input.name ?? ((base.name as string) ?? ''))) preflight.push('name 是必填（後端 @Rules "Required"）');
+            // F1（2026-08-28 最終覆核）：schema 的 describe 與 description 都寫明 rouletteType 新增時必填，
+            // 但初版沒有任何檢查，省略時會靜默套用 sixPocketRoulette。本 domain 沒有任何 Delete API
+            // （建出來的獎勵配置與 slot 都刪不掉），理由與姐妹檔 create_or_update_roulette_config.ts
+            // 對 costType/resetType/status 的處理完全相同，這裡補上同一條守門。
+            if (!isUpdate && input.rouletteType === undefined) {
+                preflight.push('新增時 rouletteType 是必填（六格/八格/十格/十四格轉盤或微信紅包/九宮格紅包）；本工具不替你套用預設值，因為建出來的獎勵配置無法刪除');
+            }
+            if (!isUpdate && (input.slots ?? []).length === 0) {
+                preflight.push('新增時 slots 是必填（一個獎勵配置至少要有一個獎項格子）');
+            }
+            if (preflight.length > 0) {
+                return asTextResult({
+                    success: false, mode: isUpdate ? 'update' : 'create',
+                    message: '參數檢查未通過，未執行任何寫入，也未上傳任何圖片',
+                    problems: preflight,
+                });
+            }
+
+            // ---- 3. 圖片上傳並合併（走到這裡代表非上傳類的參數都已通過）----
             const uploadErrors: string[] = [];
             const bg = await uploadRouletteImages('backgroundImage', ROULETTE_UPLOAD_IMAGE_MAP.backgroundChannel, input.backgroundImage, base.backgroundImage as never);
             const fr = await uploadRouletteImages('frameImage', ROULETTE_UPLOAD_IMAGE_MAP.frameChannel, input.frameImage, base.frameImage as never);
@@ -307,7 +353,7 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
             const pt = await uploadRouletteImages('pointerImage', ROULETTE_UPLOAD_IMAGE_MAP.pointerChannel, input.pointerImage, base.pointerImage as never);
             uploadErrors.push(...bg.errors, ...fr.errors, ...bt.errors, ...pt.errors);
 
-            // ---- 3. slots 疊加合併 ----
+            // ---- 4. slots 疊加合併 ----
             const removeIds = new Set(input.removeSlotIds ?? []);
             const mergedSlots: PlainSlot[] = baseSlots.filter((s) => !removeIds.has(s.id ?? 0));
             const notFoundRemoveIds = [ ...removeIds ].filter((id) => !baseSlots.some((s) => s.id === id));
@@ -352,7 +398,7 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 else mergedSlots.push(next);
             }
 
-            // ---- 4. 送出前檢查 ----
+            // ---- 5. 送出前的最終檢查（含只有上傳後才知道的錯誤）----
             const problems = [ ...uploadErrors ];
             if (notFoundRemoveIds.length > 0) problems.push(`removeSlotIds 裡的 ${ notFoundRemoveIds.join(',') } 不屬於這個獎勵配置`);
             const name = input.name ?? ((base.name as string) ?? '');
@@ -362,7 +408,7 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 return asTextResult({ success: false, mode: isUpdate ? 'update' : 'create', message: '參數／上傳檢查未通過，未執行任何寫入', problems });
             }
 
-            // ---- 5. 新增前記下既有 id（後端不回傳新建 id） ----
+            // ---- 6. 新增前記下既有 id（後端不回傳新建 id） ----
             let idsBefore: number[] = [];
             if (!isUpdate) {
                 const nameListR = await withAutoRelogin(() => remote.rouletteBackOffice.roulettePlatform.GetRewardNameList());
@@ -370,7 +416,7 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 idsBefore = (nameListR.data?.rows ?? []).map((row) => row.id ?? 0);
             }
 
-            // ---- 6. 寫入 ----
+            // ---- 7. 寫入 ----
             const payload = RouletteRewardEdit.create({
                 id: input.id ?? 0,
                 name,
@@ -389,7 +435,7 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 });
             }
 
-            // ---- 7. round-trip 驗證 ----
+            // ---- 8. round-trip 驗證 ----
             let newId = input.id ?? 0;
             let createdIdSource: string | null = null;
             if (!isUpdate) {
@@ -428,18 +474,59 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
                 .map((s) => s.id);
             const droppedSlotIds = baseSlotsSnapshot.filter((b) => !afterSlots.some((s) => s.id === b.id)).map((b) => b.id);
 
+            // F6（2026-08-28 最終覆核）：初版只算「有沒有變」，沒有算「變成的值是不是送出的值」——
+            // 後端若把某欄位存成別的內容（例如 slotPositions 經 amountLinkManager.syncAmounts 後
+            // 讀回順序不保證，queryAmounts 沒有 ORDER BY），仍會回 verified:true。這裡補上
+            // 「呼叫端明確指定的欄位」與讀回值的逐欄比對，比照姐妹檔的 mismatchedVsSent。
+            // 只比對呼叫端真的有帶的欄位：沒帶的欄位本來就是沿用現值，不在承諾範圍內。
+            const SLOT_SCALAR_FIELDS = [
+                'name', 'guide', 'rewardType', 'rewardCurrencyType', 'currencyMin', 'currencyMax',
+                'wageringMultiplier', 'itemId', 'itemAmount', 'itemExpireType', 'itemExpireTime',
+                'probability', 'userLimitType', 'userLimitCount', 'userLimitCurrency',
+                'globalLimitType', 'globalLimitCount', 'globalLimitCurrency', 'guaranteedCount',
+                'slotPositions', 'progressKey',
+            ] as const;
+            const mismatchedVsSent: string[] = [];
+            const sentName = payload.name;
+            const sentType = payload.rouletteType;
+            if (input.name !== undefined && (afterReward.name as string) !== sentName) mismatchedVsSent.push('name');
+            if (input.rouletteType !== undefined && (afterReward.rouletteType as number) !== sentType) mismatchedVsSent.push('rouletteType');
+            for (const patch of input.slots ?? []) {
+                // 沒帶 id 的是新增的格子，讀回後無法可靠對應（後端才配 id），略過不比對。
+                if (!patch.id) continue;
+                const now = afterSlots.find((s) => s.id === patch.id);
+                if (!now) { mismatchedVsSent.push(`slot(${ patch.id }): 讀回時找不到這個格子`); continue; }
+                const sent = mergedSlots.find((s) => s.id === patch.id);
+                if (!sent) continue;
+                for (const f of SLOT_SCALAR_FIELDS) {
+                    if ((patch as Record<string, unknown>)[ f ] === undefined) continue;
+                    if (JSON.stringify(sent[ f ]) !== JSON.stringify(now[ f ])) mismatchedVsSent.push(`slot(${ patch.id }).${ f }`);
+                }
+                // icon 是上傳後才產生的路徑，同樣只在呼叫端有帶時才比對。
+                if (patch.icon !== undefined && JSON.stringify(sent.icon) !== JSON.stringify(now.icon)) mismatchedVsSent.push(`slot(${ patch.id }).icon`);
+            }
+
             return asTextResult({
                 success: true,
                 mode: isUpdate ? 'update' : 'create',
                 id: newId,
                 createdIdSource,
                 verified: true,
+                // A3/F6（2026-08-28 最終覆核）：驗證揭露出問題時，只看第一層 success 的呼叫端也要看得到。
+                // 這裡刻意**不**把 success 改成 false（與 switch_roulette_config_status 不同）：
+                // 那支是冪等的狀態設定，重試無害；這支的新增分支不冪等，success:false 會誘使呼叫端
+                // 重試而建出第二筆刪不掉的資料。因此保留 success:true（RPC 確實成功了）並用
+                // verificationFailed 這個頂層旗標表達「寫入完成，但驗證結果與你的意圖不符，需要人工確認」。
+                verificationFailed: mismatchedVsSent.length > 0 || (isUpdate && droppedSlotIds.length > (input.removeSlotIds ?? []).length),
                 verification: {
                     requestedFields: Object.keys(input).filter((k) => k !== 'id' && k !== 'confirm'),
                     changedTopLevelFields: isUpdate ? changedTopLevel : null,
                     changedSlotIds: isUpdate ? changedSlotIds : afterSlots.map((s) => s.id),
                     droppedSlotIds: isUpdate ? droppedSlotIds : [],
-                    note: 'changedTopLevelFields / changedSlotIds 應該只包含你這次明確指定要改的部分；droppedSlotIds 非空代表有格子被解除關聯（變成刪不掉的孤兒列）',
+                    mismatchedVsSent,
+                    note: 'changedTopLevelFields / changedSlotIds 應該只包含你這次明確指定要改的部分；'
+                        + 'mismatchedVsSent 非空代表**你明確指定的欄位**存進去的值與送出值不一致（沒指定的欄位不在比對範圍）；'
+                        + 'droppedSlotIds 非空代表有格子被解除關聯（變成刪不掉的孤兒列）',
                 },
                 after: {
                     ...afterReward,

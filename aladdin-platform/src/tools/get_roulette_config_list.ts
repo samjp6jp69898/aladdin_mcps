@@ -133,9 +133,14 @@ export function registerGetRouletteConfigListTool(server: McpServer): void {
             }));
 
             const page = input.page ?? 1;
+            // F12（2026-08-28 最終覆核）：pagingNote 叫呼叫端用「rows 筆數 < pageSize」判斷終點，
+            // 但省略 pageSize 時它並不知道實際頁大小（後端把 0 當 serverDefault 套用 DefaultPageSize=100，
+            // agrabah/src/common/database_helper.ts:11）。這裡明確回報本次真正生效的頁大小。
+            const effectivePageSize = input.pageSize ?? 100;
             return asTextResult({
                 success: true,
                 page,
+                effectivePageSize,
                 // 後端只在 page=1 跑 count，其他頁固定回 0；直接透傳那個 0 會被誤讀成「查無資料」。
                 totalPage: page === 1 ? (r.data?.totalPage ?? 0) : null,
                 pagingNote: page === 1

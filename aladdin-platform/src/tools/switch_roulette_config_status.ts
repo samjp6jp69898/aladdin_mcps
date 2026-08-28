@@ -46,6 +46,10 @@
  *   BonusCenter.Lottery 的帳號會在回讀時吃 permissionDenied，落到 `verified: false` 分支
  *   （寫入其實已成功），description 已標明。
  *
+ * 2026-08-28 最終覆核（final-reviewer B，F8）後補上 prod confirm 閘門（assertProdConfirmed + confirm 參數）：
+ * 這批新增的另外四支寫入 tool 都有，只有這支沒有，而它自己的 description 就寫著「會立刻影響真實玩家」，
+ * 正是最需要閘門的一類。補上後重打 dev 複測（非 prod 環境不需要 confirm，行為不變）。
+ *
  * 2026-08-28 dev 實測（pk-platform.alddev.com，帳號 landon001）：見檔案末端 review 附註的
  * 「實測紀錄」——用 id=1030（測試前狀態 disabled）做 disabled→enabled→讀回確認→改回 disabled→
  * 再讀回確認的完整 round-trip，測後狀態已還原成測試前的 disabled，dev 上沒有留下狀態變更；
@@ -55,7 +59,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import { remote, withAutoRelogin } from '../session.ts';
+import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 // 刻意 import 兩張表：ACTIVE_STATUS_MAP 是**送出**用的（後端只接受 enabled/disabled 兩態）；
 // STATUS_MAP 是**讀回**用的超集（回讀值若是 frozen/deleted 這類異常狀態，用超集才能如實顯示，
@@ -88,9 +92,14 @@ export function registerSwitchRouletteConfigStatusTool(server: McpServer): void 
             inputSchema: {
                 id: z.number().int().min(1).describe('轉盤設定 id，來自 get_config_name_list / get_roulette_config_list'),
                 status: z.enum(TARGET_STATUS_KEYS).describe('要設定成的目標狀態：enabled(啟用) 或 disabled(停用)。必填，不會自動反轉'),
+                confirm: z.string().optional().describe(`prod 環境專用的二次確認字串（非 prod 環境不需要）。需要時填入 ${ PROD_CONFIRM_TOKEN }`),
             },
         },
         async (input) => {
+            // F8（2026-08-28 最終覆核）：這批新增的另外三支寫入 tool 都有 prod confirm 閘門，
+            // 只有這支沒有——而它自己的 description 就寫著「會立刻影響真實玩家（停用後前台抽獎被拒）」，
+            // 正是最需要閘門的一類。補上，與同批其他寫入 tool 口徑一致。
+            assertProdConfirmed(input.confirm);
             const r = await withAutoRelogin(() => remote.rouletteBackOffice.roulettePlatform.SwitchRouletteConfigStatus(
                 input.id,
                 ACTIVE_STATUS_MAP[ input.status ],
