@@ -126,6 +126,30 @@ export const RISK_LIMIT_ITEM_MAP = { gameBlack: 1, gameWhite: 2 } as const;
 // RiskLimitMethodEnum（risk_back_office.rajah:100-105），限制方式是 IP 還是國家代碼。
 export const RISK_LIMIT_METHOD_MAP = { ip: 1, countryCode: 2 } as const;
 
+// 返水（rebate_back_office.rajah）——RebatePlatform 系列 tool 共用。
+// RebatePeriodEnum（rebate_back_office.rajah:11-16）：返水領取週期。
+export const REBATE_PERIOD_KEYS = [ 'daily', 'immediate' ] as const;
+export const REBATE_PERIOD_MAP: Record<(typeof REBATE_PERIOD_KEYS)[number], number> = { daily: 0, immediate: 1 };
+// GlobalRebateModeEnum（rebate_back_office.rajah:92-99）：全局返水模式。
+export const GLOBAL_REBATE_MODE_KEYS = [ 'none', 'combined', 'separate' ] as const;
+export const GLOBAL_REBATE_MODE_MAP: Record<(typeof GLOBAL_REBATE_MODE_KEYS)[number], number> = { none: 0, combined: 1, separate: 2 };
+// RebateRecodeStatusEnum（rebate_back_office.rajah:459-474）：返水紀錄狀態，供
+// get_rebate_record_list / get_rebate_stepped_record_list 共用。
+// ⚠️ expired(5) 不是資料庫真的存在的狀態值：後端把它翻譯成「status = verified 且 claim_limit_at
+// 已過」的查詢條件，回傳時也會把符合這條件的紀錄 status 就地改寫成 expired
+// （rebate_platform.ts:1071-1083 與 1138-1141）。
+export const REBATE_RECORD_STATUS_KEYS = [ 'unverified', 'verified', 'claimed', 'rejected', 'deducted', 'expired', 'clawBack' ] as const;
+export const REBATE_RECORD_STATUS_MAP: Record<(typeof REBATE_RECORD_STATUS_KEYS)[number], number> = {
+    unverified: 0, verified: 1, claimed: 2, rejected: 3, deducted: 4, expired: 5, clawBack: 6,
+};
+
+// RebateBetStatusEnum（rebate_back_office.rajah:368-383）：返水結算明細每一筆的狀態，供
+// get_rebate_settlement_list 使用。
+export const REBATE_BET_STATUS_KEYS = [ 'unclaimed', 'claimed', 'blacklisted', 'disabled', 'configNotFound', 'exceedDailyLimit', 'clawBack' ] as const;
+export const REBATE_BET_STATUS_MAP: Record<(typeof REBATE_BET_STATUS_KEYS)[number], number> = {
+    unclaimed: 0, claimed: 1, blacklisted: 2, disabled: 3, configNotFound: 4, exceedDailyLimit: 5, clawBack: 6,
+};
+
 // RiskGameTypeEnum（risk_back_office.rajah:108-113），限制作用範圍是廠商還是指定遊戲。
 export const RISK_GAME_TYPE_MAP = { provider: 1, specified: 2 } as const;
 
@@ -148,7 +172,9 @@ export const PAGE_SIZE_MAP: Record<(typeof PAGE_SIZE_KEYS)[number], number> = {
 // 直接從已生成的 remote.gen.ts 匯入真正的 TS enum，用 Object.keys 動態推導出
 // 字串 key 清單給 zod z.enum() 用（agent 傳字串 key，如 "paymentDeposit"，不傳數字碼），
 // forward/reverse mapping 都用該 enum 物件本身的內建能力（TS 數字 enum 自動有雙向映射）。
-import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum, SystemIdEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
+import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum, SystemIdEnum,
+    FundAdjustmentStatusEnum, FundAdjustmentDirectionEnum, FundAdjustmentAutoReviewResultEnum,
+    ManualCategoryEnum, ManualAddCategoryEnum, FundAdjustmentGiveModeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
 
 export { TransactionCategoryEnum };
 
@@ -723,3 +749,100 @@ export const TURNOVER_TYPE_LABELS: Record<number, string> = {
 // 注意別跟 rajah `const TurnoverMultiplierDefault i32 = 10000`（wagering.rajah:22）搞混——
 // 那個是「沒設定過時的預設值（1 倍）」，數值相同純屬巧合。
 export const TURNOVER_MULTIPLIER_SCALE = 10000;
+ * i32（protobuf int32）的上界。任何對應 rajah `i32` 欄位的 zod number schema 都該用它當
+ * `.max()`：超過這個值的數字會被 protobufjs **無聲截斷**成另一個合法的 i32，於是 tool 會
+ * 若無其事地對「別的 id」執行操作或回傳「別人的資料」，沒有任何錯誤訊號。
+ * 這不是理論風險——2026-08-25 的 review 在 create_or_update_room_mute 實測確認過會禁言到錯的人
+ * （見該檔與 README 的對應記載，那支目前是各自寫死 2147483647）。
+ * FundAdjustmentPlatform 系列 tool（list_user_fund / get_user_adjustment_info /
+ * list_user_fund_adjustment 等，多支都吃 i32 的 userId 或調整單 id）統一改用這個常數。
+ */
+export const I32_MAX = 2147483647;
+
+// ---------------------------------------------------------------------------
+// FundAdjustmentPlatform（fund_adjustment_back_office.rajah）系列 tool 共用的 enum 對照。
+// 一律走「從 remote.gen.ts 匯入真正的 TS enum + Object.keys 動態推導 key 清單」的既有模式
+// （同本檔上方 TransactionCategoryEnum/SystemIdEnum 的作法），不手抄一份數字對照表——
+// ManualCategoryEnum 有 19 個值、跨上分/下分兩組，手抄極易漂移。
+// agent 一律傳字串 key（如 "pending"、"manualAddRebate"），不傳裸數字碼。
+// ---------------------------------------------------------------------------
+
+/** FundAdjustmentStatusEnum（rajah:66-73）：pending=1 待審核 / pass=2 通過 / reject=3 拒絕。 */
+export const FUND_ADJUSTMENT_STATUS_KEYS = Object.keys(FundAdjustmentStatusEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function fundAdjustmentStatusKeyToNumber(key: string): number {
+    return (FundAdjustmentStatusEnum as unknown as Record<string, number>)[ key ];
+}
+export function fundAdjustmentStatusNumberToKey(value: number): string | number {
+    return (FundAdjustmentStatusEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/** FundAdjustmentDirectionEnum（rajah:76-81）：add=1 上分 / deduct=2 下分。 */
+export const FUND_ADJUSTMENT_DIRECTION_KEYS = Object.keys(FundAdjustmentDirectionEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function fundAdjustmentDirectionKeyToNumber(key: string): number {
+    return (FundAdjustmentDirectionEnum as unknown as Record<string, number>)[ key ];
+}
+export function fundAdjustmentDirectionNumberToKey(value: number): string | number {
+    return (FundAdjustmentDirectionEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/**
+ * FundAdjustmentAutoReviewResultEnum（rajah:52-63）：none=0 未執行自動審核 / pass=1 /
+ * rejectedExceedAmount=2 超過設置金額 / rejectedNoClaimBonus=3 會員禁領優惠彩金 /
+ * systemExecutionFailed=99。⚠️ none 的數值是 **0**，用它當單一數值搜尋條件時會被後端的
+ * searchNotEmpty（database_helper.ts:356-358，number 且 === 0 視為未填）當成「沒填」；
+ * 但這個欄位在 rajah 是陣列（`autoReviewResult [FundAdjustmentAutoReviewResultEnum] 12`），
+ * searchNotEmpty 對陣列只看長度（:359-361），所以 [none] 這個單元素陣列不會被誤判掉。
+ */
+export const FUND_ADJUSTMENT_AUTO_REVIEW_RESULT_KEYS = Object.keys(FundAdjustmentAutoReviewResultEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function fundAdjustmentAutoReviewResultKeyToNumber(key: string): number {
+    return (FundAdjustmentAutoReviewResultEnum as unknown as Record<string, number>)[ key ];
+}
+export function fundAdjustmentAutoReviewResultNumberToKey(value: number): string | number {
+    return (FundAdjustmentAutoReviewResultEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/**
+ * ManualCategoryEnum（rajah:84-123，19 個值）：手動調整的交易類型，上分 1-10、下分 11-19，
+ * 是「上分與下分合在同一個 enum」的完整清單，用於查詢條件與回傳值。
+ * 對照 ManualAddCategoryEnum（common.rajah:2606-2627）只有上分那 10 個、數值相同。
+ */
+export const MANUAL_CATEGORY_KEYS = Object.keys(ManualCategoryEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function manualCategoryKeyToNumber(key: string): number {
+    return (ManualCategoryEnum as unknown as Record<string, number>)[ key ];
+}
+export function manualCategoryNumberToKey(value: number): string | number {
+    return (ManualCategoryEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/**
+ * ManualAddCategoryEnum（common.rajah:2606-2627，10 個值）：**只有手動上分**的交易類型，
+ * 數值與 ManualCategoryEnum 的 1-10 相同。資金預設快捷（FundAdjustmentPreset）只服務上分，
+ * 所以它的 category 用的是這個較窄的 enum，不是 ManualCategoryEnum——兩者不可互換。
+ */
+export const MANUAL_ADD_CATEGORY_KEYS = Object.keys(ManualAddCategoryEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function manualAddCategoryKeyToNumber(key: string): number {
+    return (ManualAddCategoryEnum as unknown as Record<string, number>)[ key ];
+}
+// 註：這裡刻意**不**提供 manualAddCategoryNumberToKey。preset 相關 tool 解讀回傳的 category
+// 一律用上面較寬的 manualCategoryNumberToKey——因為後端建立 preset 時驗的是完整的
+// ManualCategoryEnum（fund_adjustment_platform.ts:1132-1134），DB 裡理論上可能存在下分類型，
+// 用只認得 10 個上分值的窄 enum 反查會把它顯示成裸數字。
+
+/**
+ * FundAdjustmentGiveModeEnum（**service_common.rajah:2080-2085**，不是 common.rajah——
+ * 這兩個檔名很容易混淆，同區塊上方的 ManualAddCategoryEnum 才是在 common.rajah）：
+ * wallet=1 中心錢包 / bonus=2 彩金。回傳值解讀用。
+ */
+export function fundAdjustmentGiveModeNumberToKey(value: number): string | number {
+    return (FundAdjustmentGiveModeEnum as unknown as Record<number, string>)[ value ] ?? value;
+}

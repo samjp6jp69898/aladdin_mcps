@@ -259,6 +259,28 @@ import { registerListUserWageringsByUserTool } from './list_user_wagerings_by_us
 import { registerGetImmediateUserWageringTool } from './get_immediate_user_wagering.ts';
 import { registerUpdateTurnoverMultiplierSettingTool } from './update_turnover_multiplier_setting.ts';
 import { registerUpdateWageringSettingTool } from './update_wagering_setting.ts';
+import { registerGetRebateConfigNameListTool } from './get_rebate_config_name_list.ts';
+import { registerGetRebateConfigsTool } from './get_rebate_configs.ts';
+import { registerGetRebateConfigByIdTool } from './get_rebate_config_by_id.ts';
+import { registerGetRebateGlobalSettingTool } from './get_rebate_global_setting.ts';
+import { registerGetRebateRecordListTool } from './get_rebate_record_list.ts';
+import { registerGetRebateSteppedRecordListTool } from './get_rebate_stepped_record_list.ts';
+import { registerGetRebateSettlementListTool } from './get_rebate_settlement_list.ts';
+import { registerUpdateRebateGlobalSettingTool } from './update_rebate_global_setting.ts';
+import { registerCreateOrUpdateRebateConfigTool } from './create_or_update_rebate_config.ts';
+import { registerDeleteRebateConfigTool } from './delete_rebate_config.ts';
+import { registerListUserFundTool } from './list_user_fund.ts';
+import { registerGetUserAdjustmentInfoTool } from './get_user_adjustment_info.ts';
+import { registerListUserFundAdjustmentTool } from './list_user_fund_adjustment.ts';
+import { registerGetUserFundAdjustmentReviewInfoTool } from './get_user_fund_adjustment_review_info.ts';
+import { registerGetUserNoClaimBonusTool } from './get_user_no_claim_bonus.ts';
+import { registerListFundAdjustmentPresetTool } from './list_fund_adjustment_preset.ts';
+import { registerGetFundAdjustmentPresetsByCategoryTool } from './get_fund_adjustment_presets_by_category.ts';
+import { registerGetFundAdjustmentAutoReviewConfigTool } from './get_fund_adjustment_auto_review_config.ts';
+import { registerCreateFundAdjustmentPresetTool } from './create_fund_adjustment_preset.ts';
+import { registerEditFundAdjustmentPresetTool } from './edit_fund_adjustment_preset.ts';
+import { registerSetFundAdjustmentPresetStatusTool } from './set_fund_adjustment_preset_status.ts';
+import { registerDeleteFundAdjustmentPresetTool } from './delete_fund_adjustment_preset.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -523,4 +545,26 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetImmediateUserWageringTool(server);
     registerUpdateTurnoverMultiplierSettingTool(server);
     registerUpdateWageringSettingTool(server);
+    registerGetRebateConfigNameListTool(server);
+    registerGetRebateConfigsTool(server);
+    registerGetRebateConfigByIdTool(server);
+    registerGetRebateGlobalSettingTool(server);
+    registerGetRebateRecordListTool(server);
+    registerGetRebateSteppedRecordListTool(server);
+    registerGetRebateSettlementListTool(server);
+    registerUpdateRebateGlobalSettingTool(server);
+    registerCreateOrUpdateRebateConfigTool(server);
+    registerDeleteRebateConfigTool(server);
+    registerListUserFundTool(server);
+    registerGetUserAdjustmentInfoTool(server);
+    registerListUserFundAdjustmentTool(server);
+    registerGetUserFundAdjustmentReviewInfoTool(server);
+    registerGetUserNoClaimBonusTool(server);
+    registerListFundAdjustmentPresetTool(server);
+    registerGetFundAdjustmentPresetsByCategoryTool(server);
+    registerGetFundAdjustmentAutoReviewConfigTool(server);
+    registerCreateFundAdjustmentPresetTool(server);
+    registerEditFundAdjustmentPresetTool(server);
+    registerSetFundAdjustmentPresetStatusTool(server);
+    registerDeleteFundAdjustmentPresetTool(server);
 }
