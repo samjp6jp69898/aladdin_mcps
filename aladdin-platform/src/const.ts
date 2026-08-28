@@ -126,21 +126,29 @@ export const RISK_LIMIT_ITEM_MAP = { gameBlack: 1, gameWhite: 2 } as const;
 // RiskLimitMethodEnum（risk_back_office.rajah:100-105），限制方式是 IP 還是國家代碼。
 export const RISK_LIMIT_METHOD_MAP = { ip: 1, countryCode: 2 } as const;
 
-// 返水（rebate_back_office.rajah）——RebatePlatform 系列 tool 共用
-// （get_rebate_global_setting / update_rebate_global_setting）。
+// 返水（rebate_back_office.rajah）——RebatePlatform 系列 tool 共用。
 // RebatePeriodEnum（rebate_back_office.rajah:11-16）：返水領取週期。
 export const REBATE_PERIOD_KEYS = [ 'daily', 'immediate' ] as const;
 export const REBATE_PERIOD_MAP: Record<(typeof REBATE_PERIOD_KEYS)[number], number> = { daily: 0, immediate: 1 };
-// RebateGetTypeEnum（rebate_back_office.rajah:3-9）：返水領取方式。model 上標 @Readonly，
+// RebateGetTypeEnum（rebate_back_office.rajah:4-9）：返水領取方式。model 上標 @Readonly，
 // 後端不擋，但後台表單不給改，MCP 端比照處理（update tool 不開放這個欄位）。
 export const REBATE_GET_TYPE_KEYS = [ 'auto', 'manual' ] as const;
 export const REBATE_GET_TYPE_MAP: Record<(typeof REBATE_GET_TYPE_KEYS)[number], number> = { auto: 0, manual: 1 };
-// GlobalRebateModeEnum（rebate_back_office.rajah:88-96）：全局返水模式。
+// GlobalRebateModeEnum（rebate_back_office.rajah:92-99）：全局返水模式。
 export const GLOBAL_REBATE_MODE_KEYS = [ 'none', 'combined', 'separate' ] as const;
 export const GLOBAL_REBATE_MODE_MAP: Record<(typeof GLOBAL_REBATE_MODE_KEYS)[number], number> = { none: 0, combined: 1, separate: 2 };
-// RebateSteppedModeEnum（rebate_back_office.rajah:47-52）：階層返水模式。
+// RebateSteppedModeEnum（rebate_back_office.rajah:50-55）：階層返水模式。
 export const REBATE_STEPPED_MODE_KEYS = [ 'loss', 'validAmount' ] as const;
 export const REBATE_STEPPED_MODE_MAP: Record<(typeof REBATE_STEPPED_MODE_KEYS)[number], number> = { loss: 0, validAmount: 1 };
+// RebateRecodeStatusEnum（rebate_back_office.rajah:459-474）：返水紀錄狀態，供
+// get_rebate_record_list / get_rebate_stepped_record_list 共用。
+// ⚠️ expired(5) 不是資料庫真的存在的狀態值：後端把它翻譯成「status = verified 且 claim_limit_at
+// 已過」的查詢條件，回傳時也會把符合這條件的紀錄 status 就地改寫成 expired
+// （rebate_platform.ts:1066-1077 與 1139-1141）。
+export const REBATE_RECORD_STATUS_KEYS = [ 'unverified', 'verified', 'claimed', 'rejected', 'deducted', 'expired', 'clawBack' ] as const;
+export const REBATE_RECORD_STATUS_MAP: Record<(typeof REBATE_RECORD_STATUS_KEYS)[number], number> = {
+    unverified: 0, verified: 1, claimed: 2, rejected: 3, deducted: 4, expired: 5, clawBack: 6,
+};
 
 // RiskGameTypeEnum（risk_back_office.rajah:108-113），限制作用範圍是廠商還是指定遊戲。
 export const RISK_GAME_TYPE_MAP = { provider: 1, specified: 2 } as const;
