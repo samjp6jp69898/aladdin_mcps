@@ -7,6 +7,20 @@
  * 分類（method-category-checklist.md 第 2 節「讀取清單」）：A 級——search 內的
  * identifier（會員帳號）與 userId 都能鎖定單一目標，非「只有範圍鍵 + 分頁」的 B 級。
  * zod schema 已對照 rajah model ListUserWageringsSearch（同檔 69-96 行）全部欄位列出。
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：**本 domain 裡 PII 暴露面最大的一支，結論是不遮罩，
+ * 理由如下。** 回傳的 rows[].identifier 與 userWageringInfo.identifier 都是會員登入帳號；
+ * 而且因為 accurate 預設 false（模糊比對），一次呼叫可以聚合**多位**會員的帳號 + 未稽核金額，
+ * 正好命中該節最後一條「多筆批量查詢要額外評估聚合多筆真實使用者 PII 一次性暴露」的情境。
+ * 逐項核對後仍決定不遮罩：
+ * (1) 該節點名要求遮罩的欄位是 realName／account／accountName／bankAccount 與密碼/token 類，
+ *     回傳 model UserWageringPlatform（wagering_back_office.rajah:136-171）一個都沒有；
+ *     identifier 也不在 SensitiveFieldEnum（mobile/email/wechat/qq）的涵蓋範圍內。
+ * (2) identifier 同時是本工具的**搜尋鍵**——遮掉它，呼叫端就無法把結果對回自己查的那個帳號，
+ *     等於廢掉這支 tool 的主要用途。
+ * (3) 本 server 既有 sibling 對同一欄位一律明文回傳（如 list_point_transactions.ts、
+ *     list_user_transactions），遮罩只有這一支會造成不一致。
+ * 但呼叫端仍應注意：**不要把模糊搜尋的結果整包寫進持久化 log 或轉貼到對話紀錄以外的地方**。
  */
 
 import { z } from 'zod';
@@ -50,6 +64,9 @@ export function registerListUserWageringsTool(server: McpServer): void {
                 '（success=true、rows=[]、totalPage=0、userWageringInfo=null），本工具無法替你區分這兩種情況，' +
                 '要確認會員是否存在，請改用 aladdin_platform_wagering_platform_get_user_un_wagering_detail' +
                 '（吃 userId，查無會員時回 errorCode 204 userNotExists，不是靜默回空）。' +
+                'rows[].id 可餵給 aladdin_platform_wagering_platform_get_wagering_scopes 查該筆的遊戲類型／品牌限定；' +
+                'rows[].userId 可餵給 aladdin_platform_wagering_platform_get_user_un_wagering_detail（未稽核明細）' +
+                '或 aladdin_platform_wagering_user_platform_list_user_wagerings_by_user（含操作人與備註）。' +
                 '本工具純讀取；手動加/變更/解除單一會員稽核的寫入類 method（ManualAddUserWagering / ' +
                 'BatchManualChangeUserWagering / BatchManualRemoveUserWagering）會直接改動個別會員的提款門檻，' +
                 '本 MCP 未提供對應 tool。',

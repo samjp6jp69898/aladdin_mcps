@@ -26,6 +26,9 @@
  * 那支在查不到時**會 insertObject 把預設值寫進 DB**（同檔 309-313），但它是消稽核 job 在用的
  * （servers/wagering_back_office/job/eliminate_user_wagering.ts:19），不在本 tool 的呼叫鏈上。
  * 兩支名字只差一個 List，行為卻不同，改動時別看錯。
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：回傳只有打碼類型與倍率，屬平台設定、
+ * 不含任何會員資料或憑證，不觸發該節任何要求。
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';

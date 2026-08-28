@@ -18,6 +18,13 @@
  *
  * 另注意 pageSize 是裸 i32、不是 PageSizeEnum，後端 withPage()
  * （agrabah/src/common/database_helper.ts:13-19）直接把它插進 LIMIT，沒有 clamp 上界。
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：回傳的 userWageringInfo.identifier 是會員登入帳號
+ * （每一頁都有值）。結論是不遮罩，理由同 list_user_wagerings.ts 檔頭那段：該節點名要求遮罩的
+ * realName／account／accountName／bankAccount 與密碼/token 類欄位，本 method 的回傳
+ * （UserUnWageringDetail，wagering_back_office.rajah:174-185 + userWageringInfo，同檔 188-198）
+ * 一個都沒有；identifier 也不在 SensitiveFieldEnum 涵蓋範圍。與 list_user_wagerings 不同的是，
+ * 本工具吃單一 userId、一次只會回一位會員，沒有「聚合多筆 PII」的問題。
  */
 
 import { z } from 'zod';
@@ -55,7 +62,7 @@ export function registerGetUserUnWageringDetailTool(server: McpServer): void {
                 '所以 page>=2 時 totalPage 與 userWageringInfo.unWageringAmount **兩個都會是 0**。' +
                 'dev 實測確認：同一位會員第 1 頁回 unWageringAmount=39554000、第 2 頁回 0。' +
                 '要拿總額請只信第一頁的值，不要把第二頁的 0 當成「已經沒有未稽核金額」。' +
-                '**(4) rows[].wageringScopes 已內含，不必再呼叫 get_wagering_scopes**——後端在同一句 SQL 用' +
+                '**(4) rows[].wageringScopes 已內含，不必再呼叫 aladdin_platform_wagering_platform_get_wagering_scopes**——後端在同一句 SQL 用' +
                 '子查詢把稽核限定聚合進來了（同檔 409-427）；沒有限定的列不會有這個欄位（等同不限定）。' +
                 '**(5) 回傳含會員帳號**——userWageringInfo.identifier 是該會員的登入帳號（會員個資），' +
                 '每一頁都會回傳；同結構的 userId／currencyCode 也是每頁都正確，' +
@@ -90,13 +97,15 @@ export function registerGetUserUnWageringDetailTool(server: McpServer): void {
                 rows: deepFixLongs(r.data?.rows ?? []),
                 userWageringInfo: deepFixLongs(r.data?.userWageringInfo ?? null),
                 totalPage: r.data?.totalPage ?? 0,
-                notes: page === 1
+                notes: {
+                    page: page === 1
                     ? 'totalPage 與 userWageringInfo.unWageringAmount 在第 1 頁是真值。'
                         + 'rows 只含 status=pending 且為該會員自身幣別的稽核；rows[].wageringScopes 為空/不存在代表該筆不限定遊戲範圍'
                     : 'page>=2：totalPage 與 userWageringInfo.unWageringAmount 後端固定回 0，'
                         + '不代表沒有資料／沒有未稽核金額——這兩個值請改看第 1 頁。'
                         + 'rows 只含 status=pending 且為該會員自身幣別的稽核。'
                         + '從中途頁開始翻時的終止條件請用 rows.length < pageSize 判定為最後一頁',
+                },
             });
         },
     );

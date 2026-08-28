@@ -71,7 +71,7 @@ export function registerGetManualAddUserWageringInfoTool(server: McpServer): voi
                 '直接回 pkyftest 的資料，不報錯也不做一致性檢查——不要同時帶兩個然後以為後端會幫你驗。' +
                 '**(2) identifier 是精準比對，不是模糊**——後端 where 是 `u.identifier = ?` 等號' +
                 '（app_user.ts:184）。dev 實測帶前綴 "pkyf" 查不到 pkyftest，回 errorCode 204 userNotExists。' +
-                '要模糊找人請用 list_user_wagerings（accurate=false）。' +
+                '要模糊找人請用 aladdin_platform_wagering_platform_list_user_wagerings（accurate=false）。' +
                 '**(3) 查無此會員回 errorCode 204 userNotExists**；至於 identifier 與 userId 兩個都不帶，' +
                 '本工具會在送出前先擋下、回 success=false 加說明訊息（**不會有 errorCode 欄位**），' +
                 '不會真的送出（真送出的話後端會拿 userId=0 去查、同樣回 204，但訊息看不出真正原因）。' +

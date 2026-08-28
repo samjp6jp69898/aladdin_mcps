@@ -16,6 +16,9 @@
  * 且平台只要有人開過後台設定頁就已存在。仍在 description 揭露。
  * autoRemoveBalance 那半邊是 currencyLinkManager.queryByIdWithoutError（同檔 94）
  * → currency_link_manager.ts:87-105，只有 loadObjects，純讀取。
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：回傳只有一個開關值與逐幣別門檻金額，
+ * 屬平台設定、不含任何會員資料或憑證，不觸發該節任何要求。
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';

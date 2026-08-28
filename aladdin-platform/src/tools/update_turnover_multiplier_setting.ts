@@ -61,6 +61,9 @@
  * 並回填快取。
  * 這兩點都是 agrabah 端的問題、MCP 層無法修，只能如實告知呼叫端：**改完若發現不生效，
  * 先懷疑這個快取，不要以為是本工具沒寫進去。**（已回報給後端 owner。）
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：輸入與回傳都只有打碼類型與倍率，屬平台設定、
+ * 不含任何會員資料或憑證，不觸發該節任何要求。
  */
 
 import { z } from 'zod';
@@ -235,7 +238,7 @@ export function registerUpdateTurnoverMultiplierSettingTool(server: McpServer): 
             const writeRes = await withAutoRelogin(() => wp().UpdateTurnoverMultiplierSetting(
                 payload.map((row) => TurnoverMultiplierSetting.create(row)),
             ));
-            if (writeRes.failed) return asErrorResult(writeRes, { stage: '寫入失敗，請用 get_turnover_multiplier_setting 覆核目前實際值' });
+            if (writeRes.failed) return asErrorResult(writeRes, { stage: '寫入失敗，請用 aladdin_platform_wagering_platform_get_turnover_multiplier_setting 覆核目前實際值' });
 
             // 第 4 節要求：round-trip 讀回逐欄比對。
             const afterRes = await withAutoRelogin(() => wp().GetTurnoverMultiplierSetting());
@@ -265,7 +268,10 @@ export function registerUpdateTurnoverMultiplierSettingTool(server: McpServer): 
                 after: afterMap.get(p.turnoverType) ?? null,
                 applied: afterMap.get(p.turnoverType) === p.turnoverMultiplier,
                 // before 不等於預設值 10000 ⇒ DB 必定已有列 ⇒ 必定是 UPDATE；等於 10000 則無法判定。
-                writeMode: beforeMap.get(p.turnoverType) !== TURNOVER_MULTIPLIER_SCALE ? 'update' : 'unknown',
+                // 讀不到 before（理論上不會發生，後端固定回全部 4 種）時不能推成 update，一律 unknown。
+                writeMode: beforeMap.get(p.turnoverType) === undefined
+                    ? 'unknown'
+                    : (beforeMap.get(p.turnoverType) !== TURNOVER_MULTIPLIER_SCALE ? 'update' : 'unknown'),
                 effectiveMultiplierAfter: (afterMap.get(p.turnoverType) ?? 0) / TURNOVER_MULTIPLIER_SCALE,
             }));
 
@@ -288,6 +294,9 @@ export function registerUpdateTurnoverMultiplierSettingTool(server: McpServer): 
                     rows: untouched,
                 },
                 notes: {
+                    successMeaning: '本工具的 success=true 代表「寫入成功**且** round-trip 已驗證」，'
+                        + '比本 server 其他寫入 tool 的 success（只代表寫入 RPC 沒報錯）嚴格。'
+                        + '所以 success=false 不必然代表沒寫進去——請看 verified / writeRpcReportedSuccess 判斷',
                     applied: allApplied
                         ? '所有指定的 turnoverType 讀回值都等於你要求的值'
                         : '**有指定的 turnoverType 讀回值與要求不符**，請檢查 changed 裡 applied=false 的項目',

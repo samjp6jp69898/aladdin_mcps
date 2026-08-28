@@ -79,7 +79,7 @@ export function registerListUserWageringsByUserTool(server: McpServer): void {
                 '（agrabah/src/common/database_helper.ts:208-217）只在 page===1 執行 count，' +
                 'page>=2 一律回 0。從中途頁開始翻時，終止條件請用 rows.length < pageSize。' +
                 '排序固定 created_at DESC（新的在前）。' +
-                '**(5) 與 get_user_un_wagering_detail 的取捨**——兩支都是「列出這位會員的 pending 稽核」，' +
+                '**(5) 與 aladdin_platform_wagering_platform_get_user_un_wagering_detail 的取捨**——兩支都是「列出這位會員的 pending 稽核」，' +
                 '篩選條件與排序完全相同，差在回傳欄位：' +
                 '本工具多了 operator（操作人，語意見下一點）、operatorAtTimestamp（操作時間）、' +
                 'remark（備註）、transactionsAmount（帳變金額）、wageringAmount（稽核金額）、' +
@@ -102,7 +102,8 @@ export function registerListUserWageringsByUserTool(server: McpServer): void {
                 'stored = 人類金額 × 10^(decimalPlaces+2)（jafar/src/exchange.ts:32-38），本工具不換算；' +
                 '幣別精度查 aladdin_platform_currency_platform_get_currencies 的 decimalPlaces。' +
                 'wageringType 是 WageringTypeEnum 數值（common.rajah:1650-1767，如 0=手動添加／1=充值／' +
-                '46=人工充值）。本工具純讀取。',
+                '46=人工充值）。想先看這位會員的稽核筆數摘要（不看逐筆），請用 ' +
+                'aladdin_platform_wagering_user_platform_get_immediate_user_wagering。本工具純讀取。',
             inputSchema: {
                 userId: z.number().int().min(1).describe(
                     '會員 id（不是會員帳號字串）。用帳號換 id 建議用 ' +

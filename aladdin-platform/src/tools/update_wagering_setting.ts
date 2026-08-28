@@ -48,6 +48,9 @@
  * 事先在後台完成、由 gate 從 cache 取用，**RPC 簽名裡沒有可以帶 totpCode 的參數**，MCP 層無法補。
  * 2026-08-28 在 dev（pk-platform.alddev.com）實測未被要求 TOTP，代表該平台沒開這條 route 的設定；
  * 在有開的環境上本工具會直接失敗，那是預期行為，不是工具壞掉。
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：輸入與回傳只有開關值與逐幣別門檻金額，屬平台設定、
+ * 不含任何會員資料或憑證，不觸發該節任何要求。
  */
 
 import { z } from 'zod';
@@ -109,7 +112,7 @@ export function registerUpdateWageringSettingTool(server: McpServer): void {
                 '而驗證碼是操作者事先在後台完成、由 gate 從 cache 取用，' +
                 '**RPC 簽名裡沒有可以帶 totpCode 的參數，本工具無法代勞**；那種環境下本工具會直接失敗，' +
                 '這是預期行為。2026-08-28 dev 實測未被要求 TOTP。' +
-                '本工具會在寫入前先讀一次現值、寫入後再讀一次，回傳 before / after / changed / writeMode，' +
+                '本工具會在寫入前先讀一次現值、寫入後再讀一次，回傳 autoRemoveSwitch / autoRemoveBalance（各含 before / requested / after / applied，幣別另含 writeMode）與 unchangedVerified，' +
                 '並逐一比對「你沒指定的欄位與幣別是否仍等於呼叫前的值」（unchangedVerified）。' +
                 '此操作會送出 audit 寫入（wagering_platform.ts:733-741，fire-and-forget、未 await）。' +
                 '**這是寫入型 tool**：在 prod 實例上必須先用 AskUserQuestion（或功能相同的方式）明確詢問' +
@@ -233,7 +236,7 @@ export function registerUpdateWageringSettingTool(server: McpServer): void {
                             '確認無誤請加上 confirmRiskyChange=true 重新呼叫。' +
                             '提醒：門檻是 stored 整數（人類金額 × 10^(decimalPlaces+2)，CNY/TWD 為 ×10000）。',
                         blocked: risky,
-                        current: {
+                        currentValues: {
                             autoRemoveSwitch: beforeSwitch,
                             autoRemoveBalance: [ ...beforeBalance.entries() ].map(([ code, value ]) => ({ code, value })),
                         },
@@ -308,6 +311,9 @@ export function registerUpdateWageringSettingTool(server: McpServer): void {
                 autoRemoveBalance: balanceChanged,
                 unchangedVerified: { ok: allUntouchedUnchanged, rows: untouched },
                 notes: {
+                    successMeaning: '本工具的 success=true 代表「寫入成功**且** round-trip 已驗證」，'
+                        + '比本 server 其他寫入 tool 的 success（只代表寫入 RPC 沒報錯）嚴格。'
+                        + '所以 success=false 不必然代表沒寫進去——請看 verified / writeRpcReportedSuccess 判斷',
                     ...(beforeSwitch !== STATUS_MAP.enabled && beforeSwitch !== STATUS_MAP.disabled ? {
                         warningCurrentSwitchValue: `呼叫前的 autoRemoveSwitch 是 ${ beforeSwitch }，`
                             + '既不是 enabled(1) 也不是 disabled(2)。後端只特判 disabled，'

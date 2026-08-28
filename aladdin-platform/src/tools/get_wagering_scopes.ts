@@ -18,6 +18,9 @@
  *
  * 回傳型別 WageringScopeStructure 只有 displayTag i32 與 brandIds [i32]，整條路徑沒有 i64，
  * 不會出現 protobufjs Long 實例，因此刻意不套 deepFixLongs（不是漏了）。
+ *
+ * 第 8 節（敏感資料／PII，橫切分類）評估：輸入與回傳全部是數值 id（wageringId／displayTag／
+ * brandIds），完全不含任何會員識別欄位或憑證，不觸發該節任何要求。
  */
 
 import { z } from 'zod';
@@ -41,7 +44,7 @@ export function registerGetWageringScopesTool(server: McpServer): void {
                 'wagering_platform.ts:348-357，SQL 在同檔 313-331）並實打 dev 驗證：實作是對 ' +
                 'user_wagering_scopes 做 JSON_ARRAYAGG 聚合，命中 0 列時聚合結果為 NULL，' +
                 '方法一律回 success + 空陣列。dev 實測「不存在的 id」與「真實但未設限定的紀錄」' +
-                '回傳完全相同，都是空。要事先知道某筆到底有沒有限定，請看 list_user_wagerings 回傳的 ' +
+                '回傳完全相同，都是空。要事先知道某筆到底有沒有限定，請看 aladdin_platform_wagering_platform_list_user_wagerings 回傳的 ' +
                 'wageringScope 欄位（該欄位是限定「數量」，0 代表不指定）。' +
                 '**欄位對照**：displayTag 是本平台的遊戲類型編號，對照 ' +
                 'aladdin_platform_game_vendor_platform_list_all_game_display_tags 回傳的 **tags[].tag**' +
@@ -74,12 +77,14 @@ export function registerGetWageringScopesTool(server: McpServer): void {
                 success: true,
                 wageringId,
                 wageringScopes: scopes,
-                notes: scopes.length === 0
+                notes: {
+                    result: scopes.length === 0
                     ? '空陣列有三種可能且後端不區分：(a) 這筆稽核本來就不限定遊戲範圍、'
                         + '(b) wageringId 不存在、(c) 這筆稽核屬於別的平台（SQL 帶 platform_id = 本次登入平台）。'
-                        + '想確認是哪一種，請先用 list_user_wagerings 查這個 id 是否存在、其 wageringScope 是否為 0'
-                    : 'displayTag = 本平台遊戲類型編號，對照 list_all_game_display_tags 的 tags[].tag（不是 rows[].id）；'
-                        + 'brandIds = 遊戲品牌 id 陣列，對照 list_all_brands 的 rows[].id',
+                        + '想確認是哪一種，請先用 aladdin_platform_wagering_platform_list_user_wagerings 查這個 id 是否存在、其 wageringScope 是否為 0'
+                    : 'displayTag = 本平台遊戲類型編號，對照 aladdin_platform_game_vendor_platform_list_all_game_display_tags 的 tags[].tag（不是 rows[].id）；'
+                        + 'brandIds = 遊戲品牌 id 陣列，對照 aladdin_platform_game_vendor_platform_list_all_brands 的 rows[].id',
+                },
             });
         },
     );
