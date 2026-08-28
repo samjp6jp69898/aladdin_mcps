@@ -199,6 +199,7 @@ import { registerUpdateFixedRankingSettingTool } from './update_fixed_ranking_se
 import { registerListFixedRankingEntriesTool } from './list_fixed_ranking_entries.ts';
 import { registerGetRouletteConfigNameListTool } from './get_roulette_config_name_list.ts';
 import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
+import { registerListAppGroupsTool } from './list_app_groups.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -403,4 +404,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListFixedRankingEntriesTool(server);
     registerGetRouletteConfigNameListTool(server);
     registerGetRouletteRewardNameListTool(server);
+    registerListAppGroupsTool(server);
 }
