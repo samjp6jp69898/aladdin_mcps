@@ -77,9 +77,22 @@
  *
  * - **查不到名稱時回退成 id 字串、不是空字串**：`identifier = appUserMap.get(row.userId)?.identifier
  *   || `${row.userId}``（:666）、applyOperator/reviewOperator 同樣回退成
- *   `${operatorId}`（:671-677 區段）。所以看到 identifier 是一串純數字時，代表會員資料沒查到、
- *   那是 userId 不是帳號。applyOperatorId/reviewOperatorId 為 0（系統自動審核）時，
- *   對應的 applyOperator/reviewOperator 欄位不會被指派、protobuf 空字串不輸出。
+ *   `${operatorId}`（:672 / :676）。所以看到 identifier 是一串純數字時，代表會員資料沒查到、
+ *   那是 userId 不是帳號。
+ *
+ * - **⚠️ 哪些欄位可能整個不出現在回傳裡：決定因素是「後端有沒有指派」，不是「值空不空」**。
+ *   這一點初版寫錯過（原本歸因成「protobuf 空字串不輸出」），2026-08-28 實測推翻後改正：
+ *   applyOperator / reviewOperator 是**條件指派**——只有 `row.applyOperatorId > 0`（:671-673）／
+ *   `row.reviewOperatorId > 0`（:675-677）才會被賦值，所以系統自動審核（operatorId = 0）的單子
+ *   這兩個 key **整個不存在**。
+ *   對照組：reviewedAtTimestamp（:665）、identifier（:666）、userLevelId（:667）是**無條件指派**，
+ *   即使值是 0 / 空字串也照樣是 own property，**key 一定存在**。
+ *   實測佐證（見下方驗證第 14 點）：5 筆 pending 單全部「有 reviewedAtTimestamp、有 rejectReason、
+ *   有 autoReviewResult，但沒有 reviewOperator」；而一筆 status=pass 的單（id=1439）同樣沒有
+ *   reviewOperator——證實那是自動審核而非「未審核」。
+ *   本 tool 的回傳鏈（deepFixLongs 用 `Object.entries` 重建純物件、再 spread 附加 *Key）
+ *   走的是 **own-property** 路徑，不是 protobufjs 的 `toJSON`/`toObject`，所以不會另外丟掉空陣列——
+ *   呼叫端看到的 key 集合就等於後端實際指派過的欄位集合。
  *
  * - **⚠️ direction 可以篩選但回傳看不到**：SQL 有 `ufa.direction AS direction`（:621），
  *   但 rajah 的回傳 model UserFundAdjustment（rajah:272-315）**沒有宣告 direction 欄位**，
@@ -142,6 +155,14 @@
  * 11. applyOperator="sakiko" → totalPage=6，回傳每筆 applyOperator 皆為 sakiko。
  * 12. userId=2147483648 被 zod 擋在 tool 邊界：
  *    `Too big: expected number to be <=2147483647 at userId`，不會送到後端被無聲截斷。
+ * 14. **欄位缺席行為實測（修正初版的錯誤機制歸因）**：status=pending 取 5 筆，五筆的 key 集合
+ *    完全一致（差集為空），且全部**沒有 reviewOperator**、但**都有 reviewedAtTimestamp /
+ *    rejectReason / autoReviewResult**（autoReviewResultKey 皆為 none）。
+ *    再取 status=pass 三筆對照：id=1440 reviewOperator="sakiko"、id=1438 reviewOperator="bobotest"，
+ *    但 **id=1439 沒有 reviewOperator**（reviewedAtTimestamp 卻有值）——證實那筆是系統自動審核
+ *    （reviewOperatorId=0）而不是未審核。
+ *    結論：key 是否存在取決於後端**有沒有指派**（條件指派 vs 無條件指派），與「值是不是空的」無關，
+ *    也與 protobuf 的空值省略無關。初版把它歸因成「protobuf 空字串不輸出」是錯的，已改正。
  * 13. **實測發現 dev 上存在 ManualCategoryEnum 未定義的 category 碼**：status=reject 的資料裡
  *    有 id=44 的 `category=26`、id=9 的 `category=21`，而 ManualCategoryEnum 只定義到 19
  *    （rajah:84-123）。本 tool 的 manualCategoryNumberToKey 對查不到的碼**原樣回傳數字**
@@ -205,8 +226,12 @@ export function registerListUserFundAdjustmentTool(server: McpServer): void {
                 '（另：autoReviewResult 的 none 選項在後台下拉選單裡是被刻意隱藏的，本 tool 有開放——' +
                 '這是 tool 比 UI 多出來的能力，不是 UI 漏做。）' +
                 '回傳每筆的 identifier / applyOperator / reviewOperator 在查不到對應帳號時會**回退成 id 的數字字串**' +
-                '（看到純數字的 identifier 代表那是 userId、不是帳號）；系統自動審核的單子沒有 reviewOperator。' +
-                'reviewedAtTimestamp 為 0 代表尚未審核。bonusName（多語陣列）與 bonusExpire 只有彩金類的調整單才有值。' +
+                '（看到純數字的 identifier 代表那是 userId、不是帳號）。' +
+                '⚠️ **applyOperator / reviewOperator 這兩個 key 可能整個不存在**（不是空字串）——後端只在對應的 ' +
+                'operatorId > 0 時才指派，所以系統自動審核的單子就沒有 reviewOperator。' +
+                '請用「key 在不在」判斷，不要預期它一定存在。反之 reviewedAtTimestamp / rejectReason / ' +
+                'autoReviewResult 是無條件指派的，即使沒有值 key 也一定在（reviewedAtTimestamp 為 0 代表尚未審核）。' +
+                'bonusName（多語陣列）與 bonusExpire 只有彩金類的調整單才有值。' +
                 '⚠️ **direction 只能當篩選條件、拿不回來**：rajah 的回傳 model UserFundAdjustment ' +
                 '根本沒有 direction 欄位（後端 SQL 有 SELECT 它，但 fromObject 時被丟掉），所以回傳每筆看不到上分/下分；' +
                 '要判斷方向請看 categoryKey——manualAdd* 開頭是上分、manualDeduct* 開頭是下分。' +
