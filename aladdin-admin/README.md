@@ -67,6 +67,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_deposit_admin_get_deposit_setting_for_edit` | `DepositAdmin.GetDepositSettingForEdit` | 無參數，取得全域充值設定（callbackBaseUrl/paymentAssetUrl 兩個 URL），不分平台 |
 | `aladdin_admin_deposit_admin_get_platform_deposit_setting_for_edit` | `DepositAdmin.GetPlatformDepositSettingForEdit` | 取得指定平台的充值設定；**已知陷阱（假唯讀）**：查無資料時後端會直接 INSERT 一筆帶預設值的新記錄再回傳，不是純讀取；因此本工具比照寫入類 tool 補上 H36 `assertProdConfirmed` 閘門，即使名義上是 Get |
 | `aladdin_admin_app_admin_list_app_groups` | `AppAdmin.ListAppGroups` | 列出 App 群組母表全集（id/key/多語系名稱 + 底下的 themes 陣列，theme 的 id 就是 platform 端 App 設定要填的 appThemeId）。無參數、不分頁、一次全撈（`AppGroupManager.getAppGroups` 對 `app_groups` 下的是無 condition 無 limit 的 loadObjects，是全域小型列舉表，非隨業務成長的表），2026-08-28 dev 實測 6 筆。**這是 admin 視角的母表全集，不代表任何單一平台可用的群組**——要看某平台實際啟用了哪些，改用 `aladdin_admin_app_admin_list_platform_app_groups` |
+| `aladdin_admin_app_admin_list_platform_app_groups` | `AppAdmin.ListPlatformAppGroups` | 查指定平台的 App 群組啟用狀態。**兩個陷阱**：(1) 回的是**母表全集**（列數永遠等於 `list_app_groups` 的筆數），每筆多帶 `status`（1=該平台已啟用 / 2=未啟用），要取得已啟用清單必須自己過濾 `status===1`，列數 ≠ 已啟用數（`app_admin.ts:165-169` 對母表全集逐筆標 status，`platform_app_groups` 只決定 status 不參與過濾）；(2) 傳入**不存在的 platformId 不會回錯誤**，而是回母表全集且每筆 status 都是 2（2026-08-28 dev 以 platformId=999999 實測），有資料不代表 id 合法。本方法無任何 `@Permission`，platformId 由呼叫端指定、後端不驗證呼叫者與該平台的關聯 |
 
 ## src/ 結構
 
