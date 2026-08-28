@@ -574,6 +574,14 @@ export const SENSITIVE_WORD_LIMITS = {
     batchDeleteLimit: 200,
     /** GetSensitiveWords 的 pageSize 上限（超過回 exceedRequestLimit） */
     maxPageSize: 200,
+    /**
+     * 呼叫端省略 pageSize 時本工具要送的值。**不能送 0**：這支後端沒有「0 → DefaultPageSize」的
+     * fallback（sensitive_word_manager.ts:185-207 直接把 pageSize 交給 getPageData），而
+     * getPageData 的 `pageSize = DefaultPageSize` 是 JS 預設參數、只對 undefined 生效
+     * （database_helper.ts:204），送 0 會變成 SQL `LIMIT 0, 0` 回空清單。
+     * 這裡取 agrabah 的 DefaultPageSize 同值（database_helper.ts:11）。
+     */
+    defaultPageSize: 100,
     /** sensitiveWordGroupId 傳 0/未帶時後端套用的預設分組 id */
     defaultGroupId: 1,
 } as const;
