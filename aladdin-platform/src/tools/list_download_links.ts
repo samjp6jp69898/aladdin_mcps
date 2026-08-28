@@ -68,8 +68,11 @@
  *   `Message.prototype.toJSON` → `Type.toObject(msg, util.toJSONOptions)`，該選項不含 arrays/defaults，
  *   **長度 0 的 repeated 欄位會整個被丟掉**，所以那邊才會看到 banner 整欄缺席（dev 實測 app 10/11
  *   確實沒有 banner key）。本工具沒有這個行為。
- * （附註：dev 上 4 筆下載連結剛好都有 label，「label 為空時輸出 `[]`」這條是從序列化路徑推導出來的，
- * 沒有實際遇到空 label 的資料可佐證。）
+ * （附註：dev 上 4 筆下載連結剛好都有 label，沒遇到空 label 的資料。但「spread 路徑會保留空陣列」
+ * 這條已用同一份 dev 資料**直接實測證實**：對 ListApps 的回傳逐筆比較兩種序列化，app 10/11 的
+ * `row` 對 `banner` 都是 own property 且值為 `[]`，`JSON.stringify(row)`（Message 路徑）會把 banner
+ * 整個 key 丟掉，`JSON.stringify({ ...row })`（spread 路徑）則保留 `banner: []`。這同時排除了
+ * 「後端條件式賦值導致 key 不存在」這個替代解釋——key 一直都在，是序列化那一層丟的。）
  *
  * 純讀取查詢，不修改任何資料，可安全重複呼叫。
  */

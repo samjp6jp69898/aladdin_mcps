@@ -38,7 +38,18 @@
  * name / logo / banner 三個多語系欄位（logo/banner 標了 @Type "File:Image"，值是各語系各自的
  * **相對路徑字串**如 `/static/app/1mh0rfiwkmsh4fpj1pjsbbq87`，不是完整 URL 也不是 base64）、
  * appGroupId、appThemeId。**多語系欄位是稀疏的**：2026-08-28 dev 實測 3 筆裡，有一筆的 banner 只有
- * zh-CN 一個語系且值為空字串、另外兩筆整個 banner 欄位缺漏，呼叫端不能假設每個欄位都齊三語。**這是 Edit 用的 model，不是顯示用的**，
+ * zh-CN 一個語系且值為空字串、另外兩筆整個 banner 欄位缺漏，呼叫端不能假設每個欄位都齊三語。
+ *
+ * ⚠️ **「banner 整個 key 缺席」是本工具序列化方式造成的，不是後端沒回這個欄位**（2026-08-28 實測
+ * 證實，非推論）：本工具把後端回的原始 Message 實例直接交給 JSON.stringify，會走
+ * `Message.prototype.toJSON` → `Type.toObject(msg, util.toJSONOptions)`，該選項不含 arrays/defaults，
+ * **長度 0 的 repeated 欄位整個被丟掉**。實測比對同一筆 row：`hasOwnProperty('banner')` 恆為 true、
+ * 值是 `[]`，但 `JSON.stringify(row)` 沒有 banner、`JSON.stringify({ ...row })` 有 `banner: []`。
+ * 也就是說「key 不存在」與「陣列為空」在本工具的輸出裡無法區分，兩者都表現成 key 缺席。
+ * 對照組：aladdin_platform_app_platform_list_download_links 用 spread 展開，空陣列會保留成 `[]`，
+ * 行為與本工具相反。**已知落差、本輪未修**：要讓兩支一致，本工具（以及同樣回傳原始 Message 的
+ * aladdin_platform_app_platform_list_app_groups、aladdin-admin 的兩支 app tool）都要改成先重建成
+ * 純物件再輸出；那會改變已通過審查的回傳形狀，留給後續決定。**這是 Edit 用的 model，不是顯示用的**，
  * 依 method-category-checklist.md 第 1 節「*ForEdit 系列欄位通常比顯示版多」的提醒逐欄檢查過：
  * 6 個欄位全部是後台設定值，沒有內部欄位、沒有密鑰、沒有 PII，不需遮罩（第 8 節不適用）。
  *
