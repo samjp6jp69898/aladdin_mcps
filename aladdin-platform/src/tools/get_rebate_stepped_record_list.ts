@@ -131,7 +131,7 @@ export function registerGetRebateSteppedRecordListTool(server: McpServer): void 
                 '⚠️ **rebateConfigIds 在這支的語意不是返水配置 id**，後端拿它去比對 ' +
                 '`stepped_settlement_id`，也就是**階梯配置 id**——值要取自 ' +
                 'aladdin_platform_rebate_platform_get_rebate_global_setting 回傳的 ' +
-                'steppedConfigList[].id，不是 get_rebate_config_name_list 的 id。帶錯不會報錯，' +
+                'steppedConfigList[].id，不是 aladdin_platform_rebate_platform_get_rebate_config_name_list 的 id。帶錯不會報錯，' +
                 '只會查不到資料。' +
                 '⚠️ account 與 userId 不要同時帶（會 AND，指向不同人必回 0 筆）；' +
                 'account 打錯時後端回 errorCode=11（idNotExists）+ "account not exists"，不是空清單。' +
@@ -162,7 +162,7 @@ export function registerGetRebateSteppedRecordListTool(server: McpServer): void 
                 orderId: z.string().optional().describe('返水單號（訂單編號），精確比對'),
                 account: z.string().optional().describe('會員帳號；後端會先換成 userId，帳號不存在直接回 idNotExists。不要與 userId 同時帶'),
                 userId: z.number().int().min(1).optional().describe('會員 id。不要與 account 同時帶'),
-                rebateConfigIds: z.array(z.number().int()).optional().describe('⚠️ 在這支 method 是「階梯配置 id」陣列（後端比對 stepped_settlement_id），值來自 get_rebate_global_setting 的 steppedConfigList[].id，不是返水配置 id'),
+                rebateConfigIds: z.array(z.number().int()).optional().describe('⚠️ 在這支 method 是「階梯配置 id」陣列（後端比對 stepped_settlement_id），值來自 aladdin_platform_rebate_platform_get_rebate_global_setting 的 steppedConfigList[].id，不是返水配置 id'),
                 statuses: z.array(z.enum(REBATE_RECORD_STATUS_KEYS)).optional().describe('領取狀態多選（彼此 OR）；verified/expired 是後端依領取期限即時判定的，不是 DB 儲存值'),
                 beginTimestamp: z.number().int().min(0).optional().describe('返水生成時間起（毫秒 timestamp，>=）'),
                 endTimestamp: z.number().int().min(0).optional().describe('返水生成時間迄（毫秒 timestamp，<）'),

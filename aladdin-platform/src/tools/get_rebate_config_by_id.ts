@@ -124,7 +124,7 @@ export function registerGetRebateConfigByIdTool(server: McpServer): void {
                 '其他後端例外也會回同一個碼。' +
                 '純讀取查詢，不修改任何資料，可安全重複呼叫。',
             inputSchema: {
-                id: z.number().int().min(1).describe('返水配置 id，來自 get_rebate_configs 或 get_rebate_config_name_list'),
+                id: z.number().int().min(1).describe('返水配置 id，來自 aladdin_platform_rebate_platform_get_rebate_configs 或 aladdin_platform_rebate_platform_get_rebate_config_name_list'),
             },
         },
         async ({ id }) => {

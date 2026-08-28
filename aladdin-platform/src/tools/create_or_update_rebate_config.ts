@@ -7,12 +7,12 @@
  * service RebatePlatform 定義於同檔 268 行、@Module "Rebate"（267）；非 @NoPublic、非 Placeholder）
  * ——後台「優惠中心 > 返水管理 > 返水配置」的新增／編輯儲存。
  *
- * agrabah 對應實作：rebate_platform.ts:221-402 methodCreateOrUpdateRebateConfig，確認有真實
+ * agrabah 對應實作：rebate_platform.ts:222-402 methodCreateOrUpdateRebateConfig，確認有真實
  * override（整個 doTransaction 寫 rebate_configs + 標籤群組/遊戲群組 + CurrencyLink/AmountLink
  * 關聯 + 更新時發 OnRebateConfigChangedMessage 清快取 + 寫稽核 log），不是 notImplemented stub。
  *
  * 分類：method-category-checklist.md 第 4 節「Upsert / CreateOrUpdate」。逐條處理：
- * - **後端屬第 3 種模式（整包覆蓋、完全沒有 pre-load）**：rebate_platform.ts:309-316 直接
+ * - **後端屬第 3 種模式（整包覆蓋、完全沒有 pre-load）**：rebate_platform.ts:311-318 直接
  *   `new DbRebateConfig()` 後把 id/platformId/rebateName/ratio/note/deleted/operatorId 填好，
  *   再 `updateObject(rebateConfig, false)`——**沒有先 load 現有列**，所以 rebateName/ratio/note
  *   只要沒帶到就會被寫成空字串／0。六個 CurrencyLink 欄位同理，是用呼叫端傳來的陣列
@@ -20,8 +20,8 @@
  *   **絕對必要**：本 tool 在 id > 0（更新）時一律先呼叫 GetRebateConfigById 取完整現值，
  *   只覆寫呼叫端明確指定的欄位。
  * - **第 4 節第 3 條（id=0 走新增、id>0 走更新，必須明確告知呼叫端）**：後端用 `if (!config.id)`
- *   分流（:319-333），新增走 insertObject、更新走 updateObject **且只有更新分支會發清快取
- *   Message**（:334-338）。本 tool 回傳 `mode: 'create' | 'update'` 明講這次是哪一種。
+ *   分流（:321-340），新增走 insertObject、更新走 updateObject **且只有更新分支會發清快取
+ *   Message**（:336-339）。本 tool 回傳 `mode: 'create' | 'update'` 明講這次是哪一種。
  * - **第 4 節第 2 條（round-trip 逐欄比對）**：RPC 回傳型別是 Empty（remote.gen.ts:37921-37929
  *   的 doRequest 第 4 參數是 Empty），**不回 id、也不回任何資料**，所以「沒報錯」完全不能當成
  *   成功。本 tool 寫入後一律再讀一次：更新時用 GetRebateConfigById 逐欄比對；
@@ -48,10 +48,10 @@
  * 這是後端既有行為（看起來是複製貼上殘留），本檔如實揭露，不是本 tool 造成的。
  *
  * 其他實作細節（讀源碼查證）：
- * - `operatorId` 由後端從登入態填入（:315 `context.userId`），呼叫端無法指定；
+ * - `operatorId` 由後端從登入態填入（:318 `context.userId`），呼叫端無法指定；
  *   但注意列表版 RebateConfig 的 `operator`（人名）欄位後端從未指派，永遠是空的
  *   （見 get_rebate_configs.ts 檔頭）。
- * - `deleted` 每次都被寫成 0（:314）——所以對一個已軟刪除的 id 呼叫更新，會把它**復活**。
+ * - `deleted` 每次都被寫成 0（:317）——所以對一個已軟刪除的 id 呼叫更新，會把它**復活**。
  *   本 tool 讀現值用的 GetRebateConfigById 條件含 `deleted = 0`，已刪除的 id 在讀現值那步就會失敗，
  *   所以本 tool 不會意外復活配置；但直接打 RPC 是做得到的，這裡記錄下來供後續查證。
  * - 新增時兩個群組清單是先於 config 被 insert 的，當下 `rebateConfigId` 會被寫成 0（:236、:281），
@@ -76,7 +76,7 @@
  * 4. **新增**（rebateName="MCP測試勿用_20260828"、note、ratio=1500、
  *    dailyRebateMax=[{CNY,123400}]、minDrawAmount=[{CNY,1000}]）：
  *    success=true、mode="create"、**createdId=1064**（由呼叫前後的 id 集合差集定位出來，
- *    不是靠名稱比對）。回讀的 config 逐欄與送出值相符；未指定的三個金額欄位
+ *    不是靠名稱比對）。回讀的 config 逐欄與送出值相符；未指定的四個金額欄位
  *    （singleBetLimit/dailyDrawMax/wageringMultiplier/singleBetMin）與兩組比例清單
  *    都是空陣列，與「新增不會憑空產生金額設定」的說明一致。
  * 5. **部分更新的關鍵驗收（第 4 節第 2 條）**：對 id=1064 只帶 `note` 一個欄位。
@@ -87,11 +87,17 @@
  *    unexpectedChanges=[]、兩組比例清單筆數 before=after。
  *    這正是本 tool 存在的理由——後端是整包覆蓋，若沒有先讀現值再合併，這一次只改備註的呼叫
  *    會把名稱清成空字串、把五個金額欄位全部清空。
+ * 5b. **深比對版本的回歸測試（2026-08-28 第二輪 review 後）**：把兩組比例清單的驗證從
+ *    「只比筆數」改成深比對之後，另外建一筆測試配置（id=1065、名稱
+ *    「MCP測試勿用_20260828_b」）重跑同一組情境：新增 → 只改 note 的部分更新
+ *    （success=true、groupsDeepEqual={rebateTagRatioList: true, rebateGameRatioList: true}、
+ *    unexpectedChanges=[]）→ 刪除清理。
  * 6. **測後清理**：測試用的 id=1064 已用
  *    aladdin_platform_rebate_platform_delete_rebate_config 刪除，未留下任何「生效中」的測試配置。
- *    ⚠️ 但後端只有軟刪除，該資料列會永久留在 rebate_configs 表、持續出現在
- *    get_rebate_config_name_list 的回傳中（名稱刻意取為「MCP測試勿用_20260828」以便辨識）。
- *    它不綁任何會員、不影響任何返水計算。
+ *    ⚠️ 但後端只有軟刪除，這兩筆測試資料列（id=1064 與回歸測試用的 id=1065）會永久留在
+ *    rebate_configs 表、持續出現在 aladdin_platform_rebate_platform_get_rebate_config_name_list
+ *    的回傳中（名稱刻意取為「MCP測試勿用_20260828」與「MCP測試勿用_20260828_b」以便辨識）。
+ *    它們不綁任何會員、不影響任何返水計算。
  * 全程未修改任何既有的返水配置——建立、更新、刪除都只針對這一筆自己建的測試資料。
  */
 
@@ -136,9 +142,9 @@ export function registerCreateOrUpdateRebateConfigTool(server: McpServer): void 
                 'singleBetLimit（單筆投注返水上限）、dailyDrawMax（每日可領取最高返水）、' +
                 'singleBetMin（單筆投注金額下限）、wageringMultiplier（稽核倍數）' +
                 '都是多幣別陣列 [{ code, value }]，value 是 stored value 整數（不是顯示金額），' +
-                '本 tool 不做任何單位換算。要知道現有配置用什麼數量級，先讀 get_rebate_config_by_id。' +
+                '本 tool 不做任何單位換算。要知道現有配置用什麼數量級，先讀 aladdin_platform_rebate_platform_get_rebate_config_by_id。' +
                 'RPC 本身沒有回傳值、**新增也不回 id**，所以本 tool 一定會做 round-trip：' +
-                '更新時逐欄比對回讀結果；新增時用呼叫前後的配置 id 集合差集定位出新 id' +
+                '更新時逐欄比對回讀結果（兩組比例清單做深比對，不只比筆數）；新增時用呼叫前後的配置 id 集合差集定位出新 id' +
                 '（不靠名稱比對——返水配置名稱沒有唯一約束，dev 上就有同名資料）再讀回驗證。',
             inputSchema: {
                 id: z.number().int().min(1).optional().describe('要更新的返水配置 id；不帶就是新增一筆。id 來自 aladdin_platform_rebate_platform_get_rebate_configs'),
@@ -215,7 +221,7 @@ export function registerCreateOrUpdateRebateConfigTool(server: McpServer): void 
             if (isUpdate) {
                 const after = await withAutoRelogin(() => remote.rebateBackOffice.rebatePlatform.GetRebateConfigById(id));
                 if (after.failed) {
-                    return asErrorResult(after, { stage: 'verify-readback', mode: 'update', hint: '寫入的 RPC 已回成功，但回讀驗證失敗——無法確認實際結果，請自行用 get_rebate_config_by_id 覆核。' });
+                    return asErrorResult(after, { stage: 'verify-readback', mode: 'update', hint: '寫入的 RPC 已回成功，但回讀驗證失敗——無法確認實際結果，請自行用 aladdin_platform_rebate_platform_get_rebate_config_by_id 覆核。' });
                 }
                 const afterConfig = deepFixLongs(after.data?.config) as unknown as Record<string, unknown>;
                 const checked = [ 'rebateName', 'note', 'ratio', ...CURRENCY_FIELDS ];
@@ -229,6 +235,9 @@ export function registerCreateOrUpdateRebateConfigTool(server: McpServer): void 
                         : JSON.stringify(afterConfig?.[ key ] ?? null) === JSON.stringify(beforeConfig?.[ key ] ?? null),
                 }));
                 const unexpected = fields.filter((f) => !f.ok);
+                // checklist 第 4 節第 2 條要求「逐欄比對沒有要求變更的欄位，尤其陣列」——
+                // 兩組比例清單是後端 syncAmounts 會整批覆寫的巢狀結構，只比筆數不足以證明沒被動到，
+                // 這裡對整棵樹做深比對（與上面純量欄位一樣用 JSON.stringify 結構比對）。
                 const groupCounts = {
                     rebateTagRatioList: {
                         before: (beforeConfig?.rebateTagRatioList as unknown[] | undefined)?.length ?? 0,
@@ -239,8 +248,11 @@ export function registerCreateOrUpdateRebateConfigTool(server: McpServer): void 
                         after: (afterConfig?.rebateGameRatioList as unknown[] | undefined)?.length ?? 0,
                     },
                 };
-                const groupsKept = groupCounts.rebateTagRatioList.before === groupCounts.rebateTagRatioList.after
-                    && groupCounts.rebateGameRatioList.before === groupCounts.rebateGameRatioList.after;
+                const groupsDeepEqual = {
+                    rebateTagRatioList: JSON.stringify(beforeConfig?.rebateTagRatioList ?? []) === JSON.stringify(afterConfig?.rebateTagRatioList ?? []),
+                    rebateGameRatioList: JSON.stringify(beforeConfig?.rebateGameRatioList ?? []) === JSON.stringify(afterConfig?.rebateGameRatioList ?? []),
+                };
+                const groupsKept = groupsDeepEqual.rebateTagRatioList && groupsDeepEqual.rebateGameRatioList;
                 return asTextResult({
                     success: unexpected.length === 0 && groupsKept,
                     mode: 'update',
@@ -249,16 +261,17 @@ export function registerCreateOrUpdateRebateConfigTool(server: McpServer): void 
                     requestedFields: Object.keys(overrides),
                     fields,
                     groupCounts,
+                    groupsDeepEqual,
                     unexpectedChanges: unexpected,
                     note: unexpected.length === 0 && groupsKept
-                        ? '回讀驗證通過：要求變更的欄位已生效，未要求變更的欄位與兩組比例清單筆數都與呼叫前相同。'
-                        : '⚠️ 回讀驗證發現非預期差異，請人工覆核（unexpectedChanges 與 groupCounts）。',
+                        ? '回讀驗證通過：要求變更的欄位已生效；未要求變更的欄位逐欄相同，兩組比例清單（不只筆數，含每組的 vendorId/rebateTag/ratio/gameIds 與多幣別 minBetAmount）也與呼叫前深比對完全一致。'
+                        : '⚠️ 回讀驗證發現非預期差異，請人工覆核（unexpectedChanges、groupCounts 與 groupsDeepEqual）。',
                 });
             }
 
             const nameListAfter = await withAutoRelogin(() => remote.rebateBackOffice.rebatePlatform.GetRebateConfigNameList());
             if (nameListAfter.failed) {
-                return asErrorResult(nameListAfter, { stage: 'verify-locate', mode: 'create', hint: '新增的 RPC 已回成功，但無法重讀 id 清單定位新建的配置，請自行用 get_rebate_configs 確認。' });
+                return asErrorResult(nameListAfter, { stage: 'verify-locate', mode: 'create', hint: '新增的 RPC 已回成功，但無法重讀 id 清單定位新建的配置，請自行用 aladdin_platform_rebate_platform_get_rebate_configs 確認。' });
             }
             const beforeSet = new Set(idsBefore);
             const newIds = (nameListAfter.data?.rows ?? []).map((r) => r.id as number).filter((i) => !beforeSet.has(i));
@@ -274,7 +287,7 @@ export function registerCreateOrUpdateRebateConfigTool(server: McpServer): void 
             }
             const created = await withAutoRelogin(() => remote.rebateBackOffice.rebatePlatform.GetRebateConfigById(newIds[ 0 ]));
             if (created.failed) {
-                return asErrorResult(created, { stage: 'verify-readback', mode: 'create', createdId: newIds[ 0 ], hint: '已定位出新建的 id，但回讀失敗，請自行用 get_rebate_config_by_id 覆核。' });
+                return asErrorResult(created, { stage: 'verify-readback', mode: 'create', createdId: newIds[ 0 ], hint: '已定位出新建的 id，但回讀失敗，請自行用 aladdin_platform_rebate_platform_get_rebate_config_by_id 覆核。' });
             }
             return asTextResult({
                 success: true,

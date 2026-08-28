@@ -22,7 +22,7 @@
  * 後台人工建立的設定表，不是投注/log 這種高頻成長的表，2026-08-28 dev 上是 25 筆，量級目前安全。
  * ⚠️ 但這**不是結構性保證**：DeleteRebateConfig 是軟刪除（rebate_platform.ts 把 deleted 設為 1、
  * 不刪 row），而本 method 又不濾 deleted，所以對本 tool 而言這張表**只增不減、單調成長**
- * （dev 上 25 筆裡已有 12 筆是已刪除的，佔 48%）。目前後端沒有分頁參數可用，若日後筆數成長到
+ * （2026-08-28 dev 上本 method 回 25 筆、GetRebateConfigs 回 13 筆，差集 12 筆；「這 12 筆就是已刪除的」是從兩支的 SQL 條件差異**推得**的，不是直接觀測到刪除旗標——兩支回傳都沒有 deleted 欄位可看）。目前後端沒有分頁參數可用，若日後筆數成長到
  * 不可接受，正確的解法是請後端補分頁或補 deleted 篩選，而不是在 tool 層想辦法。
  * 回傳只有 id/rebateName 兩欄，沒有金額、沒有 PII，不涉第 8 節敏感資料。
  *
@@ -44,7 +44,8 @@
  *    （24…1062），名稱含中文/英文/長度測試資料，無 null/空欄位。
  * 2. 「不排除軟刪除」的宣稱實測驗證：同一 session 另外逐頁呼叫 GetRebateConfigs
  *    （page=1,pageSize=200，totalPage=1）拿到 13 筆。兩者 id 取差集：
- *    只出現在本 tool 而不在 GetRebateConfigs 的 id 有 12 筆
+ *    只出現在本 tool 而不在 GetRebateConfigs 的 id 有 12 筆（「這 12 筆是軟刪除資料」同樣是由
+ *    SQL 條件差異推得，非直接觀測）
  *    （24, 26, 43, 44, 1052, 1055, 1056, 1057, 1058, 1059, 1060, 1062）；
  *    反方向差集為空（GetRebateConfigs 沒有任何一筆不在本清單裡）。
  *    25 = 13 + 12，與「本 method 沒有 deleted 篩選、GetRebateConfigs 有」的源碼判讀完全吻合，

@@ -3,7 +3,7 @@
  *
  * rajah: RebatePlatform.GetRebateGlobalSetting() (config RebateGlobalSetting 1)
  * （rebate_back_office.rajah:291，@Permission "BonusCenter"——刻意綁共同祖先，因為「返水管理」
- * 與「階梯式返水」兩頁共用這支，見同檔 290 的註解；service RebatePlatform 定義於同檔 268 行、
+ * 與「階梯式返水」兩頁共用這支，見同檔 289 的註解（290 才是 @Permission）；service RebatePlatform 定義於同檔 268 行、
  * @Module "Rebate"（267）；
  * 非 @NoPublic、非 Placeholder）——後台「優惠中心 > 返水管理 > 全域返水設定」。
  *
@@ -23,7 +23,7 @@
  * ⚠️ **「Get 前綴不保證唯讀」——這支真的有副作用**（第 1 節明文要求查證的情況）：
  * rebate_platform.ts:644 每讀到一筆階梯配置就呼叫
  * `this.insertDebugLog(context, 0, steppedConfig.id, ratiosResult.data.length, '').then()`，
- * 對 `rebate_debug_logs` 表 **INSERT 一筆除錯紀錄**（fire-and-forget，不 await、不影響回傳）。
+ * 對 `rebate_debug_log` 表（單數，agrabah/src/database_types/rebate.ts:205）**INSERT 一筆除錯紀錄**（fire-and-forget，不 await、不影響回傳）。
  * 這不是業務資料異動（不改任何返水設定、不動任何使用者資料、不涉金流），呼叫端不會因為多讀
  * 幾次而改變系統行為，但「完全唯讀」的說法不成立，description 已據實揭露：
  * 可安全重複呼叫，但每次呼叫會在後端除錯表留下紀錄，不要當成零成本的輪詢對象。
@@ -44,11 +44,14 @@
  * - enum 對照（rebate_back_office.rajah）：status/verify/claimSwitch 是 ActiveStatusEnum
  *   （common.rajah 的 enabled=1、disabled=2）；rebatePeriod 是 RebatePeriodEnum（daily=0 每日領取、
  *   immediate=1 時時領取，rebate_back_office.rajah:11-16）；rebateGetType 是 RebateGetTypeEnum
- *   （auto=0 自動領取、manual=1 手動領取，同檔 4-9；欄位在 model 上標 @Readonly，同檔 31）；
+ *   （auto=0 自動領取、manual=1 手動領取，同檔 4-9；欄位在 model 上標 @Readonly，標註在同檔 30、31 才是欄位本身）；
  *   globalRebateMode 是 GlobalRebateModeEnum（none=0 關閉、combined=1 綜合返水、
  *   separate=2 倍場返水，同檔 92-99）；rebateMode 是 RebateSteppedModeEnum（loss=0 虧損返水、
  *   validAmount=1 流水返水，同檔 50-55）。
- *   這些對照表已集中放進 const.ts 供本 tool 與 update 版共用。
+ *   其中 update 版 tool 需要「字串 key → 數值」轉換的三組（ActiveStatus / RebatePeriod /
+ *   GlobalRebateMode）已集中在 const.ts；RebateGetTypeEnum 與 RebateSteppedModeEnum 因為
+ *   沒有任何 tool 需要做這個轉換（本 tool 只讀、update 版不開放改這兩個欄位），
+ *   刻意不在 const.ts 放死碼，數值對照就寫在這裡與 description 裡。
  *
  * --- dev 驗證（2026-08-28，pk-platform.alddev.com，帳號 landon001；獨立 spike script 用
  *     @modelcontextprotocol/sdk 的 Client + StdioClientTransport spawn 本 worktree 的
@@ -72,7 +75,7 @@
  *    像放大一萬倍，但 rajah 沒有宣告這件事，本檔與 description 因此不宣稱它的縮放倍率，
  *    只如實回傳原值。
  * 5. 副作用宣稱：rebate_platform.ts:644 的 insertDebugLog 是讀源碼確認的（每筆階梯配置一次，
- *    本平台一次呼叫會寫 6 筆），未在 dev 直接查 rebate_debug_logs 佐證——DB 查詢不在本輪
+ *    本平台一次呼叫會寫 6 筆），未在 dev 直接查 rebate_debug_log 佐證——DB 查詢不在本輪
  *    授權的驗證手段內。description 對此的敘述維持在源碼可證的範圍：會寫除錯紀錄、不動業務資料。
  * 除上述後端自身的除錯紀錄外，本 tool 未寫入/修改任何 dev 業務資料，無需清理。
  */
@@ -105,7 +108,7 @@ export function registerGetRebateGlobalSettingTool(server: McpServer): void {
                 '⚠️ steppedConfigList 可能是空陣列，也可能是後端補的一筆 id=0 的內建預設' +
                 '（configName="综合返水"、rebateMode=1、比例清單為空），兩種都要能處理。' +
                 '⚠️ 這支雖然是 Get，但**不是完全唯讀**：後端每讀到一筆階梯配置會非同步 INSERT ' +
-                '一筆除錯紀錄到 rebate_debug_logs 表（不影響回傳內容、不動任何返水設定或使用者' +
+                '一筆除錯紀錄到 rebate_debug_log 表（不影響回傳內容、不動任何返水設定或使用者' +
                 '資料）。可以安全重複呼叫，但不要拿它當零成本的輪詢對象。' +
                 '⚠️ 失敗語意：若本平台尚未建立全域返水設定資料列，後端會回 errorCode=1（genie unknown、' +
                 'message 空），這是已知的後端行為（查無資料仍往下對 null 取欄位、被最外層 catch），' +

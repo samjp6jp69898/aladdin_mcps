@@ -15,7 +15,7 @@
  *
  * 分類：method-category-checklist.md 第 4 節「Upsert / CreateOrUpdate」。該節的三種後端合併模式
  * 中，這支經讀源碼確認是**第 3 種：完全沒有欄位級 pre-load、整包覆蓋**——
- * rebate_platform.ts:739-747 把 config 的七個頂層欄位**無條件**指派到 DB 物件上
+ * rebate_platform.ts:740-746 把 config 的七個頂層欄位**無條件**指派到 DB 物件上
  * （status/rebatePeriod/rebateGetType/rebateExpireHour/verify/claimSwitch/globalRebateMode），
  * 沒有任何「呼叫端有沒有設定這個欄位」的判斷。因此第 4 節第 1 條「先讀現值、只覆蓋要改的欄位」
  * 在這支是**絕對必要**而不是保險：本 tool 一律先呼叫 GetRebateGlobalSetting，直接把回傳的
@@ -32,7 +32,7 @@
  *
  * 其他實作細節（讀源碼查證）：
  * - **平台還沒有設定列時會走新增**：loadObject 回 null 時 new 一個 DbRebateGlobalSetting
- *   （:726-733），所以這支同時是 create 與 update。但本 tool 先呼叫 GetRebateGlobalSetting 讀現值，
+ *   （:733-735），所以這支同時是 create 與 update。但本 tool 先呼叫 GetRebateGlobalSetting 讀現值，
  *   而那支在沒有設定列時會拋例外回 errorCode=1（見 get_rebate_global_setting.ts 檔頭），
  *   所以**本 tool 在「平台從未設定過」的情況下無法運作**，會在讀現值那步就失敗並如實回報。
  *   這是刻意的取捨：沒有現值就無法滿足「只覆蓋要改的欄位」的要求，硬送一份憑空的 config
@@ -41,13 +41,13 @@
  *   後台表單不給改。但後端**沒有**擋，且是無條件覆寫——所以本 tool 仍必須把現值原樣帶回，
  *   否則會被寫成 0（auto）。tool 只是不提供修改它的參數。
  * - **兩個欄位會被後端無條件寫死**：`rebateStrategy = 0`（返水方式，原始碼註解「暫時破棄」）與
- *   `steppedSwitch = 0`（28 返水開關，同樣「暫時破棄」）（:748-749）。這兩欄不在 rajah model 上，
+ *   `steppedSwitch = 0`（28 返水開關，同樣「暫時破棄」）（:747-748）。這兩欄不在 rajah model 上，
  *   呼叫端無從控制，但每次儲存都會被歸零——這是後端既有行為，本 tool 只是如實揭露。
  * - **前置驗證**：steppedConfigList 長度 > 2 時，會檢查 index 1 起所有 gameIds 全域不重複，
  *   重複回 AgrabahErrorCodeEnum.rebateGameIdDuplicate + 'gameIds duplicate'（:700-713）。
  *   本 tool 原樣帶回既有清單，正常情況不會踩到；若既有資料本身就有重複，這支會失敗且不寫入
  *   （整段在 doTransaction 之外，屬於乾淨的前置擋下）。
- * - 成功後會 publish OnRebateGlobalSettingChangedMessage 清快取（:865 附近）並寫平台稽核 log
+ * - 成功後會 publish OnRebateGlobalSettingChangedMessage 清快取（:844-847）並寫平台稽核 log
  *   （PlatformActionIdEnum.rebateGlobalSettingUpdate），所以每次呼叫都會留下可追溯的操作紀錄。
  * - 回傳型別是 Empty（remote.gen.ts:38005-38013 的 doRequest 第 4 參數是 Empty），
  *   RPC 不回任何資料，**成功與否不能只看不報錯**——本 tool 依第 4 節第 2 條，寫入後一定
@@ -78,12 +78,20 @@
  * 4. **六個 enum/數值映射一次驗完（零淨變更）**：把六個可改欄位全部帶上「等於現值」的值
  *    （status=enabled, rebatePeriod=daily, globalRebateMode=separate, verify=enabled,
  *    claimSwitch=enabled, rebateExpireHour=720）→ success=true，逐欄 requested 依序解出
- *    1 / 0 / 2 / 1 / 1 / 720，且 after 全部等於 requested。這一次呼叫同時驗證了
- *    ACTIVE_STATUS_MAP、REBATE_PERIOD_MAP、GLOBAL_REBATE_MODE_MAP 三張對照表的字串→數值轉換
- *    都正確，而且沒有實際改變任何設定。
+ *    1 / 0 / 2 / 1 / 1 / 720，且 after 全部等於 requested。這一次呼叫驗證到的是
+ *    ACTIVE_STATUS_MAP 的 enabled→1、REBATE_PERIOD_MAP 的 daily→0、GLOBAL_REBATE_MODE_MAP 的
+ *    separate→2 這三個對應（其餘 disabled/immediate/none/combined 四個 key 這次沒走到，
+ *    只有 rajah 源碼依據），而且沒有實際改變任何設定。
+ * 4b. **深比對版本的回歸測試（2026-08-28 第二輪 review 後）**：把「未要求變更的階梯配置」
+ *    的驗證從「只比筆數」改成整棵樹深比對之後，重跑 720→721→720 兩次呼叫，
+ *    兩次都是 success=true、steppedConfigDeepEqual=true、unexpectedChanges=[]。
+ *    ⚠️ 這一輪修改中先寫錯過一次並被實測抓到：before 走 `JSON.stringify`（Long 會被 toJSON
+ *    轉成十進位字串）、after 走 `deepFixLongs`（Long 轉成 number），兩邊型別不同導致深比對
+ *    **必定回 false**（實測兩次呼叫都回 success=false）。改成兩邊共用 normalizeForCompare()
+ *    後才正確。這正是「不能用推理代替實測」的實例。
  * 5. **測後還原與確認**：rebateExpireHour 已在步驟 4 同一次呼叫改回 720；最後再讀一次全量設定，
  *    與步驟 0 的原始快照**完整相等（含 steppedConfigList 全樹）**，dev 上沒有留下任何測試痕跡。
- *    唯一無法還原的是後端自己寫的稽核 log 與除錯紀錄（rebate_debug_logs），那是後端行為、
+ *    唯一無法還原的是後端自己寫的稽核 log 與除錯紀錄（rebate_debug_log），那是後端行為、
  *    本來就沒有刪除介面。
  */
 
@@ -101,6 +109,17 @@ import {
     REBATE_PERIOD_MAP,
     deepFixLongs,
 } from '../const.ts';
+
+/**
+ * 把 protobufjs message（或其片段）正規化成純 JSON 結構，供 before/after 深比對。
+ * 兩邊都要走同一條路徑才有意義——deepFixLongs 先把 Long 轉成 number，再 JSON round-trip
+ * 去掉 prototype 上的預設值差異。⚠️ 只 JSON.stringify 不先 deepFixLongs 的話，Long 會被
+ * toJSON() 轉成十進位「字串」，跟另一邊的 number 永遠不相等（2026-08-28 dev 實測踩過：
+ * before 走 JSON.stringify、after 走 deepFixLongs，深比對必定回 false）。
+ */
+function normalizeForCompare(value: unknown): unknown {
+    return JSON.parse(JSON.stringify(deepFixLongs(value)));
+}
 
 /** 供 round-trip 比對用：只取七個頂層純量欄位，不含 steppedConfigList（巢狀且本 tool 不動它）。 */
 const SCALAR_FIELDS = [ 'status', 'rebatePeriod', 'rebateGetType', 'rebateExpireHour', 'verify', 'claimSwitch', 'globalRebateMode' ] as const;
@@ -137,7 +156,8 @@ export function registerUpdateRebateGlobalSettingTool(server: McpServer): void {
                 '⚠️ 若本平台從未建立過全域返水設定，讀現值那步會失敗（後端已知行為，回 errorCode=1），' +
                 '本 tool 會如實回報而不會憑空送出一份預設設定。' +
                 'RPC 本身沒有回傳值，所以本 tool 寫入後一定會再讀一次做 round-trip 比對，' +
-                '回傳 before/after 與逐欄 changed/unchanged 判定，不會只憑「沒報錯」就宣稱成功。' +
+                '回傳 before/after 與逐欄 changed/unchanged 判定，並對整棵階梯式返水配置做**深比對**' +
+                '（不只比筆數），不會只憑「沒報錯」就宣稱成功。' +
                 '成功時後端會清返水快取並寫一筆平台稽核 log。',
             inputSchema: {
                 status: z.enum([ 'enabled', 'disabled' ]).optional().describe('返水產生開關；不帶則維持現值'),
@@ -181,7 +201,9 @@ export function registerUpdateRebateGlobalSettingTool(server: McpServer): void {
             }
 
             const beforeScalars = pickScalars(config as unknown as Record<string, unknown>);
-            const beforeSteppedCount = (config as unknown as { steppedConfigList?: unknown[] }).steppedConfigList?.length ?? 0;
+            // 深拷貝一份現值的階梯配置樹，供寫入後做「逐欄未變」的深比對（不能只比筆數）。
+            const beforeStepped = normalizeForCompare((config as unknown as { steppedConfigList?: unknown[] }).steppedConfigList ?? []);
+            const beforeSteppedCount = (beforeStepped as unknown[]).length;
 
             // 比照本 server 既有 update 類 tool 的寫法（update_message_board_setting.ts:168、
             // update_vip_setting.ts:121）：base 展開現值、再蓋上呼叫端要改的欄位。
@@ -205,7 +227,11 @@ export function registerUpdateRebateGlobalSettingTool(server: McpServer): void {
                 });
             }
             const afterScalars = pickScalars(after.data?.config as unknown as Record<string, unknown>);
-            const afterSteppedCount = (after.data?.config as unknown as { steppedConfigList?: unknown[] })?.steppedConfigList?.length ?? 0;
+            const afterStepped = normalizeForCompare((after.data?.config as unknown as { steppedConfigList?: unknown[] })?.steppedConfigList ?? []);
+            const afterSteppedCount = (afterStepped as unknown[]).length;
+            // checklist 第 4 節第 2 條要求「逐欄比對沒有要求變更的欄位，尤其陣列」——只比筆數不夠，
+            // 這裡對整棵 steppedConfigList 做深比對（同檔其他地方也用 JSON.stringify 做結構比對）。
+            const steppedUnchanged = JSON.stringify(beforeStepped) === JSON.stringify(afterStepped);
 
             const fields = SCALAR_FIELDS.map((key) => ({
                 field: key,
@@ -217,15 +243,16 @@ export function registerUpdateRebateGlobalSettingTool(server: McpServer): void {
             const unexpected = fields.filter((f) => !f.matchesRequest);
 
             return asTextResult({
-                success: unexpected.length === 0 && afterSteppedCount === beforeSteppedCount,
+                success: unexpected.length === 0 && steppedUnchanged,
                 roundTripVerified: true,
                 requestedFields: Object.keys(requested),
                 fields: deepFixLongs(fields),
                 steppedConfigCount: { before: beforeSteppedCount, after: afterSteppedCount },
+                steppedConfigDeepEqual: steppedUnchanged,
                 unexpectedChanges: deepFixLongs(unexpected),
-                note: unexpected.length === 0 && afterSteppedCount === beforeSteppedCount
-                    ? '回讀驗證通過：要求變更的欄位已生效，未要求變更的欄位與階梯配置筆數都與呼叫前相同。'
-                    : '⚠️ 回讀驗證發現非預期差異，請人工覆核（unexpectedChanges 與 steppedConfigCount）。',
+                note: unexpected.length === 0 && steppedUnchanged
+                    ? '回讀驗證通過：要求變更的欄位已生效；未要求變更的純量欄位逐欄相同，整棵階梯式返水配置（不只筆數，含每筆的名稱/模式/門檻/遊戲清單/各層比例與多幣別金額）也與呼叫前深比對完全一致。'
+                    : '⚠️ 回讀驗證發現非預期差異，請人工覆核（unexpectedChanges 與 steppedConfigDeepEqual）。',
             });
         },
     );

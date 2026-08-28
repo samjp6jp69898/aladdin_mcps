@@ -145,7 +145,7 @@ export function registerGetRebateRecordListTool(server: McpServer): void {
                 orderId: z.string().optional().describe('返水單號（訂單編號），精確比對'),
                 account: z.string().optional().describe('會員帳號；後端會先換成 userId，帳號不存在直接回 idNotExists。不要與 userId 同時帶'),
                 userId: z.number().int().min(1).optional().describe('會員 id。不要與 account 同時帶'),
-                rebateConfigIds: z.array(z.number().int()).optional().describe('返水層級（返水配置）id 陣列，符合其一即可；id 來自 get_rebate_config_name_list'),
+                rebateConfigIds: z.array(z.number().int()).optional().describe('返水層級（返水配置）id 陣列，符合其一即可；id 來自 aladdin_platform_rebate_platform_get_rebate_config_name_list'),
                 statuses: z.array(z.enum(REBATE_RECORD_STATUS_KEYS)).optional().describe('領取狀態多選（彼此 OR）；verified/expired 是後端依領取期限即時判定的，不是 DB 儲存值'),
                 beginTimestamp: z.number().int().min(0).optional().describe('返水生成時間起（毫秒 timestamp，>=）'),
                 endTimestamp: z.number().int().min(0).optional().describe('返水生成時間迄（毫秒 timestamp，<）'),

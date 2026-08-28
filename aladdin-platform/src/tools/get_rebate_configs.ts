@@ -118,7 +118,9 @@ export function registerGetRebateConfigsTool(server: McpServer): void {
                 '回傳每筆的金額欄位（dailyRebateMax 每日最高產生返水、minDrawAmount 最低領取金額、' +
                 'singleBetLimit 單筆投注返水上限、dailyDrawMax 每日可領取最高返水、' +
                 'singleBetMin 單筆投注金額下限）都是**多幣別陣列** [CurrencyLink]（每個幣別各一筆 ' +
-                '{currencyCode, amount}），不是單一數字；wageringMultiplier 是稽核倍數（Rate 型別）。' +
+                '{ code, value }，欄位名就是 code 與 value，不是 currencyCode/amount；' +
+                'value 是 i64 stored value，本 tool 已轉成一般數字），不是單一數字；' +
+                'wageringMultiplier 同樣是 [CurrencyLink] 陣列，只是 @Type "Rate"——值是稽核倍數不是金額。' +
                 'memberCount 是後端即時算出的歸屬會員數（依 VIP 等級歸屬 + 個人指定覆蓋，' +
                 '排除 $ 開頭的合營代理帳號），不是資料表欄位。' +
                 'updatedAtTimestamp 是最後操作時間（i64 毫秒，已轉成一般數字）。' +
