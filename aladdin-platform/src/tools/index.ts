@@ -205,6 +205,8 @@ import { registerUpdateAppTool } from './update_app.ts';
 import { registerListAppVersionsTool } from './list_app_versions.ts';
 import { registerGetAppVersionForEditTool } from './get_app_version_for_edit.ts';
 import { registerListDownloadLinksTool } from './list_download_links.ts';
+import { registerListIosHighRiskRegionsTool } from './list_ios_high_risk_regions.ts';
+import { registerListIosRegionNameOptionsTool } from './list_ios_region_name_options.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -415,4 +417,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListAppVersionsTool(server);
     registerGetAppVersionForEditTool(server);
     registerListDownloadLinksTool(server);
+    registerListIosHighRiskRegionsTool(server);
+    registerListIosRegionNameOptionsTool(server);
 }
