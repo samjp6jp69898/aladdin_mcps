@@ -528,3 +528,14 @@ export const TRADE_VERIFY_TYPE_MAP = {
 
 // FreezeDurationUnitEnum（service_common.rajah:2340-2344）
 export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as const;
+
+/**
+ * i32（protobuf int32）的上界。任何對應 rajah `i32` 欄位的 zod number schema 都該用它當
+ * `.max()`：超過這個值的數字會被 protobufjs **無聲截斷**成另一個合法的 i32，於是 tool 會
+ * 若無其事地對「別的 id」執行操作或回傳「別人的資料」，沒有任何錯誤訊號。
+ * 這不是理論風險——2026-08-25 的 review 在 create_or_update_room_mute 實測確認過會禁言到錯的人
+ * （見該檔與 README 的對應記載，那支目前是各自寫死 2147483647）。
+ * FundAdjustmentPlatform 系列 tool（list_user_fund / get_user_adjustment_info /
+ * list_user_fund_adjustment 等，多支都吃 i32 的 userId 或調整單 id）統一改用這個常數。
+ */
+export const I32_MAX = 2147483647;
