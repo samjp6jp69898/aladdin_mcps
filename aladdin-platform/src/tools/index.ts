@@ -204,6 +204,7 @@ import { registerGetWorldCupFixturesInfoTool } from './get_world_cup_fixtures_in
 import { registerGetMilestoneRecordTool } from './get_milestone_record.ts';
 import { registerGetMilestoneTotalAwardAndMilesTool } from './get_milestone_total_award_and_miles.ts';
 import { registerGetGoalSprintRecordTool } from './get_goal_sprint_record.ts';
+import { registerGetGoalSprintTotalAwardAndMilesTool } from './get_goal_sprint_total_award_and_miles.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -413,4 +414,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetMilestoneRecordTool(server);
     registerGetMilestoneTotalAwardAndMilesTool(server);
     registerGetGoalSprintRecordTool(server);
+    registerGetGoalSprintTotalAwardAndMilesTool(server);
 }
