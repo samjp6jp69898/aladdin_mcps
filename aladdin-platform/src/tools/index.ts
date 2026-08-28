@@ -219,6 +219,7 @@ import { registerGetFundAdjustmentPresetsByCategoryTool } from './get_fund_adjus
 import { registerGetFundAdjustmentAutoReviewConfigTool } from './get_fund_adjustment_auto_review_config.ts';
 import { registerCreateFundAdjustmentPresetTool } from './create_fund_adjustment_preset.ts';
 import { registerEditFundAdjustmentPresetTool } from './edit_fund_adjustment_preset.ts';
+import { registerSetFundAdjustmentPresetStatusTool } from './set_fund_adjustment_preset_status.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -443,4 +444,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetFundAdjustmentAutoReviewConfigTool(server);
     registerCreateFundAdjustmentPresetTool(server);
     registerEditFundAdjustmentPresetTool(server);
+    registerSetFundAdjustmentPresetStatusTool(server);
 }
