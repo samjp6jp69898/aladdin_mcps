@@ -206,6 +206,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_strategy_get_list` | `Strategy.GetList` | 列出本平台全部會員層級策略與其規則（auto/未登入/未存款/連續充值失敗四型），無參數不分頁；後端讀取失敗會降級成空陣列而不報錯、notLoggedIn/noDeposit 無規則時回一條 id=0 空 rule，兩者皆已寫進 description |
 | `aladdin_platform_user_level_get_name_list` | `UserLevel.GetNameList` | 取得本平台會員層級 id/名稱/種類/色票對照清單（軟刪不列出），無參數不分頁；其他需要 userLevelId 的 tool 一律先用它取合法值 |
 | `aladdin_platform_user_level_get_list` | `UserLevel.GetList` | 分頁查詢會員層級設定，**type 必填**（後端無條件用它當條件，一次只能查 auto 或 static 一種）、name 模糊比對；含 userCount 與 strategyRules |
+| `aladdin_platform_user_level_get_user_list` | `UserLevel.GetUserList` | 分頁查詢某層級底下的會員（account 模糊比對可鎖定單一會員）；**後端 SQL 無 ORDER BY**、分頁順序不保證穩定，locked 語意反直覺（enabled=1 才是已鎖定），皆已寫進 description |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。

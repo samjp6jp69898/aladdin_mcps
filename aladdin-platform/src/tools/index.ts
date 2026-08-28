@@ -202,6 +202,7 @@ import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_nam
 import { registerListUserLevelStrategiesTool } from './list_user_level_strategies.ts';
 import { registerGetUserLevelNameListTool } from './get_user_level_name_list.ts';
 import { registerListUserLevelsTool } from './list_user_levels.ts';
+import { registerListUserLevelUsersTool } from './list_user_level_users.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -409,4 +410,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListUserLevelStrategiesTool(server);
     registerGetUserLevelNameListTool(server);
     registerListUserLevelsTool(server);
+    registerListUserLevelUsersTool(server);
 }
