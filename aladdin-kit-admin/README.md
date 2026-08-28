@@ -13,7 +13,7 @@
 
 | Tool | 說明 |
 |---|---|
-| `aladdin_kit_issue` | 核發（或 `rotate=true` 重新簽發）一份 kit。`id`/`name` 必填，`grants` 留空預設兩個都給（`admin-dev` + `platform-dev-pk`，這是最常見組合的預設值；`admin-pre`/`admin-evi` 不會因留空而自動帶到，要明確在 `grants` 裡指定）。 |
+| `aladdin_kit_issue` | 核發（或 `rotate=true` 重新簽發）一份 kit。`id`/`name` 必填，`grants` 留空預設給 `admin-dev` + 所有已部署的 `platform-dev-*`（目前是 `platform-dev-pk`），並在這個 id 還沒有 toolsmith 條目時一併核發 toolsmith；`admin-pre`/`admin-evi` 不會因留空而自動帶到，要明確在 `grants` 裡指定（明確指定 `grants` 也不會連帶核發 toolsmith）。 |
 | `aladdin_kit_list` | 列出兩份 token 名冊目前已核發的 id / 顯示名 / 核發時間，不含 token 值。 |
 
 ## 安裝與連線
@@ -41,10 +41,11 @@ bun install
 跟 `make-starter-kit.ts` 完全一致（見該檔 `ALLOWED_GRANTS`/`BLOCKED_GRANTS` 註解）：`admin-dev`、
 `platform-dev-pk`、`admin-pre`、`admin-evi` 四個都已部署常駐、可以核發（2026-08-20：pre/evi 在
 H35 端到端驗證過可行後，因 H38 尚未完成而暫緩開放；H38 完成後經使用者確認解鎖，並已
-`launchctl bootstrap` 成常駐服務）。差別只在於**留空 `grants` 時的預設值**沒有變——預設仍只給
-`admin-dev` + `platform-dev-pk`，`admin-pre`/`admin-evi` 一定要明確指定才會核發，不會因為留空
-就自動帶到。`admin-uat`/`admin-prod` 仍未開放：這兩個環境連真實後台網址都還沒拿到，根本沒有部署，
-不是程式碼刻意擋著。
+`launchctl bootstrap` 成常駐服務）。差別只在於**留空 `grants` 時的預設值**——2026-08-27 起預設給
+`admin-dev` + 所有已部署的 `platform-dev-*`（目前是 `platform-dev-pk`；之後新平台環境上線會自動
+跟著涵蓋，不用回來改預設值），並一併核發 toolsmith（若這個 id 還沒有）。`admin-pre`/`admin-evi`
+一定要明確指定才會核發，不會因為留空就自動帶到。`admin-uat`/`admin-prod` 仍未開放：這兩個環境連
+真實後台網址都還沒拿到，根本沒有部署，不是程式碼刻意擋著。
 
 要新增下一個環境（例如未來 uat/prod 有真實網址了）：除了改這支 server 的 `ALLOWED_GRANT_VALUES`
 （`src/tools/issue.ts`），還要先在 `make-starter-kit.ts` 那邊的 `ALLOWED_GRANTS`/`BLOCKED_GRANTS`

@@ -21,13 +21,17 @@
  * uat/prod 仍未部署——這兩個環境目前連真實後台網址都沒有，要求會被明確拒絕
  * （不是靜默忽略）。
  *
- * toolsmith（2026-08-26 起併入輸出，唯讀）：toolsmith 已上線，且改用跟
- * admin/platform 一樣「一人一把」的名冊格式（/Users/user/aladdin/obsidian/
- * mcps/aladdin-toolsmith/tokens.json），原本「全員共用一把 token」的疑慮已
- * 不成立。toolsmith 名冊的**唯一寫入者**仍是 manage-tokens.ts（核發/重簽/
- * 撤銷都經由它）——這支腳本只唯讀查閱那份名冊，把找到的條目併進輸出的
- * `.mcp.json`（見 mergeToolsmithGrant()），從不寫回那份名冊。id 不在 toolsmith
- * 名冊裡時，輸出的 `.mcp.json` 就是沒有這個 server，跟以前一樣。
+ * toolsmith（2026-08-26 起併入輸出；2026-08-27 起沒帶 --grants 時預設一併
+ * 核發）：toolsmith 已上線，且改用跟 admin/platform 一樣「一人一把」的名冊
+ * 格式（/Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/tokens.json），
+ * 原本「全員共用一把 token」的疑慮已不成立。toolsmith 名冊的**唯一寫入者**
+ * 仍是 manage-tokens.ts（核發/重簽/撤銷都經由它）——這支腳本本身從不直接
+ * 寫那份名冊，只做兩件事：(1) 唯讀查閱、把找到的條目併進輸出的 `.mcp.json`
+ * （見 mergeToolsmithGrant()）(2) 沒帶 --grants（走預設）核發新 kit、且這個
+ * id 還沒有 toolsmith 條目時，呼叫 manage-tokens.ts --issue 幫它核發一把
+ * （見 ensureToolsmithIssued()）——呼叫別支腳本不等於自己成為寫入者。明確
+ * 帶 --grants 縮小範圍時視為呼叫端刻意只要那幾個環境，不會連帶核發
+ * toolsmith；--revoke/--rename/--rebuild 也都不觸發這個自動核發。
  *
  * ── 重跑同一個 id 的行為（idempotent 契約，AC 要求明確定義）─────────────
  * 預設：**拒絕**。如果 --id 在任一目標名冊裡已存在、或 dist/<id>/ 已存在，
@@ -67,6 +71,7 @@
  */
 
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import {
     existsSync,
     mkdirSync,
@@ -89,6 +94,10 @@ const DISPATCH_DOMAIN = 'https://mcp.aladdin-assistant.cc';
 // toolsmith 名冊——manage-tokens.ts 的唯一寫入者，這裡只唯讀查閱（見檔頭說明）。
 const TOOLSMITH_REGISTRY_PATH = join(KIT_DIR, '..', 'aladdin-toolsmith', 'tokens.json');
 const TOOLSMITH_URL_PREFIX = '/toolsmith';
+// 2026-08-27：走預設 grants（沒帶 --grants）核發新 kit 時，若這個 id 還沒有
+// toolsmith 條目，順便呼叫這支腳本核發一把（見 ensureToolsmithIssued）。
+// manage-tokens.ts 仍是 toolsmith 名冊唯一寫入者，這裡只是呼叫它，不直接寫檔。
+const MANAGE_TOKENS_SCRIPT = join(KIT_DIR, '..', 'aladdin-toolsmith', 'manage-tokens.ts');
 
 interface GrantConfig {
     /** .mcp.json 裡的 server 別名。 */
@@ -138,19 +147,49 @@ const ALLOWED_GRANTS: Record<string, GrantConfig> = {
         registryPath: join(KIT_DIR, '..', 'aladdin-platform', 'tokens.json'),
         urlPrefix: '/mcp-platform',
     },
+    // 2026-08-27：plist/run-server-dev-6t.sh/mcp-proxy.ts PROXY_ROUTES/
+    // .env.example 欄位（ALADDIN_PLATFORM_DEV_6T_*）皆早已備妥，本次只是
+    // 補上最後一步——launchctl bootstrap 常駐服務（port 8793）+ 開放這裡。
+    // alias 沿用 platform-dev-pk 同款「環境×產品」命名慣例，login.sh 的
+    // fieldPrefix() 機械推導已確認能對上 .env.example 既有欄位。
+    'platform-dev-6t': {
+        alias: 'aladdin-platform-dev-6t',
+        registryPath: join(KIT_DIR, '..', 'aladdin-platform', 'tokens.dev-6t.json'),
+        urlPrefix: '/mcp-platform-dev-6t',
+    },
+    // 2026-08-27：pre×PK/pre×6T/evi×6T 三個同批比照 dev×6T 開放——plist/
+    // 啟動腳本/proxy 路由/.env.example 欄位皆早已備妥，本次補上 bootstrap +
+    // 開放這裡。這三個不是 startsWith('platform-dev-')，DEFAULT_GRANTS 不會
+    // 自動涵蓋，跟 admin-pre/admin-evi 一樣要明確 --grants 才會核發。
+    'platform-pre-pk': {
+        alias: 'aladdin-platform-pre-pk',
+        registryPath: join(KIT_DIR, '..', 'aladdin-platform', 'tokens.pre-pk.json'),
+        urlPrefix: '/mcp-platform-pre-pk',
+    },
+    'platform-pre-6t': {
+        alias: 'aladdin-platform-pre-6t',
+        registryPath: join(KIT_DIR, '..', 'aladdin-platform', 'tokens.pre-6t.json'),
+        urlPrefix: '/mcp-platform-pre-6t',
+    },
+    'platform-evi-6t': {
+        alias: 'aladdin-platform-evi-6t',
+        registryPath: join(KIT_DIR, '..', 'aladdin-platform', 'tokens.evi-6t.json'),
+        urlPrefix: '/mcp-platform-evi-6t',
+    },
 };
 
-const DEFAULT_GRANTS = ['admin-dev', 'platform-dev-pk'];
+// platform 部分刻意動態展開成「所有已部署的 platform-dev-*」，而不是寫死
+// platform-dev-pk：2026-08-27 使用者裁定，之後 platform-dev-6t 等新環境
+// 上線、加進 ALLOWED_GRANTS 後，預設核發會自動跟著涵蓋，不需要回來改這行。
+const DEFAULT_GRANTS = ['admin-dev', ...Object.keys(ALLOWED_GRANTS).filter(g => g.startsWith('platform-dev-'))];
 
 // 已知存在、但目前刻意不開放的環境名字——請求到這些名字時要給「為什麼不行」
 // 的明確理由，跟「打錯字/根本不存在的名字」分開講。
 const BLOCKED_GRANTS: Record<string, string> = {
     'admin-uat': '.env.example 裡雖然預留了 UAT 欄位，但這個環境目前根本沒有部署對應的 hosted server（沒有 plist、沒有名冊檔、也沒有真實後台網址），不是「被擋」而是「還不存在」。',
     'admin-prod': '目前沒有真實 prod 後台網址，這個環境根本沒有部署對應的 hosted server。即使部署了，寫入類 tool 仍會被 session.ts 的 assertProdConfirmed 要求明確 confirm 參數——那是伺服器端的既有機制，跟這支產生器發不發 kit 是兩件事。',
-    'platform-dev-6t': 'platform 目前只部署了 dev×PK 一個實例（沒有對應的名冊檔/launchd job），dev×6T 尚未存在。',
-    'platform-pre-pk': 'pre 環境的 platform 尚未部署（沒有 plist、沒有名冊檔）。',
-    'platform-pre-6t': '同上。',
-    'platform-evi-6t': 'evi 環境的 platform 尚未部署（沒有 plist、沒有名冊檔）。',
+    // platform-dev-6t / platform-pre-pk / platform-pre-6t / platform-evi-6t：
+    // 2026-08-27 全數已部署並開放，見上方 ALLOWED_GRANTS。
 };
 
 const ID_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;
@@ -279,6 +318,32 @@ function mergeToolsmithGrant(mcpServers: Record<string, unknown>, id: string): v
         url: `${ DISPATCH_DOMAIN }${ TOOLSMITH_URL_PREFIX }/mcp`,
         headers: { Authorization: `Bearer ${ entry.token }` },
     };
+}
+
+/**
+ * 走預設 grants（呼叫端沒帶 --grants）核發新 kit 時，若這個 id 在 toolsmith
+ * 名冊裡還沒有條目，順便呼叫 manage-tokens.ts --issue 核發一把（2026-08-27
+ * 使用者裁定：預設應涵蓋 toolsmith，不用另外手動核發）。用 --quiet：token
+ * 會隨這次重建的 dist/<id>/.mcp.json 一起打包送出（見 mergeToolsmithGrant），
+ * 不需要 manage-tokens.ts 自己另發一則 TG 訊息重複交付同一把 token。
+ *
+ * 失敗（例如 toolsmith server 尚未在這台機器部署）只印警告、不中斷整個 kit
+ * 產生流程——toolsmith 對 kit 來說是附加項，不是核心目的，比照
+ * mergeToolsmithGrant「找不到就什麼都不做」的既有寬容原則。
+ */
+function ensureToolsmithIssued(id: string, displayName: string): void {
+    if (!existsSync(TOOLSMITH_REGISTRY_PATH)) return;
+    if (findEntry(loadRegistryFile(TOOLSMITH_REGISTRY_PATH), id)) return;
+    try {
+        execFileSync('bun', [MANAGE_TOKENS_SCRIPT, '--issue', '--id', id, '--name', displayName, '--quiet'], {
+            encoding: 'utf-8',
+            timeout: 30_000,
+        });
+        console.log(`[toolsmith] 尚未持有 toolsmith 權限，已依預設自動核發（${ TOOLSMITH_REGISTRY_PATH }）`);
+    } catch (err) {
+        const e = err as { stderr?: string; message: string };
+        console.error(`[toolsmith] 自動核發失敗，本次 kit 仍會照常產出（不含 toolsmith）：${ e.stderr || e.message }`);
+    }
 }
 
 function printUsageAndExit(code: number): never {
@@ -566,6 +631,13 @@ function main(): void {
         }
         writeRegistryFileAtomic(cfg.registryPath, registry);
         console.log(`[${ g }] 名冊已更新（${ cfg.registryPath }）`);
+    }
+
+    // 沒帶 --grants（走預設）時，預設一併涵蓋 toolsmith（2026-08-27 使用者
+    // 裁定）。明確帶 --grants 縮小範圍代表呼叫端知道自己只要這幾個環境，
+    // 不動 toolsmith。
+    if (!values.grants) {
+        ensureToolsmithIssued(id, displayName);
     }
 
     // review 發現的真實缺陷（h19-review-correctness）：--rotate 只重簽這次

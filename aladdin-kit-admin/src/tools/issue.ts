@@ -23,9 +23,11 @@ export function registerIssueKitTool(server: McpServer): void {
                 '包裝 ../aladdin-ai-assistant-kit/make-starter-kit.ts：幫一位企劃核發（或重新簽發）一份 ' +
                 'starter kit，內含他個人專屬的 Bearer token，讓他自己的 Claude Code 能連回本機常駐的 ' +
                 'hosted MCP server（aladdin-admin / aladdin-platform）操作 agrabah 後台。\n\n' +
-                '不帶 grants 時預設兩個都給（admin-dev + platform-dev-pk）——這是最常見的組合，正常情況不需要' +
+                '不帶 grants 時預設給 admin-dev + 所有已部署的 platform-dev-*（目前只有 platform-dev-pk），' +
+                '並在這個 id 還沒有 toolsmith 條目時一併核發 toolsmith——這是最常見的組合，正常情況不需要' +
                 '特別指定。admin-pre、admin-evi 是額外的環境，只有明確要開放這兩個時才需要在 grants 裡加上去' +
-                '（不會因為留空而自動帶到）。\n\n' +
+                '（不會因為留空而自動帶到，也不影響是否核發 toolsmith）。明確帶 grants 縮小範圍時視為刻意只要' +
+                '那幾個環境，不會連帶核發 toolsmith。\n\n' +
                 '對同一個 id 重跑：預設拒絕並回傳既有紀錄（核發時間、顯示名），不做任何修改。要重新簽發' +
                 '（換一把新 token，舊 token 立刻失效）必須明確帶 rotate=true——這會讓對方手上舊的 kit 打不通，' +
                 '呼叫前確認清楚是不是真的要重簽。\n\n' +
@@ -39,8 +41,9 @@ export function registerIssueKitTool(server: McpServer): void {
                 ),
                 name: z.string().describe('企劃顯示名稱（例如「陳美」），寫入 token 名冊供人工核對用，不影響任何權限判斷。'),
                 grants: z.array(z.enum(ALLOWED_GRANT_VALUES)).min(1).optional().describe(
-                    '要開放的環境子集。留空預設兩個都給（admin-dev, platform-dev-pk）——大多數情況不需要帶這個 ' +
-                    '參數；只有明確要限縮權限範圍時才指定。',
+                    '要開放的環境子集。留空預設給 admin-dev + 所有已部署的 platform-dev-*（目前是 ' +
+                    'platform-dev-pk），並一併核發 toolsmith（若還沒有）——大多數情況不需要帶這個參數；只有' +
+                    '明確要限縮權限範圍（且不核發 toolsmith）時才指定。',
                 ),
                 rotate: z.boolean().optional().default(false).describe(
                     'true=對已存在的 id 重新簽發新 token（舊 token 立刻失效，舊 kit 打不通）。id 不存在時這個' +

@@ -37,11 +37,12 @@ cd /Users/user/aladdin/obsidian/mcps/aladdin-ai-assistant-kit
 bun make-starter-kit.ts --id chenmei --name "陳美"
 ```
 
-不帶 `--grants` 時預設兩個都給：`admin-dev`（`aladdin-admin-dev`）+
-`platform-dev-pk`（`aladdin-platform-dev-pk`）。目前也**只有**這兩個是真的部署上線
-可用的環境——pre/evi 被 tasks.json 的 H38 裁定擋住（prod 寫入閘門補強要先
-做完），uat 與 platform 其他平台產品根本還沒部署。腳本會拒絕任何其他
-`--grants` 值並講清楚理由，不會靜默忽略。
+不帶 `--grants` 時預設給 `admin-dev`（`aladdin-admin-dev`）+ 所有已部署的
+`platform-dev-*`（目前只有 `platform-dev-pk` → `aladdin-platform-dev-pk`，之後
+新平台環境上線會自動跟著涵蓋），並在這個 id 還沒有 toolsmith 條目時一併核發
+toolsmith（見 `ensureToolsmithIssued()`，2026-08-27 起）。admin-pre、admin-evi
+不會因為留空而自動帶到，要明確在 `--grants` 裡指定；uat 與 platform 其他平台
+產品根本還沒部署。腳本會拒絕任何其他 `--grants` 值並講清楚理由，不會靜默忽略。
 
 只要其中一種：
 
