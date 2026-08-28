@@ -150,6 +150,13 @@ export const REBATE_RECORD_STATUS_MAP: Record<(typeof REBATE_RECORD_STATUS_KEYS)
     unverified: 0, verified: 1, claimed: 2, rejected: 3, deducted: 4, expired: 5, clawBack: 6,
 };
 
+// RebateBetStatusEnum（rebate_back_office.rajah:368-383）：返水結算明細每一筆的狀態，供
+// get_rebate_settlement_list 使用。
+export const REBATE_BET_STATUS_KEYS = [ 'unclaimed', 'claimed', 'blacklisted', 'disabled', 'configNotFound', 'exceedDailyLimit', 'clawBack' ] as const;
+export const REBATE_BET_STATUS_MAP: Record<(typeof REBATE_BET_STATUS_KEYS)[number], number> = {
+    unclaimed: 0, claimed: 1, blacklisted: 2, disabled: 3, configNotFound: 4, exceedDailyLimit: 5, clawBack: 6,
+};
+
 // RiskGameTypeEnum（risk_back_office.rajah:108-113），限制作用範圍是廠商還是指定遊戲。
 export const RISK_GAME_TYPE_MAP = { provider: 1, specified: 2 } as const;
 
