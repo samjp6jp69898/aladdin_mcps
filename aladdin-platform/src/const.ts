@@ -504,3 +504,20 @@ export const TRADE_VERIFY_TYPE_MAP = {
 
 // FreezeDurationUnitEnum（service_common.rajah:2340-2344）
 export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as const;
+
+// ── 稽核（wagering）相關對照表 ─────────────────────────────────────────────
+// 供 wagering_back_office.rajah 的 WageringPlatform 系列 tool 共用。
+
+// WageringStatusEnum（wagering.rajah:2-11）。稽核紀錄的生命週期狀態。
+// 刻意不含 completed(2)：WageringPlatform.ListUserWagerings 的後端實作
+// （agrabah/src/servers/wagering_back_office/services/wagering_platform.ts:224）
+// 無條件 `search.status.filter(v => v !== completed)`，帶 completed 會被靜默剔除、
+// 退化成「非 completed 的全部」，開放這個選項只會誤導呼叫端。需要區分已完成的稽核
+// 請改看單筆的 status 欄位，別用它當篩選條件。
+export const WAGERING_STATUS_SEARCH_KEYS = [ 'pending', 'autoRemove', 'manualRemove' ] as const;
+export const WAGERING_STATUS_SEARCH_MAP: Record<(typeof WAGERING_STATUS_SEARCH_KEYS)[number], number> = {
+    pending: 1, autoRemove: 3, manualRemove: 4,
+};
+
+// WageringAddWayEnum（wagering.rajah:14-19）
+export const WAGERING_ADD_WAY_MAP = { auto: 1, manual: 2 } as const;
