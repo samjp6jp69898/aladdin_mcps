@@ -104,6 +104,12 @@
  *       `hasOwnProperty(bonusName) === true`、值是 `[]`，但把原始 Message 直接
  *       `JSON.stringify` 出來的 key 清單裡**沒有 bonusName**，用 spread 之後才有。
  *   兩者的判別方法就是看 hasOwnProperty，不能只看「key 不見了」就下結論。
+ *   **更省事的判別規則（2026-08-28 實測建立）：先看欄位是不是 repeated**——
+ *   repeated 欄位在 decode 後**一定**是 own property（未賦值時為 `[]`），所以它缺席只可能是 (b)；
+ *   scalar / message 欄位沒有這個保證，未賦值時 own property 不存在，那才可能是 (a)。
+ *   實測依據見驗證第 16 點（同一支 method 的 response 上，後端從未賦值的 repeated `rows`
+ *   仍是 own property `[]`，而同樣未賦值的 scalar `totalPage` 則不是 own property）。
+ *   有了這條規則，多數情況看 rajah 欄位型別就能定位機制，hasOwnProperty 只需留給 scalar 欄位做確認。
  *   **本 tool 因為走 deepFixLongs 的重建路徑，(b) 不會發生**——非彩金類調整單的 bonusName
  *   會如實以空陣列回傳，而不是整個消失。
  *
@@ -168,6 +174,17 @@
  * 11. applyOperator="sakiko" → totalPage=6，回傳每筆 applyOperator 皆為 sakiko。
  * 12. userId=2147483648 被 zod 擋在 tool 邊界：
  *    `Too big: expected number to be <=2147483647 at userId`，不會送到後端被無聲截斷。
+ * 16. **repeated vs scalar 的判別規則實測（推翻了我自己先前的一個懷疑）**：
+ *    本專案的生成碼是 reflection 模式（types.gen.js 用 `protobufjs/light` + `Root.fromJSON`，
+ *    不是靜態 codegen，全檔 grep 不到 `util.emptyArray`），我因此一度懷疑「repeated 欄位一定是
+ *    own property」這條規則在這裡不成立。實測推翻了這個懷疑：
+ *    用「搜尋條件無人命中」的情境（後端提早 return、`response.rows` **從未被賦值**）打同一支 RPC，
+ *    結果 `hasOwnProperty(rows)` = **true**、值為 `[]`、`Array.isArray` 為 true；
+ *    而同一個 response 上同樣未被賦值的 scalar `totalPage`（值讀起來是 0）**不是** own property
+ *    （該 response 的 own keys 只有 `rows` 一個）。對照組「後端有賦值 rows」的 own keys 是
+ *    `rows,totalPage`。
+ *    所以規則成立：**repeated 欄位缺席只可能是機制 (b)；scalar 欄位缺席才可能是機制 (a)**。
+ *    這條規則由 rajah-worker-dune 在跨 session 討論中提出，本輪由我實測確認（我原本的質疑不成立）。
  * 15. **用 hasOwnProperty 做的決定性機制測試（直打 RPC 拿原始 Message，繞過本 tool 的
  *    deepFixLongs——因為那一層會先做 own-property 過濾，經過它就分辨不出兩種機制了）**：
  *    對 status=pending 的三筆（id 1392 / 1385 / 1384）逐筆檢查，三筆結果完全一致：
