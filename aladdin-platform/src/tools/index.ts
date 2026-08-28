@@ -200,6 +200,9 @@ import { registerListFixedRankingEntriesTool } from './list_fixed_ranking_entrie
 import { registerGetRouletteConfigNameListTool } from './get_roulette_config_name_list.ts';
 import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
 import { registerGetLiveTabsTool } from './get_live_tabs.ts';
+import { registerCreateOrUpdateLiveTabTool } from './create_or_update_live_tab.ts';
+import { registerUpdateLiveTabStatusTool } from './update_live_tab_status.ts';
+import { registerGetLiveCategoriesTool } from './get_live_categories.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -405,4 +408,7 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRouletteConfigNameListTool(server);
     registerGetRouletteRewardNameListTool(server);
     registerGetLiveTabsTool(server);
+    registerCreateOrUpdateLiveTabTool(server);
+    registerUpdateLiveTabStatusTool(server);
+    registerGetLiveCategoriesTool(server);
 }
