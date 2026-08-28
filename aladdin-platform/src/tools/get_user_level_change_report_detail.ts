@@ -24,7 +24,10 @@
  * rows 都是同一組未聚合的紀錄，與 GetChangeReport 的聚合查詢不同），但仍受 agrabah 分頁框架限制：
  * 只有 page===1 才會算 count，page>1 一律回 0（agrabah/src/common/database_helper.ts:208-217）。
  *
- * 第 8 節（PII）：回傳含會員帳號（account），與本 server 既有會員清單類 tool 做法一致不遮罩。
+ * 第 8 節（PII）：回傳含會員帳號（account），不含 realName／銀行卡號那類第 8 節點名要遮罩的欄位
+ * （rajah model UserLevelChangeReportDetail，user_level_back_office.rajah:193-206），故不遮罩；
+ * 先例同 get_message_board_posts.ts（真實 app 會員識別資訊原樣回傳），不是 list_users.ts
+ * （那支是後台管理員帳號，自述效力不涵蓋一般會員 PII）。
  *
  * i64/Long：registerTimestamp／updateTimestamp 為 i64，用 deepFixLongs 轉一般數字。
  */

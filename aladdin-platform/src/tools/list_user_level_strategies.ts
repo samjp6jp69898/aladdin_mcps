@@ -20,6 +20,11 @@
  *   （id=0 的 UserLevelStrategyRule.create()，strategy.ts:57-59），不是空陣列——這是給前端表單
  *   預留一列可填欄位用的，不代表 DB 裡真的有這條規則。
  * - targetIds 只有 notLoggedIn/noDeposit 兩種策略會讀（strategy.ts:96-104），其餘策略維持空陣列。
+ * - **targetIds 的失敗判斷有後端 bug**：strategy.ts:98 的 `if (loadResult.failed)` 用的是外層迴圈
+ *   先前查 rules 用的 `loadResult`，不是這一次查 targetIds 的 `linkResult`（變數 shadowing，
+ *   agrabah 原始碼註解本身也標了 [TBD]）。後果：targetIds 自己那次查詢失敗時不會走降級分支，
+ *   反而會把 linkResult.data（可能是 undefined）直接指派上去；反過來若 rules 查詢失敗，
+ *   targetIds 會被清成空陣列而與它自己的查詢結果無關。
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -51,6 +56,9 @@ export function registerListUserLevelStrategiesTool(server: McpServer): void {
                 '後端會回一條 id=0 的全空預設 rule 供前端表單填寫，不代表 DB 裡真有這條規則。' +
                 '另外 targetIds（策略套用的層級清單）**只有 notLoggedIn／noDeposit 兩型策略會讀取**，' +
                 'auto／rechargeFailed 兩型必然是空陣列，那不是讀取失敗。' +
+                '**targetIds 還有一個後端已知 bug**（strategy.ts:98 誤用外層變數判斷失敗，變數 shadowing）：' +
+                '它的空值/失敗語意可能與它自己那次查詢的結果不一致，所以看到 targetIds 為空時' +
+                '**不能**推論「這個策略沒有設定套用層級」，需要另外從後台或 DB 確認。' +
                 '2026-08-28 dev 實測（pk-platform.alddev.com）回傳真實資料。',
             inputSchema: {},
         },

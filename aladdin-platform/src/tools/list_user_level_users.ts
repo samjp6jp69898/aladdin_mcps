@@ -23,8 +23,11 @@
  * （agrabah/src/common/database_helper.ts:204-217），page>1 一律回 0，這點已寫進 description。
  *
  * 第 8 節（PII）：回傳含會員帳號（account）與上級代理帳號（agentName），屬會員識別資訊但不是
- * realName／銀行卡號那類第 8 節點名要遮罩的欄位；本 server 既有的會員清單類 tool
- * （list_users.ts、get_message_board_posts.ts）同樣原樣回傳帳號，這裡保持一致不另做遮罩。
+ * realName／銀行卡號／accountName／bankAccount 那類第 8 節點名要遮罩的欄位——rajah model
+ * UserListResponse（user_level_back_office.rajah:149-170）確認沒有這些欄位，因此不套用強制遮罩。
+ * 有效先例是 get_message_board_posts.ts（同樣把真實 app 會員的 uid／帳號／暱稱原樣回傳）。
+ * **不要拿 list_users.ts 當先例**：那支查的是後台管理員帳號，它自己的檔頭就聲明「風險層級遠低於
+ * 第 8 節針對 app 一般會員 PII 的規範對象」，效力範圍不涵蓋這裡的真實會員資料。
  *
  * i64/Long：registerTimestamp／validBet／totalWithdrawal／netAmount 皆為 i64，
  * protobufjs decode 後是 Long 物件，統一用 deepFixLongs 轉一般數字。
