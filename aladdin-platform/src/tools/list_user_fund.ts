@@ -70,7 +70,7 @@
  *   Exchange.storedToNormal*（同檔真正有呼叫的是 :110-111、:120 的稽核資料組裝與 :491/:498、
  *   :1041-1042、:1119-1121，都不在這支的路徑上），balance 直接取 `wallet.balance`、
  *   depositAmount/withdrawAmount 直接由支付統計相加（:198-199）。換算公式是
- *   `normal = stored / 10^(decimalPlaces + 2)`（jafar/src/exchange.ts:31-37 storedToNormal，
+ *   `normal = stored / 10^(decimalPlaces + 2)`（jafar/src/exchange.ts:32-38 storedToNormal，
  *   未指定 exchangeRate 時 rate/RateBase = 1），decimalPlaces 依幣別而異，要用
  *   aladdin_platform_currency_platform_get_currencies 查。常見 2 位小數幣別即除以 10000。
  *   本 tool 不代為換算（不知道呼叫端要哪個幣別的精度、也避免多做一次可能出錯的推測），
