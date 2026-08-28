@@ -60,7 +60,9 @@ export function registerGetWorldCupFixturesInfoTool(server: McpServer): void {
                 '要區分「沒設定過」與「設定過但關閉」請看這個欄位，不要只看 open。' +
                 '\n\n' +
                 '欄位語意：`open` 是專欄總開關（0=關閉、1=開啟）；`fixturesRecord` 是各隊伍的賽程/積分列，' +
-                'DB 裡存成單一 JSON 字串欄位，後端讀取時 JSON.parse 還原；該欄位為 NULL 或 JSON 解析失敗時' +
+                'DB 裡存成單一 JSON 字串欄位，後端讀取時 JSON.parse 還原。**每一列的欄位形狀由當初寫入那包 JSON 的內容決定**，' +
+                '原始回傳可能缺鍵（dev 上第 48 列就缺了大半欄位）；本 tool 已逐欄補上預設值讓每列形狀固定。' +
+                '該欄位為 NULL 或 JSON 解析失敗時' +
                 '後端不會拋錯，而是當成「沒有任何列」——本 tool 會把這種情況正規化成空陣列 `[]`（不是 null、也不是缺鍵）。' +
                 '每列的 tempRanking 是隊伍排名 TeamRankingEnum：1=第一、2=第二、3=第三、4=第四' +
                 '（world_cup_common.rajah:443-452）；showAdvance 是「顯示晉級」（0=不顯示、1=顯示，' +
@@ -82,9 +84,15 @@ export function registerGetWorldCupFixturesInfoTool(server: McpServer): void {
                 return asTextResult({ success: true, configured: false, setting: null });
             }
 
-            // 不直接把 protobuf message 丟給 deepFixLongs：那支只走 Object.entries（own property），
-            // 而 protobuf 的預設值欄位是掛在 prototype 上的，會被整個丟掉——open=0 或 fixturesRecord 為空時
-            // 鍵會直接消失，呼叫端分不清「值是預設值」與「後端沒回這個欄位」。這裡逐欄顯式讀出並補上預設值。
+            // 為什麼逐欄顯式讀出、而不是把 message 丟給 deepFixLongs（2026-08-28 用 types.gen.js 實跑
+            // encode→decode 確認過機制，先前這段註解把成因寫錯，已更正）：
+            // 真正的成因**不是** protobuf 的 prototype 預設值——後端在 db:632-634 對 id / open / fixturesRecord
+            // 都是顯式賦值，這三個一定是 own property、值為 0 也會被編碼，不會消失。
+            // 會缺鍵的是**每一列裡面的欄位**：fixtures 在 DB 是一整包 JSON 字串（db:634 fromDbJson 還原成
+            // plain object），如果寫入端當初沒把某個欄位寫進那包 JSON，還原出來的 plain object 就沒有這個 key，
+            // 編碼時 `hasOwnProperty` 守衛不成立 → 該欄位在回傳裡整個消失（dev 上第 48 列就是這種情況）。
+            // 呼叫端因此會拿到形狀不一致的列。這裡逐欄補上預設值，讓每一列的形狀固定，
+            // 呼叫端不必自己判斷「缺鍵」與「值為 0」的差別——這對接在後面的整包覆蓋寫入尤其重要。
             return asTextResult({
                 success: true,
                 configured: true,

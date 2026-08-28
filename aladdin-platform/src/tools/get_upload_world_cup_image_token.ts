@@ -16,7 +16,7 @@
  * 全部寫進 description 讓呼叫端看得到：
  * - **有效期限**：1 小時。token 內容存在 cache，TTL 來自 file_manager.ts:12 的
  *   `FILE_DATA_EXPIRED_TIME = 60 * 60`，由 file_manager.ts:81-83 storeFileData 寫入。
- * - **是否綁定呼叫者身份**：**沒有綁定**。FileData（file_manager.ts:47-77）只存 folder / filename / path /
+ * - **是否綁定呼叫者身份**：**沒有綁定**。FileData（file_manager.ts:47-79）只存 folder / filename / path /
  *   customData / postProcesses / withTempFile，**沒有 platformId、也沒有 userId**；cacheKey 是
  *   `file:<隨機 id>`（:63-65），與登入身分無關。消費端 `POST {BASE_URL}/upload` 只吃 token + file、
  *   不帶 Authorization（見本 server 的 session.ts:302-320 uploadFile）；agrabah 路由端本身也沒有掛任何
@@ -62,7 +62,7 @@ export function registerGetUploadWorldCupImageTokenTool(server: McpServer): void
                 '**憑證性質（2026-08-28 讀原始碼查證，三點都要注意）**：' +
                 '(1) **有效期 1 小時**（agrabah/src/managers/file_manager.ts:12 FILE_DATA_EXPIRED_TIME=3600 秒），' +
                 '過期即失效，**不要快取或重複使用**，每次要上傳就重新取一張。' +
-                '(2) **不記名**——憑證內容不含平台 id 也不含使用者 id（file_manager.ts:47-65 的 FileData 沒有這些欄位），' +
+                '(2) **不記名**——憑證內容不含平台 id 也不含使用者 id（file_manager.ts:47-79 的 FileData 沒有這些欄位），' +
                 '而消費端 `POST /upload` 只驗 token、不帶 Authorization。也就是說任何拿到這個 token 的人，' +
                 '都能在有效期內往 worldCup 目錄上傳一個檔案。**請勿把這個值寫進日誌、轉貼到對話以外的地方、或交給第三方。**' +
                 '(3) **重複呼叫不會使先前的憑證失效**——每次都是獨立的新 token，舊的在自己的 1 小時內仍可用。' +

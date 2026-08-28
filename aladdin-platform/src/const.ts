@@ -523,9 +523,6 @@ export const WORLD_CUP_ACTIVITY_TYPE_MAP = {
 } as const;
 export const WORLD_CUP_ACTIVITY_TYPE_KEYS = [ 'miles', 'invite', 'signIn', 'goal', 'oneTime', 'knockout' ] as const;
 
-// MissionTypeEnum（world_cup_common.rajah:16-23）：任務週期型別
-export const WORLD_CUP_MISSION_TYPE_MAP = { day: 1, once: 2, cycle: 3 } as const;
-
 // ActivityMissionTypeEnum（world_cup_common.rajah:25-44）：活動任務（達成條件的種類）
 export const WORLD_CUP_ACTIVITY_MISSION_TYPE_MAP = {
     accrueMiles: 1, inviteAndDeposit: 2, dayDepositAndBetCount: 3, daySportBet: 4,
@@ -545,7 +542,4 @@ export const WORLD_CUP_KNOCKOUT_CONDITION_KEYS = [
     'firstPlace', 'secondPlace', 'thirdPlace', 'fourthPlace',
     'reachTopFour', 'reachTopEight', 'reachTopSixTeen',
 ] as const;
-
-// OpenStatusEnum（world_cup_common.rajah:83-88）：世界盃活動/賽程專欄的開關
-export const WORLD_CUP_OPEN_STATUS_MAP = { off: 0, on: 1 } as const;
 

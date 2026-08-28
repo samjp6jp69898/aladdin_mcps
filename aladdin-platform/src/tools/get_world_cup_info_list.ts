@@ -20,7 +20,7 @@
  * 依第 2 節「完全不分頁的全撈」條款查證底層不是會持續成長的歷史/log 表：
  * world_cup_platform_db.ts:109/111 兩條 SQL 都是 `DbWorldCupInfo` 且一律帶 `platform_id = context.platformId`，
  * 這張表存的是「一屆世界盃活動的主體設定」（運營每屆手動建一筆），屬小型設定表；agrabah 端註解也自述
- * 「目前 response 為陣列 rows，未帶分頁參數；若活動數量大增需補分頁」（world_cup_platform.ts:64）。
+ * 「目前 response 為陣列 rows，未帶分頁參數；若活動數量大增需補分頁」（world_cup_platform.ts:65）。
  *
  * 跨租戶：兩條 SQL 都強制 `platform_id = context.platformId`，即使帶別平台的 id 也撈不到（回空陣列），
  * 無跨租戶讀取風險。
@@ -64,12 +64,17 @@ export function registerGetWorldCupInfoListTool(server: McpServer): void {
                 'knockout 四個欄位在 DB 裡是 JSON 字串，後端 load 時 JSON.parse 還原成物件回傳（該欄位為 NULL 時，' +
                 'worldCupTeam 回空陣列、其餘三個回 null）。' +
                 '\n\n' +
-                '**通則：回傳 JSON 裡「沒出現的欄位」＝該欄位是型別預設值**（protobuf 不序列化預設值，' +
-                '本 tool 的輸出轉換也只保留實際存在的欄位）。所以活動關閉時看不到 activityStatus（預設 0=關閉）、' +
-                'allowGuest 為 false 時看不到該鍵、levelList 為空時看不到該鍵——欄位缺席要讀成預設值，不是「查不到資料」。' +
-                '另有一組欄位是**後端根本沒映射**：createdAt / updatedAt / platformId 三個在 DB 函式裡完全沒有被賦值' +
-                '（world_cup_platform_db.ts:114-131 整段沒有這三行），所以永遠不會出現，也不代表資料庫裡沒有值——' +
-                '需要建立/更新時間請改查 DB。' +
+                '**哪些欄位可能不出現在回傳 JSON 裡（2026-08-28 用 abu/platform 的 types.gen.js 實跑 ' +
+                'encode→decode 驗證，不是推論）**：後端在 world_cup_platform_db.ts:115-130 逐欄顯式賦值的欄位，' +
+                '**即使值是 0 / false / 空字串 / 空陣列也一定會出現**（protobuf 的守衛是「有沒有這個 own property」，' +
+                '不是「值是不是預設值」），所以 activityStatus=0（活動關閉）、allowGuest=false、levelList=[] 都看得到，' +
+                '不要把「看到 0」誤讀成「沒設定」。' +
+                '\n\n' +
+                '真正會缺席的只有兩類：(1) `milestone` / `goalSprint` / `knockout` 三個子結構——DB 對應欄位為 NULL 時' +
+                '後端會塞 null（db:128-130），這種 null 訊息欄位不會被編碼，於是整個鍵消失，' +
+                '**鍵不見＝這個分頁從來沒設定過**（注意 worldCupTeam 不同，它為 NULL 時後端塞的是 []，所以一定會出現）；' +
+                '(2) `createdAt` / `updatedAt` / `platformId`——後端從頭到尾沒有映射這三個欄位（db:115-130 整段沒有這三行），' +
+                '所以永遠不會出現，這不代表資料庫裡沒有值，需要建立/更新時間請改查 DB。' +
                 '純讀取查詢，不修改任何資料，可安全重複呼叫。',
             inputSchema: {
                 id: z.number().int().optional().describe(

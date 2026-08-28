@@ -47,7 +47,10 @@ import { WorldCupFixturesSetting } from '/Users/user/aladdin/abu/platform/src/ge
 import { ErrorCode } from '/Users/user/aladdin/genie/src/common/error_code.ts';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { WORLD_CUP_OPEN_STATUS_MAP } from '../const.ts';
+// OpenStatusEnum（world_cup_common.rajah:83-88）。目前只有這一支 tool 用得到，依 mcps/README.md
+// 第二節「只有這個 tool 用得到的一次性小常數才留在檔案內」放在這裡而不是 const.ts；
+// 日後若 SaveWorldCupInfo 也包成 tool（SpeActWorldCup.activityStatus 同樣是這個 enum），再抽到 const.ts。
+const WORLD_CUP_OPEN_STATUS_MAP = { off: 0, on: 1 } as const;
 
 /**
  * 每一列的 schema。**十個欄位全部必填、刻意不給 .default()**——因為後端是整包覆蓋、
@@ -169,10 +172,10 @@ export function registerSaveWorldCupFixturesInfoTool(server: McpServer): void {
             // 指令），後端會回 genie ErrorCode.nothingChanged（=10，genie/src/common/error_code.ts:12）——
             // 因為 UPDATE 沒有改到任何欄位。這在語意上不是失敗：呼叫端要的狀態本來就已經是現況。
             // 「這個碼不可能代表找不到列」不是靠推論，是發碼點本身就把兩種情況分開：發 10 的是
-            // agrabah/src/engines/relational_database/mysql/mysql_relational_database_engine.ts:206-235 的
+            // agrabah/src/engines/relational_database/mysql/mysql_relational_database_engine.ts:206-236 的
             // updateObject(object, notModifiedIsError=true)——也正是 db:663 走的那支。該函式裡
             // 「物件沒有 id 欄位」(:207-208) 與「用 id 重讀不到原物件」(:221-223) 一律回
-            // ErrorCode.idNotExists，**只有**逐欄 diff 後 keys.length === 0 才回 nothingChanged (:233-235)。
+            // ErrorCode.idNotExists，**只有**逐欄 diff 後 keys.length === 0 才回 nothingChanged (:234-236)。
             // 而且那個 return 發生在送出任何 UPDATE SQL 之前，代表回這個碼時 DB 根本沒被動過。
             // 因此這裡不當成錯誤，改為照常做 round-trip 讀回、回傳 success 並掛上 nothingChanged 旗標。
             // 附帶：operatorId = context.userId 也在 diff 範圍內，所以實務上只有「同一個操作者送出完全
