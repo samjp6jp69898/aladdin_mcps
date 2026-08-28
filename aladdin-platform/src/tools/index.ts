@@ -202,6 +202,7 @@ import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_nam
 import { registerGetRebateConfigNameListTool } from './get_rebate_config_name_list.ts';
 import { registerGetRebateConfigsTool } from './get_rebate_configs.ts';
 import { registerGetRebateConfigByIdTool } from './get_rebate_config_by_id.ts';
+import { registerGetRebateGlobalSettingTool } from './get_rebate_global_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -409,4 +410,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRebateConfigNameListTool(server);
     registerGetRebateConfigsTool(server);
     registerGetRebateConfigByIdTool(server);
+    registerGetRebateGlobalSettingTool(server);
 }

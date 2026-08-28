@@ -126,6 +126,22 @@ export const RISK_LIMIT_ITEM_MAP = { gameBlack: 1, gameWhite: 2 } as const;
 // RiskLimitMethodEnum（risk_back_office.rajah:100-105），限制方式是 IP 還是國家代碼。
 export const RISK_LIMIT_METHOD_MAP = { ip: 1, countryCode: 2 } as const;
 
+// 返水（rebate_back_office.rajah）——RebatePlatform 系列 tool 共用
+// （get_rebate_global_setting / update_rebate_global_setting）。
+// RebatePeriodEnum（rebate_back_office.rajah:11-16）：返水領取週期。
+export const REBATE_PERIOD_KEYS = [ 'daily', 'immediate' ] as const;
+export const REBATE_PERIOD_MAP: Record<(typeof REBATE_PERIOD_KEYS)[number], number> = { daily: 0, immediate: 1 };
+// RebateGetTypeEnum（rebate_back_office.rajah:3-9）：返水領取方式。model 上標 @Readonly，
+// 後端不擋，但後台表單不給改，MCP 端比照處理（update tool 不開放這個欄位）。
+export const REBATE_GET_TYPE_KEYS = [ 'auto', 'manual' ] as const;
+export const REBATE_GET_TYPE_MAP: Record<(typeof REBATE_GET_TYPE_KEYS)[number], number> = { auto: 0, manual: 1 };
+// GlobalRebateModeEnum（rebate_back_office.rajah:88-96）：全局返水模式。
+export const GLOBAL_REBATE_MODE_KEYS = [ 'none', 'combined', 'separate' ] as const;
+export const GLOBAL_REBATE_MODE_MAP: Record<(typeof GLOBAL_REBATE_MODE_KEYS)[number], number> = { none: 0, combined: 1, separate: 2 };
+// RebateSteppedModeEnum（rebate_back_office.rajah:47-52）：階層返水模式。
+export const REBATE_STEPPED_MODE_KEYS = [ 'loss', 'validAmount' ] as const;
+export const REBATE_STEPPED_MODE_MAP: Record<(typeof REBATE_STEPPED_MODE_KEYS)[number], number> = { loss: 0, validAmount: 1 };
+
 // RiskGameTypeEnum（risk_back_office.rajah:108-113），限制作用範圍是廠商還是指定遊戲。
 export const RISK_GAME_TYPE_MAP = { provider: 1, specified: 2 } as const;
 
