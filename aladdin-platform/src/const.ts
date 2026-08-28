@@ -604,3 +604,83 @@ export const WORLD_CUP_KNOCKOUT_CONDITION_KEYS = [
     'reachTopFour', 'reachTopEight', 'reachTopSixTeen',
 ] as const;
 
+// ---------------------------------------------------------------------------
+// roulette_back_office domain（RoulettePlatform 系列 tool）共用的 enum 對照表。
+// 來源：rajah/services/roulette.rajah（COST_TYPE / TYPE / REWARD_TYPE / REWARD_CLAIM_TYPE 共 4 張）
+// 與 rajah/services/roulette_back_office.rajah（RESET_TYPE / REWARD_CURRENCY_TYPE /
+// REWARD_ITEM_EXPIRE_TYPE / REWARD_LIMIT_TYPE / UPLOAD_IMAGE 共 5 張），合計 9 張；
+// 兩個來源在下方是交錯排列的（第 2 張 RESET_TYPE 就來自 back_office），不是前 4／後 4 的分段。
+// 2026-08-28 review 指出初版有 4 處行號引用指到完全無關的內容，已逐張重新用
+// `awk '/^enum .* \{/{...}'` 取得精確起訖行號後改正。
+// ---------------------------------------------------------------------------
+
+// RouletteCostTypeEnum（roulette.rajah:28-33），轉盤每抽的消費方式。
+export const ROULETTE_COST_TYPE_MAP = { currency: 0, item: 1 } as const;
+
+// RouletteResetTypeEnum（roulette_back_office.rajah:28-35），抽獎次數/紀錄的重置週期。
+export const ROULETTE_RESET_TYPE_MAP = { none: 0, weekly: 1, monthly: 2 } as const;
+
+// RouletteTypeEnum（roulette.rajah:1-14），獎勵配置的版面格式（幾格轉盤／紅包）。
+export const ROULETTE_TYPE_MAP = {
+    sixPocketRoulette: 0, eightPocketRoulette: 1, tenPocketRoulette: 2,
+    fourteenPocketRoulette: 3, wechatRedPacket: 4, nineGridRedPacket: 5,
+} as const;
+
+// RouletteRewardTypeEnum（roulette.rajah:17-26），單一獎項格子發出的獎勵種類。
+export const ROULETTE_REWARD_TYPE_MAP = { currency: 0, item: 1, miss: 2, progress: 3 } as const;
+
+// RouletteRewardClaimTypeEnum（roulette.rajah:35-42），抽獎紀錄的領取狀態。
+// ⚠️ expired 在 DB 沒有獨立的 claim_status 值：後端查詢時把 expired 翻譯成
+// `claim_status = unclaim AND expired_at <= NOW()`，回傳時也會把「未領取但已過期」的列
+// 就地改標成 expired（roulette_platform.ts:methodGetRouletteRecordList）。
+export const ROULETTE_REWARD_CLAIM_TYPE_MAP = { unclaim: 0, claimed: 1, expired: 2 } as const;
+
+// RouletteRewardCurrencyTypeEnum（roulette_back_office.rajah:115-120），獎金是固定值還是區間。
+export const ROULETTE_REWARD_CURRENCY_TYPE_MAP = { fixed: 0, range: 1 } as const;
+
+// RouletteRewardItemExpireTypeEnum（roulette_back_office.rajah:123-130），道具獎勵的到期方式。
+export const ROULETTE_REWARD_ITEM_EXPIRE_TYPE_MAP = { none: 0, absolute: 1, relative: 2 } as const;
+
+// RouletteRewardLimitTypeEnum（roulette_back_office.rajah:133-140），個人/全服中獎上限的計算方式。
+export const ROULETTE_REWARD_LIMIT_TYPE_MAP = { unlimited: 0, count: 1, amount: 2 } as const;
+
+// RouletteUploadImageEnum（roulette_back_office.rajah:297-308），GetUploadImageToken 的圖片通道。
+export const ROULETTE_UPLOAD_IMAGE_MAP = {
+    backgroundChannel: 1, frameChannel: 2, bottomChannel: 3, pointerChannel: 4, slotIconChannel: 5,
+} as const;
+
+// ---------------------------------------------------------------------------
+// sensitive_word_back_office domain（SensitiveWordPlatform 系列 tool）共用常數。
+// ---------------------------------------------------------------------------
+
+// SensitiveWordSourceTypeEnum（rajah/services/sensitive_word.rajah:37-45）——敏感詞的來源。
+// 這是 SensitiveWordEdit 的 @Readonly 欄位：後端新增時一律寫死 Manual，呼叫端無法指定
+// （agrabah/src/managers/sensitive_word_manager.ts:261）。
+export const SENSITIVE_WORD_SOURCE_TYPE_MAP = { Manual: 1, Import: 2, Report: 3 } as const;
+
+// 敏感詞後端的硬性數量/長度限制，全部來自 agrabah/src/managers/sensitive_word_manager.ts
+// 的 module-level 常數（:28/:30/:32/:34/:38）與 service 層的分頁上限
+// （agrabah/src/servers/sensitive_word_back_office/services/sensitive_word_platform.ts:17）。
+// 集中在此供 get/upsert/batch-remove 三支 tool 共用，避免各自抄一份而漂移。
+export const SENSITIVE_WORD_LIMITS = {
+    /** 新增時整個 sensitiveWord 字串（逗號分隔多筆）的長度上限 */
+    maxAddLength: 5000,
+    /** 新增時逗號拆分後的筆數上限 */
+    maxAddItem: 1000,
+    /** 單一敏感詞的長度上限 */
+    maxItemLength: 50,
+    /** BatchRemoveSensitiveWord 單次可刪除的 id 數量上限 */
+    batchDeleteLimit: 200,
+    /** GetSensitiveWords 的 pageSize 上限（超過回 exceedRequestLimit） */
+    maxPageSize: 200,
+    /**
+     * 呼叫端省略 pageSize 時本工具要送的值。**不能送 0**：這支後端沒有「0 → DefaultPageSize」的
+     * fallback（sensitive_word_manager.ts:185-207 直接把 pageSize 交給 getPageData），而
+     * getPageData 的 `pageSize = DefaultPageSize` 是 JS 預設參數、只對 undefined 生效
+     * （database_helper.ts:204），送 0 會變成 SQL `LIMIT 0, 0` 回空清單。
+     * 這裡取 agrabah 的 DefaultPageSize 同值（database_helper.ts:11）。
+     */
+    defaultPageSize: 100,
+    /** sensitiveWordGroupId 傳 0/未帶時後端套用的預設分組 id */
+    defaultGroupId: 1,
+} as const;
