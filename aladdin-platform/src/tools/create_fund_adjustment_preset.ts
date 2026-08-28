@@ -17,18 +17,34 @@
  *   ListFundAdjustmentPreset(names=[剛建立的名稱]) 撈回來，逐欄比對送出值與讀回值
  *   （name / category / wageringMultiplier / remark / status / amounts 深比對），
  *   並把讀回的 id 一併回報給呼叫端（後續 edit/setStatus/delete 都需要這個 id）。
- * - **「有天然業務鍵（如 code）的，建議/強制先查重再建立」**：name 就是這裡的天然業務鍵
- *   （ListFundAdjustmentPreset 的 search 用 `name IN (?)` 精確比對）。
- *   ⚠️ **後端完全沒有做名稱查重**——#validatePresetEdit（:1128-1173）只檢查名稱非空
- *   （:1129-1131），沒有任何 SELECT ... WHERE name = ? 的重複檢查，DB 端也沒有 unique 索引
- *   （建立語句 :775-781 是裸 insertObject）。所以**同名 preset 可以被重複建立**。
- *   本 tool 依該節要求在呼叫前主動查重：發現同名已存在就直接擋下並回報既有那筆的 id，
- *   不送出 RPC（可用 allowDuplicateName=true 明確覆寫這個保護）。
+ * - **「有天然業務鍵（如 code）的，建議/強制先查重再建立」**：name 就是這裡的天然業務鍵。
+ *   ⚠️ **唯一性是 DB 層擋的、不是 service 層**（本輪 review 修正過的一條錯誤結論）：
+ *   #validatePresetEdit（:1128-1174）確實沒有任何 `SELECT ... WHERE name = ?` 的查重，
+ *   但資料表本身有 `UNIQUE INDEX platform_id_name (platform_id, name)`
+ *   （migrations/fund_adjustment/202605141103_create_fund_adjustment_presets.sql:12，
+ *   全 migrations 目錄只有這一個檔、沒有後續 ALTER 移除）。所以**同一平台內同名 preset 建不出來**，
+ *   硬送會拿到 DB duplicate key（dev 實測 errorCode=13，見驗證第 7 點）。
+ *   初版檔頭寫「DB 端也沒有 unique 索引、同名可以重複建立」是錯的——原因是只查了 service 層
+ *   沒查 migration，且當時沒有實打。
+ *   本 tool 仍在呼叫前主動查重，但目的改為**給出看得懂的錯誤**（直接說「這個名稱已被 id=N 使用」）
+ *   而不是讓呼叫端拿到一個裸的 errorCode=13。
  * - **「`Add*` 不保證是新增實體，底層機制必須逐一查證」**：本 method 名為 Create、實作也確實是
- *   `new DbFundAdjustmentPreset()` + `insertObject`（:775-785），是真正的新增，每次呼叫都會多一列。
- *   **不冪等**：重複呼叫會產生多筆同名資料（見上一條），不可對它自動重試。
+ *   `new DbFundAdjustmentPreset()`（:775-781）+ `insertObject`（:784），是真正的新增。
+ *   **但它有天然的冪等保護**：因為 name 有 DB 唯一性約束，「送出後不確定有沒有成功」時重試不會產生
+ *   第二筆，只會拿到 duplicate key 錯誤。這對應 method-category-checklist 第 3 節列的第二種
+ *   `Add*` 型態（「絕對值 SET + 天然冪等保護……這種反而安全，重試會被後端擋下，
+ *   不要誤判成危險的累加型」），**不是**第一種「真累加、不可自動重試」。
+ *   初版把它歸成不可重試的累加型，方向相反，已改正。
  *
  * agrabah 實作細節（讀源碼查證，非推測；行號對 agrabah main 於 2026-08-28 的內容）：
+ *
+ * - **⚠️ amounts 只檢查「有沒有涵蓋啟用幣別」，多帶的幣別會被照單全收寫進 DB**：
+ *   #validatePresetEdit 的最後一段（:1167-1171）是拿平台啟用幣別逐一去 providedCodeMap 裡找，
+ *   **只驗超集、不驗有沒有多餘的**。dev 實測（驗證第 6 點）帶了平台未啟用的 INR，後端接受並存進去。
+ *   ⚠️ 而且後端這個比對是 **case-sensitive 精確字串比對**（:1151-1171 用
+ *   `providedCodeMap.set(link.code)` / `has(code)`，沒有 toUpperCase），所以幣別代碼的大小寫
+ *   要跟 get_currencies 回傳的一致。本 tool 的前置檢查為此也改成精確比對，
+ *   避免出現「本 tool 放行、後端卻回 currency xxx is required」的不一致。
  *
  * - **status 由後端寫死 enabled，不能在建立時指定**：`record.status = ActiveStatusEnum.enabled`
  *   （:781）。要建立後停用，得再呼叫
@@ -54,9 +70,12 @@
  *   包在 `doTransaction` 內（:783-789），所以不會出現「主檔建了但金額沒寫進去」的半套狀態。
  *
  * - **會寫 audit log**：`audit(context, SystemIdEnum.fundAdjustment,
- *   PlatformActionIdEnum.fundAdjustmentPresetCreate, AuditData.createNew(after))`（:805）。
- *   ⚠️ audit 快照裡的金額是**已換算成 normal 的**（#buildPresetAuditSnapshot 路徑），
- *   與本 tool 送出/讀回的 stored value 數字不同，比對稽核紀錄時別誤判。
+ *   PlatformActionIdEnum.fundAdjustmentPresetCreate, AuditData.createNew(after))`（:804）。
+ *   ⚠️ 稽核快照的換算方向與直覺相反（初版寫反了，本輪 review 後改正）——
+ *   #buildPresetAuditSnapshot（:1214-1229）**amounts 保留 stored 值**（:1219-1224，只是攤平成純物件；
+ *   換算發生在更下游的 audit handler `formatCurrencyToDisplayLinks`），
+ *   **被換成 normal 的是 wageringMultiplier**（:1225，`RateHelper.storedToNormal`，10000 → 1）。
+ *   要拿稽核紀錄重建資料時，wageringMultiplier 記得乘回 10000。
  *
  * - **金額與倍數是兩種不同的 stored 表示，換算基數不同**：amounts 的 value 是幣別 stored value
  *   （normal = stored / 10^(decimalPlaces + 2)，jafar/src/exchange.ts:32-38）；
@@ -73,6 +92,22 @@
  * （硬刪除），也有 set_status 可以停用。與本 domain 那些被標記為 needs_clarification 的
  * 金流寫入（ApplyAdd / AdjustmentReview 等）不同——preset 只是金額範本設定，
  * **本身不會動到任何會員的錢**。
+ *
+ *
+ * ⚠️ **關於「dev 無殘留」的精確說法（本輪 review 指出原本是過度宣稱）**：
+ * **業務資料**確實已完全還原——preset 表回到原本的 4 筆（id 8/4/3/1），三輪測試建立的
+ * id 9 / 10 / 12 全部刪除、無殘留。但整輪驗證共產生 **13 筆後台稽核紀錄**
+ * （3 次 create、4 次 edit、3 次 setStatus、3 次 delete；後端對這四種操作都是無條件寫 audit），
+ * **稽核紀錄本身沒有刪除介面、也不該刪**。所以正確的說法是「業務資料已還原、另留有 13 筆
+ * fundAdjustmentPreset* 稽核紀錄」，而不是「dev 完全無痕跡」。
+ *
+ *
+ * ⚠️ **多頁掃描路徑本輪未實測**（checklist 第 2/5 節要求的「目標記錄不在第一頁」情境）：
+ * findPresetById 的跨頁邏輯在 dev 上完全沒被走到——該站 preset 只有 4 筆，一頁就掃完。
+ * 檔頭上面寫的「實務上一頁就掃完」是事實，但不等於跨頁路徑已驗證。
+ * （同模組的 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 已用
+ * pageSize=1 構造多頁並實測翻頁有效，可作為間接佐證，但那走的是 tool 自己的分頁參數、
+ * 不是 findPresetById 的內部迴圈。）
  *
  * --- dev 驗證（2026-08-28，pk-platform.alddev.com，帳號 landon001；獨立 spike script 用
  *     @modelcontextprotocol/sdk 的 Client + StdioClientTransport spawn 本 worktree 的
@@ -102,7 +137,19 @@
  *    與 rajah model FundAdjustmentPreset 一致（外加本 tool 附上的兩個 *Key）。
  * 5. 建立出來的 id=9 後續被 edit / set_status / delete 三支 tool 接力使用，
  *    形成完整的生命週期驗證（見那三支各自的 dev 驗證段）。
- * 6. **清理**：測試結束後用
+ * 6b. **（本輪 review 後補測）額外幣別被照單全收**：建立時多帶平台**未啟用**的 INR
+ *    （CNY/USD/USDT/INR 四個）→ success，讀回的 amounts 含 INR:[40000]。
+ *    證實後端 #validatePresetEdit **只驗超集、不驗多餘**，多帶的幣別會被寫進 DB。
+ * 6c. **名稱唯一性由 DB 擋（推翻初版結論的決定性實測）**：對同名再建一次（當時還有
+ *    allowDuplicateName 參數、刻意繞過本 tool 的查重守門）→ success=false、
+ *    stage=`create`、**errorCode=13**（DB duplicate key）。
+ *    證實資料表的 `UNIQUE (platform_id, name)` 真的生效，初版檔頭「DB 沒有 unique 索引、
+ *    同名可重複建立」是錯的。據此本輪已移除 allowDuplicateName 參數（它宣稱的事做不到），
+ *    並把冪等性結論從「不可重試」改為「有天然冪等保護、可安全重試」。
+ * 6d. **修正後回歸**：同名建立現在會在前置檢查就被擋下（stage=`pre-check-duplicate-name`，
+ *    訊息明確指出「名稱『…』已被既有的資金預設快捷使用（id=12）」），不再送出 RPC、
+ *    也不再讓呼叫端收到裸的 errorCode=13。
+ * 6. **清理**：測試結束後用 * 6. **清理**：測試結束後用
  *    aladdin_platform_fund_adjustment_platform_delete_fund_adjustment_preset 刪除 id=9，
  *    再用 list 覆核 dev 上只剩原本的 4 筆（id 8/4/3/1）、且沒有任何名稱含 `mcp-cb-test` 的殘留。
  */
@@ -118,7 +165,9 @@ import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import {
     deepFixLongs,
+    I32_MAX,
     ACTIVE_STATUS_MAP,
+    describeEnum,
     MANUAL_ADD_CATEGORY_KEYS,
     manualAddCategoryKeyToNumber,
     manualCategoryNumberToKey,
@@ -134,17 +183,11 @@ const LIST_SCAN_PAGE_CAP = 20;
 
 export type PresetRow = Record<string, unknown>;
 
-/** ActiveStatusEnum 數字 → key。preset 系列四支 tool 共用。 */
-export function activeStatusNumberToKey(value: number): string | number {
-    const hit = Object.entries(ACTIVE_STATUS_MAP).find(([ , v ]) => v === value);
-    return hit ? hit[ 0 ] : value;
-}
-
 /** 把 preset 列補上人類可讀的 enum 代碼。preset 系列四支 tool 共用。 */
 export function formatPresetRow(row: PresetRow): PresetRow {
     return {
         ...row,
-        statusKey: activeStatusNumberToKey(row.status as number),
+        statusKey: describeEnum(ACTIVE_STATUS_MAP, row.status as number),
         // 用較寬的 ManualCategoryEnum 解讀：後端寫入時驗的是完整 enum
         // （fund_adjustment_platform.ts:1132-1134），DB 裡理論上可能存在下分類型。
         categoryKey: manualCategoryNumberToKey(row.category as number),
@@ -160,7 +203,13 @@ export function formatPresetRow(row: PresetRow): PresetRow {
  * 只支援 names 與 category、**不支援 id**。method-category-checklist.md 第 5 節要求
  * 「先確認是否已有用業務鍵直接查詢的 sibling method；若確實沒有，只能靠分頁掃描比對，
  * 比照第 2 節 B 級要求逐頁掃到底、設上限與逾時保護」——這就是那個 fallback。
- * 實作與同 server 的 create_or_update_item.ts:204-217 findItemById 同構。
+ * 實作**參考**同 server 的 create_or_update_item.ts:204-217 findItemById，但**刻意修正了它的一個缺陷**：
+ * 那支每一頁都重新做 `totalPage = listR.data?.totalPage ?? 1`（該檔 :212），而 getPageData 只有
+ * page=1 才算 totalPage、第 2 頁起回 **0**（不是 null，`?? 1` 救不到），於是迴圈條件
+ * `page <= Math.min(0, CAP)` 立刻為假——**實際最多掃到第 2 頁就靜默停止**，而且 hitScanCap
+ * 會算成 `0 > 20 = false`，正是 checklist 第 2 節第 3 點禁止的「觸頂卻宣稱已掃完」。
+ * 本函式改成只在 `page === 1` 時取 totalPage，避免這個問題。
+ * （create_or_update_item.ts 的那個 bug 屬既有問題，不在本輪範圍，未修改。）
  *
  * 回傳三態：找到（matchedRow）／後端錯誤（listR）／掃完沒找到（兩者皆 undefined，
  * 並以 hitScanCap 標示是否是因為觸及掃描上限而提前停止——不能把觸頂說成「已掃描全部」）。
@@ -242,8 +291,13 @@ export function amountsDeepEqual(
 /** 取得本平台啟用中（status=enabled）的幣別代碼，用於呼叫前檢查 amounts 是否涵蓋齊全。 */
 export async function listEnabledCurrencyCodes() {
     // 與 get_currencies.ts:76 同一條路徑；enabledOnly=true 讓後端只回啟用中的幣別。
-    // 注意 platform 端的 status 是「本平台」的啟停（見 get_currencies.ts 檔頭對 status 語意的說明），
-    // 正是 #validatePresetEdit 拿來檢查的那一份（後端也是呼叫 ListByPlatformId(platformId, true)）。
+    // 為什麼這份清單與後端 #validatePresetEdit 用的那份等價（本輪 review 查證後補正的鏈路）：
+    // 本 tool 走 CurrencyPlatform.GetCurrencies(enabledOnly) → core.currency.List(enabledOnly)
+    //（agrabah/src/servers/core_back_office/services/currency_platform.ts:35），**不是**後端那支用的
+    // ListByPlatformId——但兩者最後都落到同一個 _ListCurrencies，而它回的是
+    // `this.currencyMap.get(context.platformId)`（core/services/currency.ts:124，連傳進去的 platformId
+    // 參數都不使用，是該檔自己標了 [TBD] 的既有怪癖），enabledOnly 的篩選也是同一行（:125）。
+    // 後端 #validatePresetEdit 傳的正是 context.platformId，所以兩邊得到的集合一致。
     const r = await withAutoRelogin(() => remote.coreBackOffice.currencyPlatform.GetCurrencies(true));
     if (r.failed) return { r, codes: undefined } as const;
     const codes = (r.data?.currencies ?? [])
@@ -284,13 +338,17 @@ export function registerCreateFundAdjustmentPresetTool(server: McpServer): void 
                 '⚠️ **後端這支沒有回傳值，拿不到新建的 id**。本 tool 因此在建立後立刻用名稱回讀，' +
                 '把讀回的 id 與完整內容一併回報，並逐欄比對送出值與讀回值（比對結果在 roundTrip 欄位）。' +
                 '後續要編輯／改狀態／刪除這筆，就用回報的那個 id。' +
-                '⚠️ **後端完全沒有名稱查重、DB 也沒有 unique 索引，同名 preset 可以重複建立**。' +
-                '本 tool 預設會先查重：發現同名已存在就直接擋下、回報既有那筆的 id，不送出 RPC。' +
-                '確定要建同名的請明確帶 allowDuplicateName=true。' +
-                '⚠️ **不冪等**：呼叫失敗時不要自動重試——若失敗發生在後端已寫入之後，重試會產生第二筆同名資料。' +
-                '重試前請先用 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 確認實際狀態。' +
+                '⚠️ **同一平台內名稱必須唯一**（資料表有 UNIQUE (platform_id, name)；後端 service 層沒查重，' +
+                '是 DB 擋的，硬送會拿到 duplicate key 錯誤 errorCode=13）。' +
+                '本 tool 會先查重並直接告訴你「這個名稱已被 id=N 使用」，而不是讓你收到一個裸的錯誤碼。' +
+                '✅ **這個唯一性同時是天然的冪等保護**：呼叫後不確定有沒有成功時，**可以安全重試**——' +
+                '若前一次其實已寫入，重試只會拿到 duplicate key 而不會產生第二筆。' +
+                '（仍建議重試前先用 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 以名稱確認。）' +
                 '⚠️ **amounts 必須涵蓋平台全部啟用中的幣別**，少一個後端整筆拒絕。' +
                 '本 tool 會在呼叫前自行檢查並明確告訴你缺哪些幣別（後端只會回一個籠統的 invalidData）。' +
+                '⚠️ 反過來，**多帶平台沒啟用的幣別後端會照單全收並寫進 DB**（只驗超集、不驗多餘），' +
+                '而且幣別代碼是 **case-sensitive** 比對——請照 ' +
+                'aladdin_platform_currency_platform_get_currencies 回傳的原始大小寫傳入。' +
                 '⚠️ **金額與稽核倍數是兩種不同的 stored 表示、換算基數不同，本 tool 一律不換算**：' +
                 'amounts 的 value 是幣別 stored value（normal × 10^(decimalPlaces + 2)，' +
                 'decimalPlaces 用 aladdin_platform_currency_platform_get_currencies 查）；' +
@@ -304,9 +362,11 @@ export function registerCreateFundAdjustmentPresetTool(server: McpServer): void 
                 name: z
                     .string()
                     .min(1)
+                    .max(50)
                     .describe(
                         '快捷名稱（rajah FundAdjustmentPresetEdit.name，必填）。這是本模組的天然業務鍵——' +
-                        '本 tool 靠它做建立前查重與建立後回讀。後端不做查重，同名可重複建立。',
+                        '本 tool 靠它做建立前查重與建立後回讀。' +
+                        '⚠️ 同一平台內必須唯一（DB 有 UNIQUE 約束），長度上限 50（DDL 為 VARCHAR(50)）。',
                     ),
                 category: z
                     .enum(MANUAL_ADD_CATEGORY_KEYS)
@@ -316,34 +376,28 @@ export function registerCreateFundAdjustmentPresetTool(server: McpServer): void 
                     .number()
                     .int()
                     .min(0)
+                    .max(I32_MAX)
                     .describe(
                         '稽核倍數，**Rate stored 值、基數 10000**（10000 = 1 倍、25000 = 2.5 倍、0 = 不需稽核）。' +
                         '後端只要求 >= 0。⚠️ 不要跟金額用同一個換算基數。' +
                         '後台用它算稽核金額的公式是 floor(調整金額 × wageringMultiplier / 10000)。',
                     ),
-                remark: z.string().default('').describe('備註（選填，rajah 沒有標 Required，後端會把未帶的值存成空字串）。'),
-                allowDuplicateName: z
-                    .boolean()
-                    .default(false)
-                    .describe(
-                        '預設 false：本 tool 會先查重，發現同名 preset 已存在就擋下不送出。' +
-                        '設為 true 才允許建立同名的第二筆（後端本來就允許，這只是本 tool 的保護）。',
-                    ),
+                remark: z.string().max(100).default('').describe('備註（選填，rajah 沒有標 Required，後端會把未帶的值存成空字串）。長度上限 100（DDL 為 VARCHAR(100)）。'),
             },
         },
-        async ({ name, category, amounts, wageringMultiplier, remark, allowDuplicateName }) => {
+        async ({ name, category, amounts, wageringMultiplier, remark }) => {
             // --- 呼叫前檢查 1：名稱查重（後端沒有做，見檔頭）---
             const existing = await findPresetsByName(name);
             if (existing.listR) return asErrorResult(existing.listR);
-            if (!allowDuplicateName && existing.rows && existing.rows.length > 0) {
+            if (existing.rows && existing.rows.length > 0) {
                 return asTextResult({
                     success: false,
                     stage: 'pre-check-duplicate-name',
-                    message: `已存在名稱為「${ name }」的資金預設快捷（${ existing.rows.length } 筆），本工具預設不重複建立。`,
+                    message: `名稱「${ name }」已被既有的資金預設快捷使用（id=${ existing.rows.map((row) => row.id).join(', ') }），無法建立同名的第二筆。`,
                     hint:
-                        '後端與 DB 都沒有名稱唯一性限制，同名可以被重複建立，之後只能靠 id 分辨。' +
-                        '若要編輯既有那筆請用 aladdin_platform_fund_adjustment_platform_edit_fund_adjustment_preset；' +
-                        '確定要另外建立一筆同名的，請帶 allowDuplicateName=true 再呼叫一次。',
+                        '資料表有 UNIQUE (platform_id, name)，同一平台內名稱必須唯一——就算繞過本檢查直接送出，' +
+                        '後端也會回 duplicate key（errorCode=13）。請換一個名稱，' +
+                        '或改用 aladdin_platform_fund_adjustment_platform_edit_fund_adjustment_preset 編輯既有那一筆。',
                     existingRows: existing.rows.map(formatPresetRow),
                 });
             }
@@ -351,8 +405,10 @@ export function registerCreateFundAdjustmentPresetTool(server: McpServer): void 
             // --- 呼叫前檢查 2：amounts 是否涵蓋全部啟用幣別（後端只回籠統的 invalidData）---
             const currencies = await listEnabledCurrencyCodes();
             if (currencies.r) return asErrorResult(currencies.r);
-            const providedCodes = new Set(amounts.map((link) => link.code.toUpperCase()));
-            const missing = (currencies.codes ?? []).filter((code) => !providedCodes.has(code.toUpperCase()));
+            // 精確比對（不做 toUpperCase）：後端 #validatePresetEdit 是 case-sensitive 的字串比對，
+            // 這裡放寬會造成「本 tool 放行、後端仍回 currency xxx is required」的不一致。
+            const providedCodes = new Set(amounts.map((link) => link.code));
+            const missing = (currencies.codes ?? []).filter((code) => !providedCodes.has(code));
             if (missing.length > 0) {
                 return asTextResult({
                     success: false,
@@ -383,8 +439,10 @@ export function registerCreateFundAdjustmentPresetTool(server: McpServer): void 
                     errorCode: r.errorCode,
                     message: r.message,
                     hint:
-                        '⚠️ 不要直接自動重試——這支不冪等，若失敗發生在後端已寫入之後，重試會產生第二筆同名資料。' +
-                        '請先用 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 以名稱查詢確認實際狀態。',
+                        r.errorCode === 13
+                            ? '這是 DB 的 duplicate key：同一平台內 preset 名稱必須唯一（UNIQUE (platform_id, name)）。請換一個名稱。'
+                            : '名稱有 DB 唯一性約束，所以重試是安全的——若前一次其實已寫入，重試只會再拿到 duplicate key，不會產生第二筆。' +
+                              '仍建議先用 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 以名稱確認實際狀態。',
                 });
             }
 

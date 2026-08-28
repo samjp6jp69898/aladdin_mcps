@@ -31,7 +31,7 @@
  * - **⚠️ 最重要的陷阱：afterAmount 是「用現在的餘額即時算出來的假設值」，不是歷史快照**。
  *   `userFundAdjustmentReviewInfo.afterAmount = adjustment.direction === add
  *   ? wallet.balance + adjustment.amount : wallet.balance - adjustment.amount`（:714），
- *   其中 wallet.balance 是**呼叫當下**用 GetUserWallet 現查的餘額（:707）。所以：
+ *   其中 wallet.balance 是**呼叫當下**用 GetUserWallet 現查的餘額（:706）。所以：
  *   對 status=pending 的單子，它的語意是「如果現在核准，餘額會變成多少」——這正是審核彈窗要的；
  *   但對 status=pass（已核准）的單子，它會把**已經加過的金額再加一次**，得到一個現實中不存在
  *   的數字；對 status=reject 的單子則是「如果當初核准會變成多少」。
@@ -55,10 +55,10 @@
  *   （jafar/src/exchange.ts:32-38），幣別精度用回傳的 currencyCode 去
  *   aladdin_platform_currency_platform_get_currencies 查。
  *
- * - **錢包查詢失敗會讓整支失敗**：GetUserWallet（:707）失敗時直接 errorToGenie 回錯（:708-710）
+ * - **錢包查詢失敗會讓整支失敗**：GetUserWallet（:706）失敗時直接 errorToGenie 回錯（:707-709）
  *   ——也就是說，若該會員在該幣別沒有一般錢包，這支查不到調整單資訊（即使調整單本身存在）。
  *
- * - **只查 normal 錢包**：walletType 寫死 WalletTypeEnum.normal（:707）。
+ * - **只查 normal 錢包**：walletType 寫死 WalletTypeEnum.normal（:706）。
  *
  * - **status / rejectReason 兩個欄位在 rajah 標的是 @Rules "Required"（rajah:358-362）而非
  *   @Readonly**：那是因為同一個 model 也被審核表單當成輸入用。走這支 Get 時它們就是 DB 現值
@@ -174,7 +174,7 @@ export function registerGetUserFundAdjustmentReviewInfoTool(server: McpServer): 
                 requestedId: id,
                 amountsAreStoredValue: true,
                 // 這個旗標是提醒，不是資料：afterAmount 由後端用「呼叫當下的錢包餘額」即時算出
-                // （fund_adjustment_platform.ts:714），不是這筆調整當時的歷史值。
+                // （fund_adjustment_platform.ts:714，餘額取自 :706 的現查結果），不是這筆調整當時的歷史值。
                 afterAmountIsHypotheticalFromCurrentBalance: true,
                 info: info
                     ? {

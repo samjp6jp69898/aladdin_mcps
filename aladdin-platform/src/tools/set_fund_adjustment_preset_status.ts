@@ -33,8 +33,11 @@
  * objectNotFound，訊息與事實完全相反（資料明明存在）。
  * **這是「靠連線旗標才成立」的行為，純讀源碼無法斷定，必須實打。**
  * 2026-08-28 dev 實測結果：**不會發生**——用 forceEvenIfUnchanged=true 對一筆已是 disabled 的
- * preset 再送一次 disabled，後端回傳成功（見下方驗證段第 5 點），代表這條連線回報的是
- * matched rows 而非 changed rows。上面那段推測**已被實測推翻**，此處據實保留原推理與反證，
+ * preset 再送一次 disabled，後端回傳成功（見下方驗證段第 5 點）。
+ * ⚠️ **請只把它當成觀測結果，不要當成機制結論**：本輪**沒有**核對連線字串有沒有帶
+ * `flags=FOUND_ROWS`（連線設定是加密的 env，repo 內查不到），所以「這條連線回報的是 matched rows
+ * 而非 changed rows」只是從一次觀測反推的可能解釋、未經查證。可靠的結論只有
+ * 「本站實測不會回 objectNotFound」。上面那段源碼推測**已被實測推翻**，此處據實保留原推理與反證，
  * 提醒後續維護者不要只憑 `data === 0` 這行就斷言行為。
  * 本 tool 仍保留「目標狀態與現況相同時直接回 no-op、不送出 RPC」的守門，但理由改為：
  * (a) 避免為一次沒有實際變更的操作留下誤導性的稽核紀錄（後端無條件寫 audit，:895-900）；
@@ -44,10 +47,10 @@
  * agrabah 實作細節（讀源碼查證，非推測；行號對 agrabah main 於 2026-08-28 的內容）：
  *
  * - **UPDATE 只改 status 一個欄位**：`UPDATE ... SET status = ? WHERE id = ? AND platform_id = ?`
- *   （:886-888），name / category / amounts / wageringMultiplier / remark 都不會被動到。
+ *   （:885），name / category / amounts / wageringMultiplier / remark 都不會被動到。
  *   本 tool 仍會 round-trip 驗證這一點。
  *
- * - **帶 `AND platform_id = ?`（:888），跨平台改不到別人的資料**；平台由登入態決定。
+ * - **帶 `AND platform_id = ?`（:885 的同一條 SQL），跨平台改不到別人的資料**；平台由登入態決定。
  *
  * - **存在性檢查在 UPDATE 之前**：`loadObject(DbFundAdjustmentPreset, 'id = ? AND platform_id = ?')`
  *   查不到就回 objectNotFound（:870-880）。
@@ -66,6 +69,22 @@
  *
  * ⚠️ **這是寫入操作**，但只是切換一個金額範本的啟用狀態、**不會動到任何會員的錢**，
  * 且完全可逆（用同一支 tool 設回去）。
+ *
+ *
+ * ⚠️ **關於「dev 無殘留」的精確說法（本輪 review 指出原本是過度宣稱）**：
+ * **業務資料**確實已完全還原——preset 表回到原本的 4 筆（id 8/4/3/1），三輪測試建立的
+ * id 9 / 10 / 12 全部刪除、無殘留。但整輪驗證共產生 **13 筆後台稽核紀錄**
+ * （3 次 create、4 次 edit、3 次 setStatus、3 次 delete；後端對這四種操作都是無條件寫 audit），
+ * **稽核紀錄本身沒有刪除介面、也不該刪**。所以正確的說法是「業務資料已還原、另留有 13 筆
+ * fundAdjustmentPreset* 稽核紀錄」，而不是「dev 完全無痕跡」。
+ *
+ *
+ * ⚠️ **多頁掃描路徑本輪未實測**（checklist 第 2/5 節要求的「目標記錄不在第一頁」情境）：
+ * findPresetById 的跨頁邏輯在 dev 上完全沒被走到——該站 preset 只有 4 筆，一頁就掃完。
+ * 檔頭上面寫的「實務上一頁就掃完」是事實，但不等於跨頁路徑已驗證。
+ * （同模組的 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 已用
+ * pageSize=1 構造多頁並實測翻頁有效，可作為間接佐證，但那走的是 tool 自己的分頁參數、
+ * 不是 findPresetById 的內部迴圈。）
  *
  * --- dev 驗證（2026-08-28，pk-platform.alddev.com，帳號 landon001；獨立 spike script 用
  *     @modelcontextprotocol/sdk 的 Client + StdioClientTransport spawn 本 worktree 的
@@ -104,7 +123,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
 import { I32_MAX, ACTIVE_STATUS_MAP } from '../const.ts';
-import { findPresetById, formatPresetRow, type PresetRow } from './create_fund_adjustment_preset.ts';
+import { findPresetById, formatPresetRow, amountsDeepEqual, type PresetRow } from './create_fund_adjustment_preset.ts';
 
 export function registerSetFundAdjustmentPresetStatusTool(server: McpServer): void {
     server.registerTool(
@@ -184,8 +203,9 @@ export function registerSetFundAdjustmentPresetStatusTool(server: McpServer): vo
                     id,
                     message: `id=${ id } 目前已經是 ${ status }，未送出任何寫入。`,
                     hint:
-                        '後端會用「UPDATE 影響列數是否為 0」判斷資料存在與否，對「值沒有實際改變」的更新可能回傳' +
-                        '誤導性的 objectNotFound，因此本 tool 預設在狀態相同時直接跳過。' +
+                        '跳過的理由有兩個：(a) 後端是無條件寫稽核紀錄的，送一次沒有實際變更的更新只會留下' +
+                        '一筆誤導性的 audit；(b) 讓這個操作對呼叫端而言是冪等的。' +
+                        '（不是為了避開錯誤碼——本站已實測強制重送相同狀態會正常回成功。）' +
                         '要強制送出請帶 forceEvenIfUnchanged=true。',
                     currentRow: formatPresetRow(before),
                 });
@@ -230,7 +250,14 @@ export function registerSetFundAdjustmentPresetStatusTool(server: McpServer): vo
                 category: Number(after.category) === Number(before.category),
                 wageringMultiplier: Number(after.wageringMultiplier) === Number(before.wageringMultiplier),
                 remark: String(after.remark ?? '') === String(before.remark ?? ''),
-                amountsJson: JSON.stringify(after.amounts ?? []) === JSON.stringify(before.amounts ?? []),
+                // 用順序無關的深比對，不用 JSON.stringify（本 server 對後者踩過順序敏感的坑）。
+                amounts: amountsDeepEqual(
+                    (Array.isArray(before.amounts) ? before.amounts : []).map((link: { code?: string; value?: unknown }) => ({
+                        code: String(link?.code ?? ''),
+                        value: (Array.isArray(link?.value) ? link.value : []).map(Number),
+                    })),
+                    after.amounts,
+                ),
             };
             const statusChanged = after.status === targetStatus;
             const allPreserved = Object.values(otherFieldsPreserved).every(Boolean);

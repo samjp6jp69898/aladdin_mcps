@@ -91,8 +91,11 @@
  *    「幣別代碼根本不存在」與「幣別存在但該會員沒有該錢包」後端回同一個錯誤碼，**無法分辨**，
  *    description 已據實只承諾「會員不存在 vs 沒有錢包」這一組區分。
  * 5. **幣別大小寫**：currencyCode="cny"（小寫）→ success，且回傳的 info.currencyCode 是
- *    **"CNY"**（大寫）——證實後端會正規化，且回傳值取自命中的錢包而非原樣回吐輸入，
- *    與源碼 `currencyCode: wallet.currencyCode`（:339）一致。
+ *    **"CNY"**（大寫）。這證實的是**回傳值取自命中的錢包、而非原樣回吐輸入**
+ *    （與源碼 `currencyCode: wallet.currencyCode`（:339）一致）；
+ *    ⚠️ **不能據此說「後端會正規化」**——查詢路徑上沒有任何 toUpperCase
+ *    （wallet_manager.ts:251-252 只有 `currency_code = ?`），大小寫不敏感是 MySQL collation
+ *    的副產物。這一句初版寫成「證實後端會正規化」，與檔頭上方的說明自相矛盾，本輪 review 後改正。
  * 全程唯讀查詢，未寫入/修改任何 dev 資料，無需清理。
  */
 

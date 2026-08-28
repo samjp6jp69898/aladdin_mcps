@@ -40,6 +40,11 @@
  *   (c) reviewOperatorId 查不到任何後台操作者 → `return GenieResult.success`（:557）。
  *   這三種情況 RPC 都是成功、rows 空、totalPage 0。本 tool 無法在 tool 層分辨（後端沒有回任何
  *   訊號），只能在 description 告知：查到 0 筆時若有帶這三個欄位，先確認那個帳號真的存在。
+ *   ⚠️ **而且被吞掉的不只是「查不到人」，還有真正的 RPC 失敗**：
+ *   #listUserFundAdjustmentSearchUser 在 resolveAppUserDetailsByIdentifiers 失敗時是
+ *   `return usersResult.errorTo()`（:1279-1281）、#searchOperator 在 ListUsers 失敗時是
+ *   `return ServiceResult.fromErrorCode(...)`（:1315-1317），兩者都被 caller 一律轉成
+ *   `GenieResult.success`。所以 0 筆的第三種可能是 appUser / platform 服務當下異常。
  *
  * - **⚠️ applyOperator / reviewOperatorId 是「後台操作者帳號」不是會員帳號，而且很貴**：
  *   兩者都走 #searchOperator（:1303-1334），它用 `remote.platform.main.ListUsers(currentPage,
@@ -256,6 +261,9 @@ export function registerListUserFundAdjustmentTool(server: McpServer): void {
                 '⚠️ **查到 0 筆不一定代表真的沒資料**：如果你帶了 identifier / applyOperator / reviewOperatorId，' +
                 '而那個帳號在系統裡查不到任何人，後端會回「成功 + 空清單」，跟「條件正確但沒有符合的調整單」' +
                 '完全無法分辨。遇到 0 筆時請先確認帳號本身存在。' +
+                '⚠️ 而且這三個 return 不只吞掉「查不到帳號」，也吞掉**下游服務真正的 RPC 失敗**' +
+                '（解析會員帳號的 appUser 服務、或查後台使用者的 platform 服務當下異常時，' +
+                '一樣會變成成功 + 空清單）——所以 0 筆的第三種可能是那些服務出問題。' +
                 '⚠️ **applyOperator 與 reviewOperatorId 填的是「後台操作者帳號」，不是會員帳號**；' +
                 '而且 reviewOperatorId 雖然名字有 Id，rajah 型別是**字串帳號**，不要傳數字。' +
                 '這兩個條件在後端會把整個後台使用者清單一頁一頁撈完再比對，屬於較慢的查詢，非必要不要帶。' +

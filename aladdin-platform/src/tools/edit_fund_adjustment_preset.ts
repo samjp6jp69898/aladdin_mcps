@@ -17,9 +17,22 @@
  *
  * ⚠️ **這支是真正的整包覆蓋，後端完全沒有 pre-load 合併**（第 4 節列的三種模式中最危險的第 3 種）。
  * 這不是推測，是逐行讀出來的：`UPDATE ... SET name = ?, category = ?, wagering_multiplier = ?,
- * remark = ? WHERE id = ? AND platform_id = ?`（:825-834）——**四個欄位無條件全部覆蓋**，
- * 呼叫端沒帶到的欄位不會保留原值，會被寫成你這次傳的值（zod 有預設值的話就是預設值）。
- * amounts 則走 `updateAmountsById(...)`（:840）整組覆寫。
+ * remark = ? WHERE id = ? AND platform_id = ?`（:825-834，`AND platform_id = ?` 在 :828）
+ * ——**四個欄位無條件全部覆蓋**，呼叫端沒帶到的欄位不會保留原值，會被寫成你這次傳的值。
+ *
+ * ⚠️ **但 amounts 不是整組覆寫**（初版寫反了，本輪 review + dev 實測後改正）：
+ * 它走 `updateAmountsById(...)`（:841），而該函式（currency_link_manager.ts:187-213）
+ * **只迭代呼叫端傳進來的那些幣別代碼**、對每個 code 各自做「查既有 → 差異刪除 → 差異新增」
+ * （同檔 assembleDeleteAndInsertAmount，:46-80，在單一 code 內是正確的多重集合替換）。
+ * **沒有任何「刪掉 DB 有、payload 沒有的 code」的路徑**——payload 裡沒出現的幣別**原樣保留**。
+ * 這正是 checklist 第 4 節第 5 條講的第三種語意（既非整包覆蓋、也非 diff 刪除）。
+ * dev 實測見驗證第 7 點（建立時多帶未啟用的 INR，之後只帶三個啟用幣別編輯，INR 金額仍在）。
+ *
+ * 實際後果：某幣別在建立後被平台停用，DB 就留下一組「已停用幣別」的金額列；由於
+ * #validatePresetEdit 的必填集合只含啟用幣別（:1167-1171），呼叫端不會帶它，那組舊金額
+ * **永遠刪不掉**。本 tool 的 round-trip 因此**只比對本次實際送出的幣別**，
+ * 後端額外保留下來的 code 另外列在 `extraCurrencyCodesKeptByBackend` 回報，
+ * 不會被誤判成「編輯失敗」。
  * 因此第 4 節的第 1 條要求——「包這類 method 前必須先呼叫對應的 GetXxxForEdit 取得完整現值，
  * 只覆寫呼叫端明確要改的欄位，其餘原樣帶回。沒有先讀現值就直接建構 payload 呼叫，視為不合格實作」
  * ——在這裡是**硬性必要**而不只是保險。
@@ -46,29 +59,36 @@
  *   aladdin_platform_fund_adjustment_platform_set_fund_adjustment_preset_status。
  *
  * - **id 不存在時回 objectNotFound、不會靜默成功**：`#loadPresetSnapshot(context, id)` 回 null
- *   就 `return GenieResult.error(ErrorCode.objectNotFound)`（:818-821）。
- *   ⚠️ 但注意這個存在性檢查是**在驗證通過之後**才做的（:812-816 先 #validatePresetEdit），
+ *   就 `return GenieResult.error(ErrorCode.objectNotFound)`（:819-822）。
+ *   ⚠️ 但注意這個存在性檢查是**在驗證通過之後**才做的（:814-817 先 #validatePresetEdit），
  *   所以對一個不存在的 id 送出格式錯誤的資料，你會先收到 invalidData 而不是 objectNotFound。
  *
- * - **UPDATE 帶 `AND platform_id = ?`（:829），跨平台改不到別人的資料**；平台由登入態決定。
+ * - **UPDATE 帶 `AND platform_id = ?`（:828），跨平台改不到別人的資料**；平台由登入態決定。
  *
- * - **後端沒有檢查 UPDATE 的影響列數**：:835-838 只看 `updateResult.failed`，
+ * - **後端沒有檢查 UPDATE 的影響列數**：:838-840 只看 `updateResult.failed`，
  *   不像 SetFundAdjustmentPresetStatus 有 `updateResult.data === 0` 的判斷（:891-893）。
  *   不過前面已經用 #loadPresetSnapshot 確認過存在，實務上影響有限。
  *
- * - **⚠️ 名稱可以被改成與其他 preset 重複**：#validatePresetEdit（:1128-1173）只檢查名稱非空，
- *   沒有唯一性檢查，DB 也沒有 unique 索引。本 tool 在改名時會先查重並在回傳中警示
- *   （但不擋下——改名本身是合法操作，只是之後只能靠 id 分辨）。
+ * - **⚠️ 改名撞到其他 preset 的名稱會被 DB 擋下**（初版寫成「可以重複、之後靠 id 分辨」，錯）：
+ *   #validatePresetEdit（:1128-1174）確實沒有唯一性檢查，但資料表有
+ *   `UNIQUE INDEX platform_id_name (platform_id, name)`
+ *   （migrations/fund_adjustment/202605141103_create_fund_adjustment_presets.sql:12），
+ *   UPDATE 撞名會回 duplicate key（dev 實測 errorCode=13，見驗證第 8 點）。
+ *   本 tool 因此在改名前先查重，**發現撞名就直接擋下不送出**，並告訴你是哪一筆佔用了那個名稱。
  *
- * - **amounts 必須涵蓋平台全部啟用幣別**（:1166-1170，缺一個回
+ * - **amounts 必須涵蓋平台全部啟用幣別**（:1167-1171，缺一個回
  *   `invalidData: currency XXX is required`）。因為本 tool 沒帶 amounts 時是用現值補齊，
  *   通常自然滿足；但若呼叫端明確傳了一組不齊的 amounts，本 tool 會在呼叫前就擋下並列出缺漏幣別。
  *
- * - **寫入是單一交易**（:824-841），UPDATE 與金額覆寫任一失敗整批 rollback。
+ * - **寫入是單一交易**（:824-842），UPDATE 與金額寫入任一失敗整批 rollback。
+ *   ⚠️ 後端的幣別必填比對是 **case-sensitive**（:1151-1171 無 toUpperCase），本 tool 的前置檢查
+ *   為此也用精確比對；後端**只驗超集**，多帶平台未啟用的幣別會被照單全收寫進 DB。
  *
  * - **會寫 audit log（含 before/after 快照）**：
  *   `PlatformActionIdEnum.fundAdjustmentPresetEdit, AuditData.createUpdate(before, after)`（:858）。
- *   ⚠️ audit 快照裡的金額是**已換算成 normal 的**，與本 tool 讀寫的 stored value 數字不同。
+ *   ⚠️ 稽核快照的換算方向與直覺相反（初版寫反了）——#buildPresetAuditSnapshot（:1214-1229）
+ *   **amounts 保留 stored 值**（:1219-1224），**被換成 normal 的是 wageringMultiplier**
+ *   （:1225，RateHelper.storedToNormal，10000 → 1）。
  *
  * - **金額與倍數換算基數不同、本 tool 一律不換算**：amounts 的 value 是幣別 stored value
  *   （normal = stored / 10^(decimalPlaces + 2)，jafar/src/exchange.ts:32-38）；
@@ -77,6 +97,22 @@
  * - PII（第 8 節）：純設定資料，**不含任何會員個資或財務紀錄**，不涉及密鑰/token/密碼。
  *
  * ⚠️ **這是寫入操作**，但只是金額範本設定、**不會動到任何會員的錢**，且可用同一支 tool 改回去。
+ *
+ *
+ * ⚠️ **關於「dev 無殘留」的精確說法（本輪 review 指出原本是過度宣稱）**：
+ * **業務資料**確實已完全還原——preset 表回到原本的 4 筆（id 8/4/3/1），三輪測試建立的
+ * id 9 / 10 / 12 全部刪除、無殘留。但整輪驗證共產生 **13 筆後台稽核紀錄**
+ * （3 次 create、4 次 edit、3 次 setStatus、3 次 delete；後端對這四種操作都是無條件寫 audit），
+ * **稽核紀錄本身沒有刪除介面、也不該刪**。所以正確的說法是「業務資料已還原、另留有 13 筆
+ * fundAdjustmentPreset* 稽核紀錄」，而不是「dev 完全無痕跡」。
+ *
+ *
+ * ⚠️ **多頁掃描路徑本輪未實測**（checklist 第 2/5 節要求的「目標記錄不在第一頁」情境）：
+ * findPresetById 的跨頁邏輯在 dev 上完全沒被走到——該站 preset 只有 4 筆，一頁就掃完。
+ * 檔頭上面寫的「實務上一頁就掃完」是事實，但不等於跨頁路徑已驗證。
+ * （同模組的 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 已用
+ * pageSize=1 構造多頁並實測翻頁有效，可作為間接佐證，但那走的是 tool 自己的分頁參數、
+ * 不是 findPresetById 的內部迴圈。）
  *
  * --- dev 驗證（2026-08-28，pk-platform.alddev.com，帳號 landon001；獨立 spike script 用
  *     @modelcontextprotocol/sdk 的 Client + StdioClientTransport spawn 本 worktree 的
@@ -101,7 +137,26 @@
  *    （代表是真的掃完整份清單才確定找不到，不是掃描觸頂提前放棄——這個區分很重要，
  *    觸頂時本 tool 會在 hint 明講「不代表已掃完全部資料」）。
  *    此時**完全沒有送出寫入**，不會用一堆預設值覆蓋掉真實資料。
- * 5. 「status 不在後端 UPDATE 欄位清單裡」在第 1、2 點的 unchangedFieldsPreserved.status=true
+ * 7. **amounts 是逐幣別替換、不是整組覆寫（推翻初版結論的決定性實測）**：
+ *    先建立一筆含四個幣別的 preset（CNY/USD/USDT + 平台未啟用的 INR），
+ *    再只帶三個啟用幣別（CNY/USD/USDT）呼叫本 tool 編輯 →
+ *    讀回的 amounts **仍然含 INR:[40000]**，其餘三個幣別更新成新值。
+ *    證實 updateAmountsById 只處理 payload 內出現的 code、不刪除未提及的幣別。
+ *    ⚠️ 這同時暴露了本 tool 初版的一個**功能性缺陷**：round-trip 直接拿整包讀回值做深比對，
+ *    因此把這次**其實成功**的編輯報成 `amountsDeepEqual=false`。已修正為「只比對本次實際送出的
+ *    幣別」，額外保留的 code 另外列在 extraCurrencyCodesKeptByBackend。
+ *    修正後回歸：同一情境 `amountsDeepEqual=**true**`、`roundTripAllMatched=**true**`、
+ *    `extraCurrencyCodesKeptByBackend=["INR"]`。
+ * 8. **改名撞名會被 DB 擋（推翻初版結論）**：把 preset 改名成既有的「a」→ 初版（只警示不擋下）
+ *    實測拿到 **errorCode=13**（DB duplicate key）。證實資料表的 `UNIQUE (platform_id, name)`
+ *    對 UPDATE 同樣生效，初版「名稱可以被改成重複、之後只能靠 id 分辨」是錯的。
+ *    已改為前置查重直接擋下；修正後回歸：stage=`pre-check-duplicate-name`、
+ *    訊息「名稱『a』已被 id=8 使用，無法改成同名。已中止，未送出任何寫入。」
+ * 9. **幣別比對改成 case-sensitive 後的回歸**：帶小寫 `cny`（其餘 USD/USDT 正確）→
+ *    stage=`pre-check-missing-currency`、訊息「amounts 缺少平台啟用幣別：CNY」，未送出寫入。
+ *    初版用 toUpperCase 比對會放行，然後被後端以 `currency CNY is required` 拒絕——
+ *    現在前置檢查與後端（:1151-1171 精確字串比對）一致了。
+ * 5. 「status 不在後端 UPDATE 欄位清單裡」 * 5. 「status 不在後端 UPDATE 欄位清單裡」在第 1、2 點的 unchangedFieldsPreserved.status=true
  *    得到驗證（編輯前後 status 皆維持 enabled）。
  * 6. **改名重複警示**未在 dev 上實際觸發（本輪沒有製造重名資料），該行為來自源碼
  *    （#validatePresetEdit 無唯一性檢查）與 create tool 的查重實測，如實標記為未實測分支。
@@ -154,10 +209,15 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
                 '本 tool 會**直接擋下、不送出任何寫入**，避免用預設值覆蓋掉真實資料。' +
                 '⚠️ **編輯不會改動啟用/停用狀態**（status 不在後端的 UPDATE 欄位清單裡）。要改狀態請用 ' +
                 'aladdin_platform_fund_adjustment_platform_set_fund_adjustment_preset_status。' +
-                '⚠️ **名稱可以被改成與其他 preset 重複**（後端與 DB 都沒有唯一性限制）。本 tool 在你改名時' +
-                '會先查重並在回傳裡警示，但不會擋下——重名之後只能靠 id 分辨。' +
-                '⚠️ **amounts 是整組覆寫，不是逐幣別合併**：一旦你傳了 amounts，就必須涵蓋平台全部啟用中的幣別' +
-                '（少一個後端整筆拒絕，本 tool 會在送出前先擋下並列出缺漏）。不想動金額就整個不要帶。' +
+                '⚠️ **名稱在同一平台內必須唯一**（DB 有 UNIQUE (platform_id, name)）。改成別人已在用的名稱會被' +
+                'DB 擋下（errorCode=13），所以本 tool 在改名前先查重，撞名就直接中止並告訴你是哪一筆佔用了。' +
+                '⚠️ **amounts 是「逐幣別替換」，不是整組覆寫**：後端只處理你 payload 裡出現的幣別代碼，' +
+                '**沒有出現的幣別不會被刪除、會原樣保留**。' +
+                '同時你一旦要傳 amounts，就必須涵蓋平台全部啟用中的幣別（少一個後端整筆拒絕，' +
+                '本 tool 會在送出前先擋下並列出缺漏）；多帶未啟用的幣別後端會照單全收。' +
+                '幣別代碼是 **case-sensitive**，請照 get_currencies 的原始大小寫傳。不想動金額就整個不要帶 amounts。' +
+                '若讀回時出現你沒送過的幣別，本 tool 會列在 extraCurrencyCodesKeptByBackend，' +
+                '並且**不會**把它算成 round-trip 不一致。' +
                 '⚠️ **金額與稽核倍數的 stored 表示不同、本 tool 一律不換算**：amounts 的 value 是幣別 stored value' +
                 '（normal × 10^(decimalPlaces + 2)）；wageringMultiplier 是 Rate stored、基數固定 10000' +
                 '（1 倍 = 10000）。請自行換算好再傳。' +
@@ -177,7 +237,15 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
                         `⚠️ 必須落在 i32 範圍（1 ~ ${ I32_MAX }）：超過會被 protobuf 無聲截斷成另一個合法 id，` +
                         '結果會**改到別筆資料**，故本 tool 直接擋下。',
                     ),
-                name: z.string().min(1).optional().describe('新的快捷名稱。**不帶＝維持原值**。⚠️ 後端不做重名檢查。'),
+                name: z
+                    .string()
+                    .min(1)
+                    .max(50)
+                    .optional()
+                    .describe(
+                        '新的快捷名稱。**不帶＝維持原值**。⚠️ 同一平台內必須唯一（DB 有 UNIQUE 約束），' +
+                        '撞名本 tool 會直接擋下。長度上限 50（DDL 為 VARCHAR(50)）。',
+                    ),
                 category: z
                     .enum(MANUAL_ADD_CATEGORY_KEYS)
                     .optional()
@@ -202,6 +270,7 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
                     .number()
                     .int()
                     .min(0)
+                    .max(I32_MAX)
                     .optional()
                     .describe(
                         '新的稽核倍數，**Rate stored、基數 10000**（10000 = 1 倍、0 = 不需稽核）。**不帶＝維持原值**。' +
@@ -209,6 +278,7 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
                     ),
                 remark: z
                     .string()
+                    .max(100)
                     .optional()
                     .describe('新的備註。**不帶＝維持原值**；要清空請明確傳空字串 ""。'),
             },
@@ -244,8 +314,10 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
             if (amounts) {
                 const currencies = await listEnabledCurrencyCodes();
                 if (currencies.r) return asErrorResult(currencies.r);
-                const providedCodes = new Set(amounts.map((link) => link.code.toUpperCase()));
-                const missing = (currencies.codes ?? []).filter((code) => !providedCodes.has(code.toUpperCase()));
+                // 精確比對（不做 toUpperCase）：後端 #validatePresetEdit 是 case-sensitive 字串比對，
+                // 放寬會造成「本 tool 放行、後端仍回 currency xxx is required」的不一致。
+                const providedCodes = new Set(amounts.map((link) => link.code));
+                const missing = (currencies.codes ?? []).filter((code) => !providedCodes.has(code));
                 if (missing.length > 0) {
                     return asTextResult({
                         success: false,
@@ -259,12 +331,23 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
                 }
             }
 
-            // 改名時查重（不擋下，只警示）。
-            let renameCollidesWith: unknown[] = [];
+            // 改名時查重。資料表有 UNIQUE (platform_id, name)，撞名一定會被 DB 擋（errorCode=13），
+            // 所以這裡直接擋下並說明是哪一筆佔用了名稱，不讓呼叫端拿到裸的錯誤碼。
             if (name && name !== before.name) {
                 const dup = await findPresetsByName(name);
-                if (!dup.listR && dup.rows) {
-                    renameCollidesWith = dup.rows.filter((row) => row.id !== id).map(formatPresetRow);
+                if (dup.listR) return asErrorResult(dup.listR);
+                const collisions = (dup.rows ?? []).filter((row) => row.id !== id);
+                if (collisions.length > 0) {
+                    return asTextResult({
+                        success: false,
+                        stage: 'pre-check-duplicate-name',
+                        message: `名稱「${ name }」已被 id=${ collisions.map((row) => row.id).join(', ') } 使用，無法改成同名。已中止，未送出任何寫入。`,
+                        hint:
+                            '資料表有 UNIQUE (platform_id, name)，同一平台內名稱必須唯一——就算繞過本檢查直接送出，' +
+                            '後端也會回 duplicate key（errorCode=13）。請換一個名稱。',
+                        collidesWith: collisions.map(formatPresetRow),
+                        currentRow: formatPresetRow(before),
+                    });
                 }
             }
 
@@ -307,12 +390,22 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
             }
             const after: PresetRow = readBack.matchedRow;
 
+            // ⚠️ amounts 的比對只能針對「本次實際送出的幣別」：後端 updateAmountsById 只處理 payload
+            // 裡出現的 code，DB 既有但未被帶到的幣別會原樣保留（currency_link_manager.ts:187-213）。
+            // 若直接把整包讀回值拿去比，那些被保留下來的 code 會讓一次成功的編輯被誤報成不一致。
+            const sentCodes = new Set(nextAmounts.map((link) => link.code));
+            const afterAmounts = toAmountLinks(after.amounts);
+            const afterAmountsForSentCodes = afterAmounts.filter((link) => sentCodes.has(link.code));
+            const extraCurrencyCodesKeptByBackend = afterAmounts
+                .filter((link) => !sentCodes.has(link.code))
+                .map((link) => link.code);
+
             const roundTrip = {
                 name: after.name === nextName,
                 category: Number(after.category) === nextCategory,
                 wageringMultiplier: Number(after.wageringMultiplier) === nextWageringMultiplier,
                 remark: String(after.remark ?? '') === nextRemark,
-                amountsDeepEqual: amountsDeepEqual(nextAmounts, after.amounts),
+                amountsDeepEqual: amountsDeepEqual(nextAmounts, afterAmountsForSentCodes),
             };
             // 第 4 節第 2 條：逐欄比對「沒有要求變更的欄位」是否仍等於呼叫前的值。
             const unchangedFieldsPreserved: Record<string, boolean> = {};
@@ -320,7 +413,7 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
             if (category === undefined) unchangedFieldsPreserved.category = Number(after.category) === Number(before.category);
             if (wageringMultiplier === undefined) unchangedFieldsPreserved.wageringMultiplier = Number(after.wageringMultiplier) === Number(before.wageringMultiplier);
             if (remark === undefined) unchangedFieldsPreserved.remark = String(after.remark ?? '') === String(before.remark ?? '');
-            if (amounts === undefined) unchangedFieldsPreserved.amounts = amountsDeepEqual(beforeAmounts, after.amounts);
+            if (amounts === undefined) unchangedFieldsPreserved.amounts = amountsDeepEqual(beforeAmounts, afterAmounts);
             // status 從來不在後端的 UPDATE 欄位清單裡，一併驗證它真的沒被動到。
             unchangedFieldsPreserved.status = after.status === before.status;
 
@@ -339,9 +432,10 @@ export function registerEditFundAdjustmentPresetTool(server: McpServer): void {
                     allMatched && allPreserved
                         ? '送出值與讀回值逐欄一致，且未指定變更的欄位（含 status 與 amounts）都保持原值。'
                         : '⚠️ 有欄位比對不符，請檢視 roundTrip / unchangedFieldsPreserved 明細與下方前後內容。',
-                renameCollidesWith,
-                renameWarning: renameCollidesWith.length > 0
-                    ? '⚠️ 改名後與其他 preset 同名（後端與 DB 都不做唯一性限制），之後只能靠 id 分辨。'
+                extraCurrencyCodesKeptByBackend,
+                extraCurrencyNote: extraCurrencyCodesKeptByBackend.length > 0
+                    ? '⚠️ 這些幣別的金額不在你這次送出的 amounts 裡，但後端保留了它們（updateAmountsById 只處理 payload 內的幣別，'
+                      + '不會刪除未提及的）。它們沒有被本次編輯改動，且因為不在平台啟用幣別清單裡而無法透過本 tool 移除。'
                     : undefined,
                 amountsAreStoredValue: true,
                 wageringMultiplierRateBase: 10000,

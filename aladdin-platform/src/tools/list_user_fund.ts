@@ -47,8 +47,8 @@
  *   「不限制單一幣別：傳入的使用者若在該 walletType 下持有不同幣別的錢包，都會回傳」
  *   （wallet.ts:638）。所以同一個會員持有 CNY/INR 兩個錢包時會佔兩列，rowCount 不等於人數。
  *   只查 normal 錢包（WalletTypeEnum.normal），其他錢包類型查不到。
- *   ⚠️ **這一條是源碼推得、dev 上無法實測驗證**：pk dev 站目前只有 CNY 一種幣別在啟用
- *   （INR/TWD 等 status=2），實測 200 筆全是 CNY、200 個 userId 全不重複，沒有多幣別會員可觀察。
+ *   ⚠️ **這一條是源碼推得、dev 上找不到可驗證的資料**（理由見驗證第 9/10 點：該站有三種啟用幣別，
+ *   也確實存在非 CNY 錢包的會員，但掃過的每一個會員都只持有一個幣別的錢包）。
  *
  * - **⚠️ pageSize=0 是真的會踩到的地雷，本 tool 用 zod min(1) 擋掉**：pageSize 在 rajah 是裸
  *   `i32`（不是 PageSizeEnum），protobuf 未設值時會以 0 傳到後端。後端兩個吃 pageSize 的地方
@@ -148,9 +148,23 @@
  *    → 除數 10^(2+2)=10000，換算後為餘額 8934.00 / 充值 9999.00 / 提現 1081.00 /
  *    利潤 -8918.00，且 1081 − 9999 = −8918 與源碼 `profit = withdrawAmount - depositAmount`
  *    完全吻合，同時證實 profit 是「會員獲利」方向（此人淨輸 8918）。
- * 9. 幣別精度來源實測：aladdin_platform_currency_platform_get_currencies 回傳的 CNY/INR/TWD
- *    decimalPlaces 皆為 2，但**不能因此假設所有幣別都是 2**，description 仍要求逐幣別查。
- *    該站僅 CNY status=1（啟用），INR/TWD status=2。
+ * 9. **幣別清單實測（本輪 review 修正過的一條錯誤事實）**：初版檔頭寫「該站只有 CNY 一種幣別在啟用」，
+ *    那是只讀了截斷輸出的前三筆造成的錯誤。重跑 aladdin_platform_currency_platform_get_currencies
+ *    的完整結果是 **6 種幣別**：INR(status=2, dp=2) / CNY(1, 2) / TWD(2, 2) / **JPY(2, dp=0)** /
+ *    **USD(1, 2)** / **USDT(1, 2)**——**啟用中的有三種：CNY、USD、USDT**。
+ *    另注意 JPY 的 decimalPlaces 是 **0**，是「不能假設所有幣別都是 2 位小數」的真實反例，
+ *    description 要求逐幣別查 decimalPlaces 不是形式主義。
+ * 10. **「一列＝會員×幣別錢包」的實測嘗試（修正第 9 點後重做）**：既然啟用幣別有三種，
+ *    原本「只有一種幣別所以無法驗證」的理由不成立，因此重新針對性搜尋——
+ *    用 5 個模糊詞（a / e / 0 / 1 / test）各掃最多 200 筆、合計約 857 個錢包列，
+ *    其中確實找到**非 CNY 的錢包**（identifier=code056、userId=275395、USD、balance=0），
+ *    證實該站不是只有 CNY 錢包。但用 userIds=[275395] 精準回查只得 1 列（只有 USD），
+ *    再用 get_user_adjustment_info 逐幣別交叉確認：CNY → 401 walletNotExists、
+ *    USD → balance=0、USDT → 401 walletNotExists，該會員確實只持有單一幣別錢包。
+ *    全部 857 列裡 **沒有任何一個 userId 出現超過一次**。
+ *    結論：這條仍是源碼推得（wallet.ts:646 的 SQL 無幣別條件 + wallet.ts:638 的註解），
+ *    但「無法實測」的正確理由是**該 dev 站沒有持有多幣別錢包的會員**，
+ *    不是先前寫的「只有一種幣別在啟用」。
  * 全程唯讀查詢，未寫入/修改任何 dev 資料，無需清理。
  *
  * --- 2026-08-28 獨立 review 後的修正 ---
@@ -193,6 +207,9 @@ export function registerListUserFundTool(server: McpServer): void {
                 '⚠️ **必須至少帶 identifiers 或 userIds 其中一個**：後端沒有「不帶條件就列出全平台」的行為，' +
                 '搜尋條件解析後為空時它會直接回傳成功 + 空清單，看起來跟「查無此人」一模一樣。' +
                 '本 tool 會在呼叫前擋下這種情況並明講，不會讓你誤判。' +
+                '⚠️ **但「帳號打錯／查無此人」本 tool 擋不住**：條件有帶、只是解析後命中 0 人時，' +
+                '後端一樣是回「成功 + 空清單」，與「這個人確實沒有錢包」完全無法分辨。' +
+                '查到 0 筆時請先確認帳號本身存在。' +
                 '（注意：查「資金調整單」的 aladdin_platform_fund_adjustment_platform_list_user_fund_adjustment ' +
                 '行為相反，不帶會員條件時是真的列全平台，兩支不要互相類推。）' +
                 '⚠️ **identifiers 與 userIds 同時帶是「交集」不是「聯集」**：兩個都帶時只會回傳' +

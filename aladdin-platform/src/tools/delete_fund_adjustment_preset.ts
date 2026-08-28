@@ -15,13 +15,13 @@
  * 分類：method-category-checklist.md 第 7 節「寫入 — 刪除」。該節要求的處理如下：
  * - **「tool 描述必須標示是軟刪除還是硬刪除——這點無法只憑簽名判斷，需另查後端實作」**：
  *   查證結果是 **硬刪除（HARD DELETE）**，而且是兩張表各一次真正的 DELETE：
- *   `DELETE FROM ${DbFundAdjustmentPreset.tableName} WHERE id = ? AND platform_id = ?`（:917-918）
+ *   `DELETE FROM ${DbFundAdjustmentPreset.tableName} WHERE id = ? AND platform_id = ?`（:917）
  *   與 `DELETE FROM ${DbIdCurrencyAmountLinkLite.tableName} WHERE platform_id = ? AND service_id = ?
  *   AND target_id = ?`（:925-926，清掉這筆 preset 的多幣別金額）。
  *   **不是** `deleted = 1` 的軟刪除，資料列真的消失，**本 MCP 沒有任何復原能力**。
  *   （對照同 server 的 delete_rebate_config 是軟刪除——兩者不要類推。）
  * - **「冪等性（同一 id 刪兩次會不會噴錯）必須實測，不能假設」**：源碼上第二次刪除會在
- *   `#loadPresetSnapshot` 就查不到而回 ErrorCode.objectNotFound（:909-912），也就是**不冪等**。
+ *   `#loadPresetSnapshot` 就查不到而回 ErrorCode.objectNotFound（:910-913），也就是**不冪等**。
  *   已 dev 實測，結果見下方驗證段。
  * - **「批量刪除要驗證是全有全無還是部分成功」**：本 method 是單筆刪除，不適用。
  * - **「建議刪除前先 round-trip 讀一次確認記錄仍存在，避免對已刪除/不存在 id 誤報成功」**：
@@ -46,20 +46,38 @@
  * - **兩張表的刪除包在單一交易內**（:915-933），任一失敗整批 rollback，
  *   不會留下「主檔刪了但金額連結還在」的孤兒資料。
  *
- * - **帶 `AND platform_id = ?`（:918），跨平台刪不到別人的資料**；平台由登入態決定。
+ * - **帶 `AND platform_id = ?`（:917 的同一條 SQL），跨平台刪不到別人的資料**；平台由登入態決定。
  *
- * - **後端沒有檢查 DELETE 的影響列數**：:919-922 只看 `deleteResult.failed`。
- *   但前面已用 #loadPresetSnapshot 確認存在（:909-912），實務上影響有限。
+ * - **後端沒有檢查 DELETE 的影響列數**：:920-922 只看 `deleteResult.failed`。
+ *   但前面已用 #loadPresetSnapshot 確認存在（:910-913），實務上影響有限。
  *
  * - **會寫 audit log（含被刪內容的快照）**：`PlatformActionIdEnum.fundAdjustmentPresetDelete,
- *   AuditData.createDelete(before)`（:939）。⚠️ audit 快照裡的金額是**已換算成 normal 的**，
- *   與本 tool 回報的 stored value 數字不同。要從稽核紀錄重建資料時記得換算回去。
+ *   AuditData.createDelete(before)`（:939）。⚠️ 稽核快照的換算方向與直覺相反（初版寫反了）——
+ *   #buildPresetAuditSnapshot（:1214-1229）**amounts 保留 stored 值**（:1219-1224），
+ *   **被換成 normal 的是 wageringMultiplier**（:1225，RateHelper.storedToNormal，10000 → 1）。
+ *   要從稽核紀錄重建時，wageringMultiplier 記得乘回 10000、amounts 則可原樣使用。
  *
  * - PII（第 8 節）：純設定資料，**不含任何會員個資或財務紀錄**。
  *
  * ⚠️ **這是不可逆的刪除操作**（硬刪除、無復原 tool）。但它刪的只是一個金額範本設定，
  * **不會動到任何會員的錢、也不影響任何已建立的調整單**——所以它不屬於本 domain 那些被標記為
  * needs_clarification 的金流寫入（ApplyAdd / AdjustmentReview 等）。
+ *
+ *
+ * ⚠️ **關於「dev 無殘留」的精確說法（本輪 review 指出原本是過度宣稱）**：
+ * **業務資料**確實已完全還原——preset 表回到原本的 4 筆（id 8/4/3/1），三輪測試建立的
+ * id 9 / 10 / 12 全部刪除、無殘留。但整輪驗證共產生 **13 筆後台稽核紀錄**
+ * （3 次 create、4 次 edit、3 次 setStatus、3 次 delete；後端對這四種操作都是無條件寫 audit），
+ * **稽核紀錄本身沒有刪除介面、也不該刪**。所以正確的說法是「業務資料已還原、另留有 13 筆
+ * fundAdjustmentPreset* 稽核紀錄」，而不是「dev 完全無痕跡」。
+ *
+ *
+ * ⚠️ **多頁掃描路徑本輪未實測**（checklist 第 2/5 節要求的「目標記錄不在第一頁」情境）：
+ * findPresetById 的跨頁邏輯在 dev 上完全沒被走到——該站 preset 只有 4 筆，一頁就掃完。
+ * 檔頭上面寫的「實務上一頁就掃完」是事實，但不等於跨頁路徑已驗證。
+ * （同模組的 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 已用
+ * pageSize=1 構造多頁並實測翻頁有效，可作為間接佐證，但那走的是 tool 自己的分頁參數、
+ * 不是 findPresetById 的內部迴圈。）
  *
  * --- dev 驗證（2026-08-28，pk-platform.alddev.com，帳號 landon001；獨立 spike script 用
  *     @modelcontextprotocol/sdk 的 Client + StdioClientTransport spawn 本 worktree 的
@@ -77,7 +95,7 @@
  * 3. **不冪等實測（第 7 節強制要求）**：同一個 id 再刪一次 → success=false、
  *    stage=`pre-read-not-found`（本 tool 的前置讀取就攔下了，scannedPages=1、未送出 RPC）。
  *    ⚠️ 注意這是**本 tool 的守門**先擋下的；若繞過本 tool 直打後端，第二次會是
- *    #loadPresetSnapshot 查不到而回 objectNotFound（源碼 :909-912）——兩者都不是「安靜成功」，
+ *    #loadPresetSnapshot 查不到而回 objectNotFound（源碼 :910-913）——兩者都不是「安靜成功」，
  *    「不冪等」這個結論成立。
  * 4. **硬刪除確認 + 清理確認**：刪除後用
  *    aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset(pageSize=200) 覆核，
@@ -122,8 +140,8 @@ export function registerDeleteFundAdjustmentPresetTool(server: McpServer): void 
                 '（上限 20 頁 × 200 筆；preset 是小表，實務上一頁就掃完）。掃不到這個 id 會直接擋下、不送出刪除。' +
                 'id 請用 aladdin_platform_fund_adjustment_platform_list_fund_adjustment_preset 查出。' +
                 '刪除後本 tool 會再讀一次確認資料真的不見了（結果在 verifiedGone 欄位）。' +
-                '此操作會寫入後台稽核紀錄（含被刪內容的快照，但稽核紀錄裡的金額是已換算的 normal 值，' +
-                '與本 tool 回報的 stored value 數字不同）。',
+                '此操作會寫入後台稽核紀錄（含被刪內容的快照；稽核紀錄裡 amounts 保留 stored 值、' +
+                '但 wageringMultiplier 被換算成 normal，要從稽核重建時記得乘回 10000）。',
             inputSchema: {
                 id: z
                     .number()

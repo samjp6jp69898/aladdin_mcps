@@ -92,7 +92,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { I32_MAX } from '../const.ts';
+import { I32_MAX, MANUAL_CATEGORY_KEYS } from '../const.ts';
 
 /**
  * 受「禁止領取優惠彩金」限制的手動上分類型（agrabah
@@ -147,13 +147,16 @@ export function registerGetUserNoClaimBonusTool(server: McpServer): void {
                         '結果會若無其事地回答別張單／別名會員的狀況，故本 tool 直接擋下。',
                     ),
                 categoryKeyForContext: z
-                    .string()
+                    .enum(MANUAL_CATEGORY_KEYS)
                     .optional()
                     .describe(
                         '選填，且**不會送給後端**：把該單的 categoryKey（例如 "manualAddActivityGift"，' +
                         '可從 list_user_fund_adjustment 或 get_user_fund_adjustment_review_info 取得）帶進來，' +
                         '本 tool 就能在回傳裡直接告訴你「這次的 false 是因為類型不受限，還是會員真的沒有旗標」。' +
-                        '不帶的話回傳的 categoryIsBonusRelated 會是 null（無法判斷）。',
+                        '不帶的話回傳的 categoryIsBonusRelated 會是 null（無法判斷）。'
+                        + '⚠️ 這裡用的是封閉選項（ManualCategoryEnum 的字串代碼），'
+                        + '打錯字會被直接擋下——刻意如此：若容許自由字串，typo 會讓本 tool 誤判成'
+                        + '「類型不受限」並給出一個有自信但錯誤的結論，比不填更糟。',
                     ),
             },
         },
