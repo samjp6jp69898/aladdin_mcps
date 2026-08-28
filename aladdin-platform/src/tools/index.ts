@@ -204,6 +204,7 @@ import { registerGetRebateConfigsTool } from './get_rebate_configs.ts';
 import { registerGetRebateConfigByIdTool } from './get_rebate_config_by_id.ts';
 import { registerGetRebateGlobalSettingTool } from './get_rebate_global_setting.ts';
 import { registerGetRebateRecordListTool } from './get_rebate_record_list.ts';
+import { registerGetRebateSteppedRecordListTool } from './get_rebate_stepped_record_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -413,4 +414,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetRebateConfigByIdTool(server);
     registerGetRebateGlobalSettingTool(server);
     registerGetRebateRecordListTool(server);
+    registerGetRebateSteppedRecordListTool(server);
 }
