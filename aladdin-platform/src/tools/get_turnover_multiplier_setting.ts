@@ -32,25 +32,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { remote, withAutoRelogin } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-
-/**
- * TurnoverTypeEnum（common.rajah:1770-1779）。目前只有本檔一個消費者，故留在檔案內，
- * 不放 const.ts（依 mcps/README.md 第 2 步：兩支以上 tool 會用到才放 const.ts）。
- */
-const TURNOVER_TYPE_LABELS: Record<number, string> = {
-    1: 'gameBet（遊戲下注）',
-    2: 'roomGift（直播間送禮）',
-    3: 'messageBoardGift（大舞台打賞）',
-    4: 'agentProxyDeposit（代理代存）',
-};
-
-/**
- * 倍率的縮放基數，來源是 `RateHelper.RateBase = 10000.0`（jafar/src/rate_helper.ts:18），
- * 消稽核端就是用 RateHelper.storedToNormal 除它（eliminate_user_wagering.ts:24）。
- * 注意別跟 rajah `const TurnoverMultiplierDefault i32 = 10000`（wagering.rajah:22）搞混——
- * 那個是「沒設定過時的預設值（1 倍）」，數值相同純屬巧合；預設值改了不代表基數跟著改。
- */
-const TURNOVER_MULTIPLIER_SCALE = 10000;
+import { TURNOVER_TYPE_LABELS, TURNOVER_MULTIPLIER_SCALE } from '../const.ts';
 
 export function registerGetTurnoverMultiplierSettingTool(server: McpServer): void {
     server.registerTool(
@@ -85,7 +67,7 @@ export function registerGetTurnoverMultiplierSettingTool(server: McpServer): voi
                 '但除了 generated 檔裡的 enum 宣告外，它只出現在 wagering_platform.ts:755 的一行註解，' +
                 '沒有任何判斷邏輯引用它——前端那道把關用的是 TurnoverTypeEnum.gameBet，不是這個 enum。' +
                 '結論：繞過前端直接打 RPC 是改得動 gameBet 的，但那會違反業務規則，不要這樣做。' +
-                '本工具純讀取，不提供修改能力。',
+                '要修改請用 aladdin_platform_wagering_platform_update_turnover_multiplier_setting。',
             inputSchema: {},
         },
         async () => {
