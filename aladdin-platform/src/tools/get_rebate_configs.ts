@@ -46,7 +46,7 @@
  *   value 是 i64。本 tool 回傳前套用 const.ts 的 deepFixLongs，把 protobufjs Long
  *   （含巢狀在 CurrencyLink 內的 value 與頂層 updatedAtTimestamp）轉成一般 number——
  *   否則 JSON.stringify 會把 Long 轉成十進位字串，讓呼叫端無法把讀回值直接餵給寫入 tool 的
- *   z.number() schema（const.ts:410-414 記錄了這個已在 dev 復現過的失敗模式）。
+ *   z.number() schema（該函式自己的 docblock 記錄了這個已在 dev 復現過的失敗模式）。
  *   memberCount 是後端另外批次算出來的會員數
  *   （依 VIP 等級歸屬 + 個人指定覆蓋，且排除 $ 開頭的合營代理帳號），不是資料表欄位。
  * - **`operator`（操作人）實際上永遠是空的**：rajah model RebateConfig 有宣告 operator 欄位

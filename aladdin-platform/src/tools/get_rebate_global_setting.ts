@@ -11,7 +11,14 @@
  * override（真的查 rebate_global_settings + 階梯配置兩層巢狀），不是 notImplemented stub。
  *
  * 分類：method-category-checklist.md 第 1 節「讀取單筆」（無參數、回傳單一 model；
- * 定位鍵是登入態的 platformId，不是呼叫端參數）。
+ * 定位鍵是登入態的 platformId，不是呼叫端參數）。第 1 節「實測 id 不存在的實際行為」在這支
+ * 沒有 id 參數，對應的邊界是「這個平台還沒有 rebate_global_settings 資料列」——後端一樣是
+ * `loadObject`（rebate_platform.ts:606），而 `loadObject` 查無資料回的是
+ * `ServiceResult.fromData(null)`（success 不是 failed，
+ * mysql/mysql_relational_database_engine.ts:293-296），接著 :611 `RebateGlobalSetting
+ * .fromObject(null)` 會拋 TypeError、被 common/server.ts:225-227 的 catch-all 轉成
+ * errorCode=1（unknown、message 空）。dev 上該平台有資料、走不到這條路徑，但呼叫端要知道
+ * 「errorCode=1」在這支的語意可能是「本平台尚未初始化全域返水設定」而不是真的系統錯誤。
  *
  * ⚠️ **「Get 前綴不保證唯讀」——這支真的有副作用**（第 1 節明文要求查證的情況）：
  * rebate_platform.ts:644 每讀到一筆階梯配置就呼叫
@@ -31,8 +38,8 @@
  *   撈不到對應 row」這種懸空引用情況下（668-678）才會回那筆預設。呼叫端因此要同時處理
  *   `steppedConfigList` 為空陣列與含一筆 id=0 預設值兩種情況。
  * - `steppedRatioList[].minAmount` 是 [CurrencyLink] 多幣別陣列（common.rajah:1179-1182，
- *   value 是 i64；本 tool 回傳前套 const.ts 的 deepFixLongs 轉成一般 number，理由同 const.ts:410-414
- *   記錄的「讀回值直接餵回寫入 tool」失敗模式）；rajah 上還宣告了 maxAmount
+ *   value 是 i64；本 tool 回傳前套 const.ts 的 `deepFixLongs` 轉成一般 number，理由見該函式自己的
+ *   docblock 所記錄的「讀回值直接餵回寫入 tool」失敗模式）；rajah 上還宣告了 maxAmount
  *   但已被註解掉（rebate_back_office.rajah:66-67 與 rebate_platform.ts:660-664 兩邊都註解掉），實際不會有值。
  * - enum 對照（rebate_back_office.rajah）：status/verify/claimSwitch 是 ActiveStatusEnum
  *   （common.rajah 的 enabled=1、disabled=2）；rebatePeriod 是 RebatePeriodEnum（daily=0 每日領取、
@@ -100,8 +107,9 @@ export function registerGetRebateGlobalSettingTool(server: McpServer): void {
                 '⚠️ 這支雖然是 Get，但**不是完全唯讀**：後端每讀到一筆階梯配置會非同步 INSERT ' +
                 '一筆除錯紀錄到 rebate_debug_logs 表（不影響回傳內容、不動任何返水設定或使用者' +
                 '資料）。可以安全重複呼叫，但不要拿它當零成本的輪詢對象。' +
-                '要修改這份設定請用 ' +
-                'aladdin_platform_rebate_platform_update_rebate_global_setting。',
+                '⚠️ 失敗語意：若本平台尚未建立全域返水設定資料列，後端會回 errorCode=1（genie unknown、' +
+                'message 空），這是已知的後端行為（查無資料仍往下對 null 取欄位、被最外層 catch），' +
+                '不代表系統故障。',
             inputSchema: {},
         },
         async () => {
