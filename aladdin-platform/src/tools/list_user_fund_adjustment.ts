@@ -94,6 +94,19 @@
  *   走的是 **own-property** 路徑，不是 protobufjs 的 `toJSON`/`toObject`，所以不會另外丟掉空陣列——
  *   呼叫端看到的 key 集合就等於後端實際指派過的欄位集合。
  *
+ * - **⚠️ 這裡其實有「兩種不同機制、同一個症狀」，本 tool 只踩到第一種**（2026-08-28 用
+ *   hasOwnProperty 直打 RPC 的原始 Message 實測區分，見驗證第 15 點）：
+ *   (a) **後端條件式賦值** → own property 從一開始就不存在。實測
+ *       `hasOwnProperty(reviewOperator) === false`，這就是上面 operator 欄位的情況。
+ *   (b) **序列化層丟棄** → own property 存在，但 protobufjs 的 `Message.prototype.toJSON`
+ *       →`Type.toObject(msg, util.toJSONOptions)` 不含 arrays/defaults，長度 0 的 repeated 欄位
+ *       整個被丟掉。本 method 的 **bonusName 正是這種**：實測
+ *       `hasOwnProperty(bonusName) === true`、值是 `[]`，但把原始 Message 直接
+ *       `JSON.stringify` 出來的 key 清單裡**沒有 bonusName**，用 spread 之後才有。
+ *   兩者的判別方法就是看 hasOwnProperty，不能只看「key 不見了」就下結論。
+ *   **本 tool 因為走 deepFixLongs 的重建路徑，(b) 不會發生**——非彩金類調整單的 bonusName
+ *   會如實以空陣列回傳，而不是整個消失。
+ *
  * - **⚠️ direction 可以篩選但回傳看不到**：SQL 有 `ufa.direction AS direction`（:621），
  *   但 rajah 的回傳 model UserFundAdjustment（rajah:272-315）**沒有宣告 direction 欄位**，
  *   `UserFundAdjustment.fromObject(row)`（:663 區段）會把它丟掉，protobuf 也不會傳。呼叫端只能
@@ -155,6 +168,22 @@
  * 11. applyOperator="sakiko" → totalPage=6，回傳每筆 applyOperator 皆為 sakiko。
  * 12. userId=2147483648 被 zod 擋在 tool 邊界：
  *    `Too big: expected number to be <=2147483647 at userId`，不會送到後端被無聲截斷。
+ * 15. **用 hasOwnProperty 做的決定性機制測試（直打 RPC 拿原始 Message，繞過本 tool 的
+ *    deepFixLongs——因為那一層會先做 own-property 過濾，經過它就分辨不出兩種機制了）**：
+ *    對 status=pending 的三筆（id 1392 / 1385 / 1384）逐筆檢查，三筆結果完全一致：
+ *    - `hasOwnProperty(reviewOperator)` = **false**（值讀起來是 ""，那是 prototype 預設值）
+ *      → 坐實機制 (a) 後端條件式賦值，**排除**了「序列化層丟棄」這個競爭假說。
+ *    - `hasOwnProperty(applyOperator)` = true（值為真實帳號，這幾筆 applyOperatorId > 0）。
+ *    - `hasOwnProperty(reviewedAtTimestamp)` = true，原始值是 Long `{low:0, high:0}`
+ *      → 證實「未審核的單 reviewedAtTimestamp 為 0」且該 key 一定存在。
+ *    - `hasOwnProperty(rejectReason)` = true（值 ""）、`hasOwnProperty(autoReviewResult)` = true（值 0）
+ *      → 證實這兩個是無條件指派、即使空值 key 也在。
+ *    - **意外發現**：`hasOwnProperty(bonusName)` = **true**、值是 `[]`，但把原始 Message 直接
+ *      `JSON.stringify` 得到的 key 清單**沒有 bonusName**，改成 `JSON.stringify({...row})` 才有——
+ *      這是上面說的機制 (b)（toJSON→toObject 丟掉長度 0 的 repeated 欄位）。
+ *      本 tool 走 deepFixLongs 重建路徑，不受影響，bonusName 會如實回空陣列。
+ *    這個測試的線索來自 rajah-worker-dune 的跨 session 回報（它在 app_back_office 遇到的是機制 (b)），
+ *    兩個 domain 剛好各踩到一種，互為對照。
  * 14. **欄位缺席行為實測（修正初版的錯誤機制歸因）**：status=pending 取 5 筆，五筆的 key 集合
  *    完全一致（差集為空），且全部**沒有 reviewOperator**、但**都有 reviewedAtTimestamp /
  *    rejectReason / autoReviewResult**（autoReviewResultKey 皆為 none）。
