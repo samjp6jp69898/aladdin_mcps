@@ -66,9 +66,12 @@ export function registerGetUserUnWageringDetailTool(server: McpServer): void {
                 '本工具純讀取。',
             inputSchema: {
                 userId: z.number().int().min(1).describe(
-                    '會員 id（不是會員帳號字串）。用帳號換 id 的方式：呼叫 ' +
-                    'aladdin_platform_wagering_platform_list_user_wagerings 帶 identifier，' +
-                    '從 rows[].userId 取得。查無此會員會回 errorCode 204 userNotExists',
+                    '會員 id（不是會員帳號字串）。用帳號換 id 建議用 ' +
+                    'aladdin_platform_activity_platform_get_user_id_by_identifier（純查詢、無副作用）；' +
+                    '也可以用 aladdin_platform_wagering_platform_list_user_wagerings 帶 identifier 後取 ' +
+                    'rows[].userId。**不建議**為了換 id 而呼叫 ' +
+                    'aladdin_platform_wagering_platform_get_manual_add_user_wagering_info——那支會順帶' +
+                    '替尚無錢包的會員建出錢包列（見該工具說明）。查無此會員會回 errorCode 204 userNotExists',
                 ),
                 page: z.number().int().min(1).default(1).describe(
                     '頁碼，從 1 開始。注意 totalPage 與 userWageringInfo.unWageringAmount 只有第 1 頁是真值',
