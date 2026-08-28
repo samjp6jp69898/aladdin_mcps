@@ -2,7 +2,8 @@
  * tools/get_roulette_reward_by_id.ts — aladdin_platform_roulette_platform_get_roulette_reward_by_id
  *
  * rajah: RoulettePlatform.GetRouletteRewardById(id i32 1) (reward RouletteRewardEdit 1)
- * （rajah/services/roulette_back_office.rajah:338，@Permission "BonusCenter.Lottery.RewardConfig"，非 @NoPublic）
+ * （rajah/services/roulette_back_office.rajah:338，method 自帶 @Permission "BonusCenter.Lottery"，非 @NoPublic；
+ * 該 service 刻意不掛 service 級 @Permission，見同檔 :310-315）
  *
  * method-category-checklist.md 第 0 節排除規則已過：agrabah 對應 Service
  * （agrabah/src/servers/roulette_back_office/services/roulette_platform.ts:628-742，
@@ -65,7 +66,7 @@ export function registerGetRouletteRewardByIdTool(server: McpServer): void {
             title: 'Get one roulette reward (獎勵配置) by id, in edit form',
             description:
                 '依 id 取單一轉盤獎勵配置的完整編輯內容，含四張轉盤圖片與全部獎項格子（slots）' +
-                '（rajah: RoulettePlatform.GetRouletteRewardById，需要權限節點 BonusCenter.Lottery.RewardConfig）。' +
+                '（rajah: RoulettePlatform.GetRouletteRewardById，需要權限節點 BonusCenter.Lottery）。' +
                 '合法 id 請先用 aladdin_platform_roulette_platform_get_reward_name_list（列出本平台全部 ' +
                 '獎勵配置的 id + 名稱）或 aladdin_platform_roulette_platform_get_roulette_reward_list 取得，不要猜。' +
                 'id 不存在（或屬於別平台）回 idNotExists 錯誤（**注意**：get_roulette_reward_list 的 id 篩選' +

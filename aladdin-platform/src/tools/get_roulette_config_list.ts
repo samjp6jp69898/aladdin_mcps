@@ -20,7 +20,9 @@
  *   AND platform_id = ? AND service_id = rouletteConfigName AND code = ?`，這裡的 `code` 就是
  *   `option.code`。因此 **name 一定要搭配 code（語言代碼，如 zh-CN）**，只給 name 不給 code 會用
  *   `code = ''` 去查，撈不到任何 target_id，後端接著硬塞 `RC.id in (0)` → 回空清單（不報錯）。
- *   本工具在 zod 層用 superRefine 擋下這個組合，不讓 agent 拿到「無聲空清單」的誤導結果。
+ *   本工具在 handler 進入點用命令式檢查擋下這個組合（不是 zod schema 層——inputSchema 傳的是
+ *   ZodRawShape，結構上掛不了 superRefine；初版註解誤寫成 superRefine，2026-08-28 review 指出後更正），
+ *   不讓 agent 拿到「無聲空清單」的誤導結果。
  * - `option.rewardName` 是獎勵設定名稱（roulette_rewards.name，單一語系純字串）的 LIKE 模糊搜尋，
  *   跟 name 是兩個不同的東西（一個是 config 的多語名稱、一個是它關聯的 reward 名稱）。
  * - `option.statuses` 宣告型別是 [ActiveStatusEnum]（enabled=1/disabled=2），但實作直接
@@ -41,7 +43,17 @@
  * - `name`（多語）與 `currencyAmount`（[CurrencyLink]，value 是 i64）在後端逐筆補齊；
  *   currencyAmount **只有 costType=currency 的列才會被填**，costType=item 的列固定是空陣列。
  *
- * 2026-08-28 dev 實測（pk-platform.alddev.com，帳號 landon001）：見檔案末端「dev 實測紀錄」。
+ * 2026-08-28 dev 實測（pk-platform.alddev.com，帳號 landon001）：
+ * - 不帶篩選 pageSize=3：page=1 回 totalPage=7（測試當下本平台共 19 筆設定，id 為 8~22 與 1025~1031；
+ *   同 session 稍後 create_or_update_roulette_config 的新增分支驗收又多了一筆 id=1036，之後重跑數字會差 1）。
+ * - **覆蓋 checklist 第 2 節「目標不在第一頁」的驗收要求**：page=7 仍回傳 1 筆真實資料（id=8
+ *   「抽獎設定」），但 totalPage 回 0——這就是上面那條 getPageData 只在第一頁跑 count 的實證，
+ *   本工具據此改成非第一頁回 totalPage=null。page=2 亦覆核過（3 筆、totalPage=null）。
+ * - name="紅包"+code="zh-CN" 命中 7 筆；只給 name 不給 code 被本工具擋下（回可行動的說明，
+ *   而不是讓後端無聲回空清單）。
+ * - rewardName="抽紅包" 命中 2 筆；statuses=["disabled"] 命中 3 筆且每列 status 皆為 disabled。
+ * - pageSize=200 一次取回全部 19 筆，逐列檢查確認 **costType=item 的 4 列（id 1029/15/14/13）
+ *   currencyAmount 皆為空陣列**，與後端只在 costType=currency 分支才查 CurrencyLinkManager 的實作一致。
  */
 
 import { z } from 'zod';

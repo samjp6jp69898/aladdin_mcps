@@ -2,7 +2,8 @@
  * tools/create_or_update_roulette_config.ts — aladdin_platform_roulette_platform_create_or_update_roulette_config
  *
  * rajah: RoulettePlatform.CreateOrUpdateRouletteConfig(config RouletteConfigEdit 1) (id i32 1)
- * （rajah/services/roulette_back_office.rajah:321，@Permission "BonusCenter.Lottery.LotteryConfig"，非 @NoPublic）
+ * （rajah/services/roulette_back_office.rajah:321，method 自帶 @Permission "BonusCenter.Lottery"，非 @NoPublic；
+ * 該 service 刻意不掛 service 級 @Permission，見同檔 :310-315）
  *
  * method-category-checklist.md 第 0 節排除規則已過：agrabah 對應 Service
  * （agrabah/src/servers/roulette_back_office/services/roulette_platform.ts:121-226，
@@ -137,7 +138,7 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
             title: 'Create or update one roulette (lottery) config',
             description:
                 '新增或更新一個轉盤設定（rajah: RoulettePlatform.CreateOrUpdateRouletteConfig，需要權限節點 ' +
-                'BonusCenter.Lottery.LotteryConfig）。**帶 id = 更新既有設定，不帶 id = 新增一筆全新設定**。' +
+                'BonusCenter.Lottery）。**帶 id = 更新既有設定，不帶 id = 新增一筆全新設定**。' +
                 '⚠️ **新增出來的轉盤設定無法刪除**——整個 roulette 後台沒有任何 Delete API，建錯了只能停用，' +
                 '請確認真的要新增再呼叫。' +
                 '⚠️ **後端是整包覆蓋、不做欄位合併**：更新時本工具會強制先讀回現值再把你指定的欄位疊上去，' +

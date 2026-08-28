@@ -2,7 +2,8 @@
  * tools/create_or_update_roulette_reward.ts — aladdin_platform_roulette_platform_create_or_update_roulette_reward
  *
  * rajah: RoulettePlatform.CreateOrUpdateRouletteReward(reward RouletteRewardEdit 1) (id i32 1)
- * （rajah/services/roulette_back_office.rajah:336，@Permission "BonusCenter.Lottery.RewardConfig"，非 @NoPublic）
+ * （rajah/services/roulette_back_office.rajah:336，method 自帶 @Permission "BonusCenter.Lottery"，非 @NoPublic；
+ * 該 service 刻意不掛 service 級 @Permission，見同檔 :310-315）
  * 內部同時包了 RoulettePlatform.GetUploadImageToken（roulette_back_office.rajah:342）與
  * RoulettePlatform.GetRouletteRewardById（:338）：
  * - `GetUploadImageToken` 依 tool-naming-convention.md「一支 tool 內部呼叫多支 method（Get + 寫入）
@@ -232,7 +233,7 @@ export function registerCreateOrUpdateRouletteRewardTool(server: McpServer): voi
             title: 'Create or update one roulette reward (獎勵配置), including its slots and images',
             description:
                 '新增或更新一個轉盤獎勵配置，含四張轉盤圖片與全部獎項格子（rajah: ' +
-                'RoulettePlatform.CreateOrUpdateRouletteReward，需要權限節點 BonusCenter.Lottery.RewardConfig；' +
+                'RoulettePlatform.CreateOrUpdateRouletteReward，需要權限節點 BonusCenter.Lottery；' +
                 '圖片上傳內部走 RoulettePlatform.GetUploadImageToken + POST /upload）。' +
                 '**帶 id = 更新既有配置，不帶 id = 新增一筆全新配置**。' +
                 '⚠️ **本 domain 沒有任何刪除 API**：新建的獎勵配置與新建的格子都無法刪除，請確認真的要新增再呼叫。' +

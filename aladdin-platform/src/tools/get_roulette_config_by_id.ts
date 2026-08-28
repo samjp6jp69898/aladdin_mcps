@@ -2,8 +2,13 @@
  * tools/get_roulette_config_by_id.ts — aladdin_platform_roulette_platform_get_roulette_config_by_id
  *
  * rajah: RoulettePlatform.GetRouletteConfigById(id i32 1) (config RouletteConfigEdit 1)
- * （rajah/services/roulette_back_office.rajah:323，service 標頭 @Permission "BonusCenter.Lottery"
- * + 上一個 method 起算的 @Permission "BonusCenter.Lottery.LotteryConfig"，非 @NoPublic）
+ * （rajah/services/roulette_back_office.rajah:323，method 自帶 @Permission "BonusCenter.Lottery"，
+ * 非 @NoPublic）
+ *
+ * ⚠️ 權限節點是**逐 method 標註、不會從上一個 method 延續**，而且這個 service **刻意不掛 service 級
+ * @Permission**（roulette_back_office.rajah:310-315 有明文說明：GetConfigNameList 是跨一級菜單共用的
+ * 下拉來源，掛在 service 標頭會讓沒自綁節點的 method 都被套上 BonusCenter.Lottery、擋掉只有廣告或商城
+ * 權限的角色）。初版註解誤寫成「service 標頭 + 上一個 method 起算」，2026-08-28 review 指出後已更正。
  *
  * method-category-checklist.md 第 0 節排除規則已過：agrabah 對應 Service
  * （agrabah/src/servers/roulette_back_office/services/roulette_platform.ts:229-263，
@@ -58,7 +63,7 @@ export function registerGetRouletteConfigByIdTool(server: McpServer): void {
             title: 'Get one roulette (lottery) config by id, in edit form',
             description:
                 '依 id 取單一轉盤設定的完整編輯內容（rajah: RoulettePlatform.GetRouletteConfigById，' +
-                '需要權限節點 BonusCenter.Lottery.LotteryConfig）。' +
+                '需要權限節點 BonusCenter.Lottery）。' +
                 '合法 id 請先用 aladdin_platform_roulette_platform_get_config_name_list（列出本平台全部 ' +
                 'config 的 id + 多語名稱）或 aladdin_platform_roulette_platform_get_roulette_config_list 取得，' +
                 '不要自己猜數字。id 不存在（或屬於別的平台）一律回 idNotExists 錯誤，不會回空物件。' +

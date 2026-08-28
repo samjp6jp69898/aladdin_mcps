@@ -507,17 +507,21 @@ export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as con
 
 // ---------------------------------------------------------------------------
 // roulette_back_office domain（RoulettePlatform 系列 tool）共用的 enum 對照表。
-// 來源：rajah/services/roulette.rajah（前四張）與 rajah/services/roulette_back_office.rajah
-// （後四張），逐一對照過 .rajah 原始定義，非憑印象謄寫。
+// 來源：rajah/services/roulette.rajah（COST_TYPE / TYPE / REWARD_TYPE / REWARD_CLAIM_TYPE 共 4 張）
+// 與 rajah/services/roulette_back_office.rajah（RESET_TYPE / REWARD_CURRENCY_TYPE /
+// REWARD_ITEM_EXPIRE_TYPE / REWARD_LIMIT_TYPE / UPLOAD_IMAGE 共 5 張），合計 9 張；
+// 兩個來源在下方是交錯排列的（第 2 張 RESET_TYPE 就來自 back_office），不是前 4／後 4 的分段。
+// 2026-08-28 review 指出初版有 4 處行號引用指到完全無關的內容，已逐張重新用
+// `awk '/^enum .* \{/{...}'` 取得精確起訖行號後改正。
 // ---------------------------------------------------------------------------
 
 // RouletteCostTypeEnum（roulette.rajah:28-33），轉盤每抽的消費方式。
 export const ROULETTE_COST_TYPE_MAP = { currency: 0, item: 1 } as const;
 
-// RouletteResetTypeEnum（roulette_back_office.rajah:26-33），抽獎次數/紀錄的重置週期。
+// RouletteResetTypeEnum（roulette_back_office.rajah:28-35），抽獎次數/紀錄的重置週期。
 export const ROULETTE_RESET_TYPE_MAP = { none: 0, weekly: 1, monthly: 2 } as const;
 
-// RouletteTypeEnum（roulette.rajah:1-15），獎勵配置的版面格式（幾格轉盤／紅包）。
+// RouletteTypeEnum（roulette.rajah:1-14），獎勵配置的版面格式（幾格轉盤／紅包）。
 export const ROULETTE_TYPE_MAP = {
     sixPocketRoulette: 0, eightPocketRoulette: 1, tenPocketRoulette: 2,
     fourteenPocketRoulette: 3, wechatRedPacket: 4, nineGridRedPacket: 5,
@@ -532,16 +536,16 @@ export const ROULETTE_REWARD_TYPE_MAP = { currency: 0, item: 1, miss: 2, progres
 // 就地改標成 expired（roulette_platform.ts:methodGetRouletteRecordList）。
 export const ROULETTE_REWARD_CLAIM_TYPE_MAP = { unclaim: 0, claimed: 1, expired: 2 } as const;
 
-// RouletteRewardCurrencyTypeEnum（roulette_back_office.rajah:346-351），獎金是固定值還是區間。
+// RouletteRewardCurrencyTypeEnum（roulette_back_office.rajah:115-120），獎金是固定值還是區間。
 export const ROULETTE_REWARD_CURRENCY_TYPE_MAP = { fixed: 0, range: 1 } as const;
 
-// RouletteRewardItemExpireTypeEnum（roulette_back_office.rajah:353-360），道具獎勵的到期方式。
+// RouletteRewardItemExpireTypeEnum（roulette_back_office.rajah:123-130），道具獎勵的到期方式。
 export const ROULETTE_REWARD_ITEM_EXPIRE_TYPE_MAP = { none: 0, absolute: 1, relative: 2 } as const;
 
-// RouletteRewardLimitTypeEnum（roulette_back_office.rajah:362-369），個人/全服中獎上限的計算方式。
+// RouletteRewardLimitTypeEnum（roulette_back_office.rajah:133-140），個人/全服中獎上限的計算方式。
 export const ROULETTE_REWARD_LIMIT_TYPE_MAP = { unlimited: 0, count: 1, amount: 2 } as const;
 
-// RouletteUploadImageEnum（roulette_back_office.rajah:428-439），GetUploadImageToken 的圖片通道。
+// RouletteUploadImageEnum（roulette_back_office.rajah:297-308），GetUploadImageToken 的圖片通道。
 export const ROULETTE_UPLOAD_IMAGE_MAP = {
     backgroundChannel: 1, frameChannel: 2, bottomChannel: 3, pointerChannel: 4, slotIconChannel: 5,
 } as const;
