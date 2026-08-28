@@ -209,6 +209,14 @@ import { registerGetMerchantListTool } from './get_merchant_list.ts';
 import { registerToggleMerchantStatusTool } from './toggle_merchant_status.ts';
 import { registerGetMerchantSettingTool } from './get_merchant_setting.ts';
 import { registerEditMerchantSettingTool } from './edit_merchant_setting.ts';
+import { registerListAppGroupsTool } from './list_app_groups.ts';
+import { registerListAppsTool } from './list_apps.ts';
+import { registerUpdateAppTool } from './update_app.ts';
+import { registerListAppVersionsTool } from './list_app_versions.ts';
+import { registerGetAppVersionForEditTool } from './get_app_version_for_edit.ts';
+import { registerListDownloadLinksTool } from './list_download_links.ts';
+import { registerListIosHighRiskRegionsTool } from './list_ios_high_risk_regions.ts';
+import { registerListIosRegionNameOptionsTool } from './list_ios_region_name_options.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -423,4 +431,12 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerToggleMerchantStatusTool(server);
     registerGetMerchantSettingTool(server);
     registerEditMerchantSettingTool(server);
+    registerListAppGroupsTool(server);
+    registerListAppsTool(server);
+    registerUpdateAppTool(server);
+    registerListAppVersionsTool(server);
+    registerGetAppVersionForEditTool(server);
+    registerListDownloadLinksTool(server);
+    registerListIosHighRiskRegionsTool(server);
+    registerListIosRegionNameOptionsTool(server);
 }
