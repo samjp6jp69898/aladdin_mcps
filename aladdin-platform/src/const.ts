@@ -684,3 +684,42 @@ export const SENSITIVE_WORD_LIMITS = {
     /** sensitiveWordGroupId 傳 0/未帶時後端套用的預設分組 id */
     defaultGroupId: 1,
 } as const;
+// ── 稽核（wagering）相關對照表 ─────────────────────────────────────────────
+// 供 wagering_back_office.rajah 的 WageringPlatform 系列 tool 共用。
+
+// WageringStatusEnum（wagering.rajah:2-11）。稽核紀錄的生命週期狀態。
+// 刻意不含 completed(2)：WageringPlatform.ListUserWagerings 的後端實作
+// （agrabah/src/servers/wagering_back_office/services/wagering_platform.ts:224）
+// 無條件 `search.status.filter(v => v !== completed)`，帶 completed 會被靜默剔除、
+// 退化成「非 completed 的全部」，開放這個選項只會誤導呼叫端。需要區分已完成的稽核
+// 請改看單筆的 status 欄位，別用它當篩選條件。
+export const WAGERING_STATUS_SEARCH_KEYS = [ 'pending', 'autoRemove', 'manualRemove' ] as const;
+export const WAGERING_STATUS_SEARCH_MAP: Record<(typeof WAGERING_STATUS_SEARCH_KEYS)[number], number> = {
+    pending: 1, autoRemove: 3, manualRemove: 4,
+};
+
+// WageringAddWayEnum（wagering.rajah:14-19）
+export const WAGERING_ADD_WAY_MAP = { auto: 1, manual: 2 } as const;
+
+// TurnoverTypeEnum（common.rajah:1770-1779）。打碼倍率設置的類型。
+// TURNOVER_TYPE_LABELS 與 TURNOVER_MULTIPLIER_SCALE 由 get_turnover_multiplier_setting.ts 與
+// update_turnover_multiplier_setting.ts 兩支共用，符合「兩支以上才放 const.ts」。
+// TURNOVER_TYPE_KEYS/MAP 目前只有 update 那支用得到，但刻意放在同一個區塊：它們描述的是同一份
+// enum，拆到兩個檔案反而製造漂移風險（正是 const.ts 開頭那段註解要避免的情況）。
+// 同樣的取捨也適用於上面的 WAGERING_STATUS_SEARCH_KEYS/MAP。
+export const TURNOVER_TYPE_KEYS = [ 'gameBet', 'roomGift', 'messageBoardGift', 'agentProxyDeposit' ] as const;
+export const TURNOVER_TYPE_MAP: Record<(typeof TURNOVER_TYPE_KEYS)[number], number> = {
+    gameBet: 1, roomGift: 2, messageBoardGift: 3, agentProxyDeposit: 4,
+};
+export const TURNOVER_TYPE_LABELS: Record<number, string> = {
+    1: 'gameBet（遊戲下注）',
+    2: 'roomGift（直播間送禮）',
+    3: 'messageBoardGift（大舞台打賞）',
+    4: 'agentProxyDeposit（代理代存）',
+};
+
+// 打碼倍率的縮放基數，來源是 RateHelper.RateBase = 10000.0（jafar/src/rate_helper.ts:18）；
+// 消稽核端就是用 RateHelper.storedToNormal 除它（eliminate_user_wagering.ts:24）。
+// 注意別跟 rajah `const TurnoverMultiplierDefault i32 = 10000`（wagering.rajah:22）搞混——
+// 那個是「沒設定過時的預設值（1 倍）」，數值相同純屬巧合。
+export const TURNOVER_MULTIPLIER_SCALE = 10000;

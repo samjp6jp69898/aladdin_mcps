@@ -249,6 +249,16 @@ import { registerGetWorldCupKnockoutTotalAwardTool } from './get_world_cup_knock
 import { registerGetUploadWorldCupImageTokenTool } from './get_upload_world_cup_image_token.ts';
 import { registerSaveWorldCupFixturesInfoTool } from './save_world_cup_fixtures_info.ts';
 import { registerSaveWorldCupInfoTool } from './save_world_cup_info.ts';
+import { registerListUserWageringsTool } from './list_user_wagerings.ts';
+import { registerGetWageringScopesTool } from './get_wagering_scopes.ts';
+import { registerGetUserUnWageringDetailTool } from './get_user_un_wagering_detail.ts';
+import { registerGetManualAddUserWageringInfoTool } from './get_manual_add_user_wagering_info.ts';
+import { registerGetWageringSettingTool } from './get_wagering_setting.ts';
+import { registerGetTurnoverMultiplierSettingTool } from './get_turnover_multiplier_setting.ts';
+import { registerListUserWageringsByUserTool } from './list_user_wagerings_by_user.ts';
+import { registerGetImmediateUserWageringTool } from './get_immediate_user_wagering.ts';
+import { registerUpdateTurnoverMultiplierSettingTool } from './update_turnover_multiplier_setting.ts';
+import { registerUpdateWageringSettingTool } from './update_wagering_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -503,4 +513,14 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetUploadWorldCupImageTokenTool(server);
     registerSaveWorldCupFixturesInfoTool(server);
     registerSaveWorldCupInfoTool(server);
+    registerListUserWageringsTool(server);
+    registerGetWageringScopesTool(server);
+    registerGetUserUnWageringDetailTool(server);
+    registerGetManualAddUserWageringInfoTool(server);
+    registerGetWageringSettingTool(server);
+    registerGetTurnoverMultiplierSettingTool(server);
+    registerListUserWageringsByUserTool(server);
+    registerGetImmediateUserWageringTool(server);
+    registerUpdateTurnoverMultiplierSettingTool(server);
+    registerUpdateWageringSettingTool(server);
 }
