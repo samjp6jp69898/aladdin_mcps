@@ -74,6 +74,23 @@
       "domain": "agent_back_office",
       "session_label": "rajah-worker-nile",
       "claimed_at": "2026-08-26T02:10:00Z"
+    },
+    {
+      "domain": "user_level_back_office",
+      "session_label": "rajah-worker-lamp",
+      "claimed_at": "2026-08-28T03:14:50Z"
+    },
+    {
+      "domain": "app_back_office",
+      "session_label": "rajah-worker-dune",
+      "claimed_at": "2026-08-28T07:49:44Z",
+      "claim_token": "81a654ca6df9"
+    },
+    {
+      "domain": "world_cup_back_office",
+      "session_label": "rajah-worker-mirage",
+      "claimed_at": "2026-08-28T07:50:42Z",
+      "claim_token": "6c82a1be20bd"
     }
   ]
 }
