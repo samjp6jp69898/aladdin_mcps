@@ -207,6 +207,7 @@ import { registerGetUserLevelChangeReportTool } from './get_user_level_change_re
 import { registerGetUserLevelChangeReportDetailTool } from './get_user_level_change_report_detail.ts';
 import { registerAddUserLevelTool } from './add_user_level.ts';
 import { registerUpdateUserLevelTool } from './update_user_level.ts';
+import { registerDeleteUserLevelTool } from './delete_user_level.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -419,4 +420,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetUserLevelChangeReportDetailTool(server);
     registerAddUserLevelTool(server);
     registerUpdateUserLevelTool(server);
+    registerDeleteUserLevelTool(server);
 }

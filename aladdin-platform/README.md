@@ -211,6 +211,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_user_level_get_change_report_detail` | `UserLevel.GetChangeReportDetail` | 層級變更報表某一格（某天×某目標層級）的會員明細，兩個參數必須成對、後端只比對到「日」；有 ORDER BY，分頁順序穩定 |
 | `aladdin_platform_user_level_add` | `UserLevel.GetNameList` + `UserLevel.Add` | 新增會員層級。後端只寫 type/name/color/level 且無名稱唯一性檢查，故本 tool 預設先查同名擋下（allowDuplicateName 才放行）、建立後 round-trip 回讀驗證；auto 型的 level 由後端自動編號 |
 | `aladdin_platform_user_level_update` | `UserLevel.GetNameList` + `UserLevel.Update` | 修改層級名稱/顏色（後端只寫這兩欄且是無條件覆蓋）。一律先讀現值再合併，只覆蓋有帶到的欄位，更新後 round-trip 逐欄比對含「沒要求改的欄位有沒有被動到」 |
+| `aladdin_platform_user_level_delete` | `UserLevel.GetNameList` + `UserLevel.Delete` | 刪除層級（**軟刪 deleted=1**）。後端對不存在 id 會直接回成功，故本 tool 先確認存在、刪除後回讀確認消失；層級底下有會員會被後端擋下；刪 auto 型會連帶重排其餘 auto 層級的 level |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
