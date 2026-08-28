@@ -749,6 +749,7 @@ export const TURNOVER_TYPE_LABELS: Record<number, string> = {
 // 注意別跟 rajah `const TurnoverMultiplierDefault i32 = 10000`（wagering.rajah:22）搞混——
 // 那個是「沒設定過時的預設值（1 倍）」，數值相同純屬巧合。
 export const TURNOVER_MULTIPLIER_SCALE = 10000;
+/**
  * i32（protobuf int32）的上界。任何對應 rajah `i32` 欄位的 zod number schema 都該用它當
  * `.max()`：超過這個值的數字會被 protobufjs **無聲截斷**成另一個合法的 i32，於是 tool 會
  * 若無其事地對「別的 id」執行操作或回傳「別人的資料」，沒有任何錯誤訊號。
