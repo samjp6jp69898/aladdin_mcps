@@ -70,7 +70,14 @@ export function registerListUserLevelsTool(server: McpServer): void {
                 PAGE_SIZE_MAP[ pageSize ],
             ));
             if (r.failed) return asErrorResult(r);
-            return asTextResult({ success: true, rows: deepFixLongs(r.data?.rows ?? []), totalPage: r.data?.totalPage });
+            return asTextResult({
+                success: true,
+                rows: deepFixLongs(r.data?.rows ?? []),
+                totalPage: r.data?.totalPage,
+                totalPageNote: page === 1
+                    ? undefined
+                    : 'page != 1 時 totalPage/totalRow 恆為 0（後端只在 page=1 才計算 COUNT），非「沒有下一頁」的訊號；請用 rows 為空或筆數 < pageSize 判斷是否到底',
+            });
         },
     );
 }

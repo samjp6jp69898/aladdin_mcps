@@ -83,6 +83,9 @@ export function registerListUserLevelUsersTool(server: McpServer): void {
                 rows: deepFixLongs(r.data?.rows ?? []),
                 totalPage: r.data?.totalPage,
                 totalRow: r.data?.totalRow,
+                totalPageNote: page === 1
+                    ? undefined
+                    : 'page != 1 時 totalPage/totalRow 恆為 0（後端只在 page=1 才計算 COUNT），非「沒有下一頁」的訊號；請用 rows 為空或筆數 < pageSize 判斷是否到底',
             });
         },
     );
