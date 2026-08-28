@@ -216,6 +216,7 @@ import { registerGetUserFundAdjustmentReviewInfoTool } from './get_user_fund_adj
 import { registerGetUserNoClaimBonusTool } from './get_user_no_claim_bonus.ts';
 import { registerListFundAdjustmentPresetTool } from './list_fund_adjustment_preset.ts';
 import { registerGetFundAdjustmentPresetsByCategoryTool } from './get_fund_adjustment_presets_by_category.ts';
+import { registerGetFundAdjustmentAutoReviewConfigTool } from './get_fund_adjustment_auto_review_config.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -437,4 +438,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetUserNoClaimBonusTool(server);
     registerListFundAdjustmentPresetTool(server);
     registerGetFundAdjustmentPresetsByCategoryTool(server);
+    registerGetFundAdjustmentAutoReviewConfigTool(server);
 }
