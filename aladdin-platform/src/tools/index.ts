@@ -208,6 +208,7 @@ import { registerCreateOrUpdateRouletteConfigTool } from './create_or_update_rou
 import { registerCreateOrUpdateRouletteRewardTool } from './create_or_update_roulette_reward.ts';
 import { registerGetSensitiveWordsTool } from './get_sensitive_words.ts';
 import { registerCreateOrUpdateSensitiveWordTool } from './create_or_update_sensitive_word.ts';
+import { registerBatchRemoveSensitiveWordTool } from './batch_remove_sensitive_word.ts';
 import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
@@ -422,5 +423,6 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerCreateOrUpdateRouletteRewardTool(server);
     registerGetSensitiveWordsTool(server);
     registerCreateOrUpdateSensitiveWordTool(server);
+    registerBatchRemoveSensitiveWordTool(server);
     registerGetRouletteRewardNameListTool(server);
 }
