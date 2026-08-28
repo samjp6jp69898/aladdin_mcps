@@ -203,6 +203,7 @@ import { registerListAppGroupsTool } from './list_app_groups.ts';
 import { registerListAppsTool } from './list_apps.ts';
 import { registerUpdateAppTool } from './update_app.ts';
 import { registerListAppVersionsTool } from './list_app_versions.ts';
+import { registerGetAppVersionForEditTool } from './get_app_version_for_edit.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -411,4 +412,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListAppsTool(server);
     registerUpdateAppTool(server);
     registerListAppVersionsTool(server);
+    registerGetAppVersionForEditTool(server);
 }
