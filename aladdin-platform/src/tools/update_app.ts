@@ -61,8 +61,27 @@
  * 即使把欄位改回原值也不會消除該筆日誌。
  *
  * 驗收（checklist 第 4 節第 2 點）：寫入後重新呼叫 ListApps 讀回，逐欄比對「沒有要求變更的欄位」
- * 是否仍等於呼叫前的值，結果原樣回給呼叫端（`unchangedFieldsIntact` / `diff`），不以 RPC 不報錯
- * 當成業務正確。
+ * 是否仍等於呼叫前的值（`unchangedFieldsIntact`）與「有要求變更的欄位是否真的變成要求值」
+ * （`requestedChangesApplied`），不以 RPC 不報錯當成業務正確。
+ *
+ * ⚠️ **併發下會 lost update，而且本工具的驗收機制抓不到**（2026-08-28 對抗性覆核指出，據實揭露）：
+ * 這支是純 read-modify-write（先 ListApps 讀現值 → 合併 → CreateOrUpdateApp 寫回），rajah 與後端
+ * 都沒有版本號或樂觀鎖可用，兩個呼叫端（或一個 agent 加一個真人後台）同時編輯同一個 App 時，
+ * 後寫者會靜默覆蓋前者的 name/logo/banner。更要注意的是 `unchangedFieldsIntact` 是拿 after 跟
+ * **本次呼叫自己那份 before 快照**比對，不是跟寫入當下的實際值比對——併發覆蓋發生時它照樣回 true。
+ * 也就是 checklist 第 4 節第 2 點的 round-trip 驗證在併發情境下不具備偵測能力，別把它當成「沒有
+ * 被別人蓋掉」的證據。
+ *
+ * 🔒 **安全關鍵，不可為了少一次 RPC 而移除**：handler 裡「先在 ListApps 結果找得到這個 appId 才繼續」
+ * 這一段（本檔 `beforeList` / `before` 那兩步）**是這支 tool 唯一的跨租戶防線**，不是單純的 UX 改善。
+ * 理由：後端 `methodCreateOrUpdateApp`（app_platform.ts:156-221）**從頭到尾沒有呼叫**同檔 56-64 的
+ * `checkAppIdBelongsToPlatform`（只有 CreateOrUpdateAppVersion / ListDownloadLinks /
+ * CreateOrUpdateDownloadLink 有呼叫），而 `updateObject` 下的 SQL 是
+ * `UPDATE platform_apps SET ... WHERE id = ?`（mysql_relational_database_engine.ts:253）、
+ * **沒有 platform_id 條件**；又因為 app_platform.ts:183 會把 `dbPlatformApp.platformId` 設成
+ * 呼叫者的 platformId，對別平台的 App id 而言這個值與現值不同、會進 diff，該列會被**改嫁到
+ * 呼叫者的平台**。ListApps 是平台綁定的（app_platform.ts:129 用 context.platformId），
+ * 用它先擋一次，才讓這支 tool 拿不到別平台的 appId。
  */
 
 import { z } from 'zod';
@@ -112,7 +131,9 @@ export function registerUpdateAppTool(server: McpServer): void {
                 '所屬群組 appGroupId、主題 appThemeId。' +
                 '⚠️ **本工具只做「修改既有 App」，不能新增 App**：後端雖然是 upsert，但全系統沒有任何刪除或' +
                 '停用 App 的 API，誤建的 App 無法用任何工具復原，因此新增分支刻意不開放。' +
-                '⚠️ 後端對這支是**整包覆蓋**（platform_apps 表沒有 pre-load 合併），本工具因此一律先呼叫 ' +
+                '⚠️ 後端沒有「只更新你帶到的欄位」這種保護：protobuf 未設值的數字欄位是 0，會被當成' +
+                '「明確要設成 0」寫進 DB（appGroupId=0 會先被存在性檢查擋掉，實際會被靜默歸零的是 appThemeId）。' +
+                '本工具因此一律先呼叫 ' +
                 'aladdin_platform_app_platform_list_apps 讀取該 App 的完整現值，只覆寫你明確帶到的欄位，' +
                 '其餘原樣送回；你不需要（也不應該）為了保留其他欄位而自行重送全部值。' +
                 '多語系欄位是「以語系代碼為鍵」疊加：只帶 zh-CN 就只改 zh-CN，其他語系原樣保留；' +

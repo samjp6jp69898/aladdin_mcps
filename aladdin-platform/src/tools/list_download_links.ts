@@ -53,12 +53,23 @@
  * 排序：後端沒有指定 ORDER BY（app_platform.ts:368 的 sort 參數是空字串），回傳順序由 DB 決定，
  * 呼叫端不應依賴陣列順序，要穩定順序請自行依 id 排序。
  *
- * **純量欄位的 protobuf 預設值不會消失**（2026-08-28 dev 實測 appId=5 的 4 筆，逐筆檢查
+ * **本工具的回傳不會因為「值是預設值」而少掉 key**（2026-08-28 dev 實測 appId=5 的 4 筆，逐筆檢查
  * id/status/url/label/type/urlType/appStoreUrl/externalApiUrl 八個 key **一個都沒有缺席**，
- * 包含 urlType=0 與空字串的 appStoreUrl／externalApiUrl）——genie 生成的 message class 在 decode
- * 後把純量零值留成 own property，所以 `{ ...row }` 展開不會吞掉它們。要注意的是**多語系陣列欄位
- * `label`**：它由 assignLocalizationsByObjects 事後賦值（app_platform.ts:374），該筆沒有翻譯列時
- * 整欄會缺漏，與 list_apps 的 banner 同一機制。
+ * 包含 urlType=0 與空字串的 appStoreUrl／externalApiUrl）。機制（第二輪對抗性覆核修正過一次，
+ * 第一版寫成「decode 會保留零值」是錯的）：
+ * - 上線端：後端 `AppDownloadLinkEdit.fromObject(dbRow)`（app_platform.ts:373）把每個 DB 欄位都設成
+ *   own property，protobufjs 是依 own property 決定要不要編碼、不是依「值是否等於預設」，所以零值
+ *   真的被編碼送上線、decoder 再設回 own property。**不是 decode 憑空保留零值**。
+ * - 序列化端：本工具用 `{ ...row }` 展開走 own-property 路徑，repeated 欄位在 protobufjs 生成的
+ *   constructor 裡就被初始化成 own property `[]`，所以 `label` 即使沒有任何翻譯列也會是 `[]`、
+ *   不會整欄消失。
+ * ⚠️ **這一點與 aladdin_platform_app_platform_list_apps 的 banner 行為相反，不是同一機制**（第一版
+ *   誤寫成同一機制）：那支直接把原始 Message 實例交給 JSON.stringify，會走
+ *   `Message.prototype.toJSON` → `Type.toObject(msg, util.toJSONOptions)`，該選項不含 arrays/defaults，
+ *   **長度 0 的 repeated 欄位會整個被丟掉**，所以那邊才會看到 banner 整欄缺席（dev 實測 app 10/11
+ *   確實沒有 banner key）。本工具沒有這個行為。
+ * （附註：dev 上 4 筆下載連結剛好都有 label，「label 為空時輸出 `[]`」這條是從序列化路徑推導出來的，
+ * 沒有實際遇到空 label 的資料可佐證。）
  *
  * 純讀取查詢，不修改任何資料，可安全重複呼叫。
  */
@@ -87,10 +98,11 @@ export function registerListDownloadLinksTool(server: McpServer): void {
                 '合法 appId 來自 aladdin_platform_app_platform_list_apps 的 rows[].id。' +
                 '⚠️ 後端沒有指定排序，回傳順序由 DB 決定，不要依賴陣列順序。' +
                 '⚠️ 外部連結的最近同步時間 / 最近錯誤訊息只存在 DB，不在這支的回傳裡，查不到。' +
-                '純量欄位即使是預設值也會照常回傳（2026-08-28 dev 實測 4 筆：urlType=0 與空字串的 ' +
-                'appStoreUrl / externalApiUrl 都有出現，沒有 key 缺席）；' +
-                '但**多語系陣列欄位 label 在該筆完全沒有翻譯列時可能整欄缺漏**（與 ' +
-                'aladdin_platform_app_platform_list_apps 的 banner 同一機制），不要假設每筆都有 label。' +
+                '欄位即使是預設值也會照常回傳（2026-08-28 dev 實測 4 筆：urlType=0 與空字串的 ' +
+                'appStoreUrl / externalApiUrl 都有出現，八個 key 一個都沒缺席）；label 沒有任何翻譯列時' +
+                '會是空陣列 []，不會整欄消失。' +
+                '（注意這點與 aladdin_platform_app_platform_list_apps 的 banner 行為**相反**——那支的空陣列' +
+                '欄位會整個從回傳消失，兩者序列化路徑不同。）' +
                 '⚠️ **externalApiUrl 可能內嵌第三方 API 憑證**（後端排程呼叫它時不帶任何 auth header，' +
                 '需要認證的話只能寫在 URL 裡），請視為潛在敏感值，不要貼進持久化 log 或對外文件。' +
                 '回傳的 id 是後端 AppPlatform.UpdateDownloadLinkStatus / CreateOrUpdateDownloadLink 的 id 來源，' +
