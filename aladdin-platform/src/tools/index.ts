@@ -207,6 +207,7 @@ import { registerGetGoalSprintRecordTool } from './get_goal_sprint_record.ts';
 import { registerGetGoalSprintTotalAwardAndMilesTool } from './get_goal_sprint_total_award_and_miles.ts';
 import { registerGetWorldCupKnockoutRecordsTool } from './get_world_cup_knockout_records.ts';
 import { registerGetWorldCupKnockoutTotalAwardTool } from './get_world_cup_knockout_total_award.ts';
+import { registerGetUploadWorldCupImageTokenTool } from './get_upload_world_cup_image_token.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -419,4 +420,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetGoalSprintTotalAwardAndMilesTool(server);
     registerGetWorldCupKnockoutRecordsTool(server);
     registerGetWorldCupKnockoutTotalAwardTool(server);
+    registerGetUploadWorldCupImageTokenTool(server);
 }
