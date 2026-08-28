@@ -11,19 +11,20 @@
  * @Module "Rebate"（267）；非 @NoPublic、非 Placeholder）——後台「優惠中心 > 階梯式返水 >
  * 返水紀錄／返水審核」。
  *
- * agrabah 對應實作：rebate_platform.ts:1187-1358 methodGetRebateSteppedRecordList，確認有真實
+ * agrabah 對應實作：rebate_platform.ts:1187-1360 methodGetRebateSteppedRecordList，確認有真實
  * override，不是 notImplemented stub。
  *
  * 分類：method-category-checklist.md 第 2 節「讀取清單」的 **A 級**——與
  * aladdin_platform_rebate_platform_get_rebate_record_list 共用同一個 search struct
- * （RebateRecordOptions，rajah:559-590），`orderId`/`userId` 可唯一鎖定目標。zod schema 對照
- * 該 model 全部 13 個欄位逐一列出（本 model 沒有 @Hide 欄位）。
+ * （RebateRecordOptions，rajah:559-591），`orderId`/`userId` 可唯一鎖定目標。zod schema 對照
+ * 該 model 全部 13 個欄位逐一列出（RebateRecordOptions 本身沒有 @Hide 欄位；回傳的
+ * RebateSteppedRecord 反而有 @Hide 的 id/userId/validBet/profit，API 照樣回傳、本 tool 也照樣透傳）。
  *
  * ⚠️ **同一個 options model、同名欄位，在這支的語意不同**（第 0 節「同名 method 陷阱」的同構情況，
  * 讀源碼才看得出來，簽名完全看不出來）：
  * - 一般返水版：`rebateConfigIds` → SQL `rebate_config_id IN (?)`，值是**返水配置 id**
- *   （rebate_platform.ts:1079-1082）。
- * - 本 method：`rebateConfigIds` → SQL `rr.stepped_settlement_id IN (?)`（:1245-1248），
+ *   （rebate_platform.ts:1085-1087）。
+ * - 本 method：`rebateConfigIds` → SQL `rr.stepped_settlement_id IN (?)`（:1245-1247），
  *   值其實是**階梯配置 id**，也就是
  *   aladdin_platform_rebate_platform_get_rebate_global_setting 回傳的 steppedConfigList[].id。
  *   帶返水配置 id 進來不會報錯，只會查不到東西。
@@ -33,25 +34,32 @@
  * - **只回階梯式返水**：SQL 固定 `rr.stepped_settlement_id > 0`（:1194），與一般返水版的
  *   `= 0` 互斥；兩支合起來才是全部返水紀錄。
  * - 查詢是 `rebate_records AS rr LEFT JOIN rebate_stepped_configs AS sc ON sc.id =
- *   rr.stepped_settlement_id`（:1284-1285），排序 `ORDER BY rr.id DESC`（:1291），跨頁順序穩定。
- * - `steppedConfigName` 是後端組出來的顯示字串：`${sc.config_name}(${模式中文})`（:1305），
+ *   rr.stepped_settlement_id`（:1284-1285），排序 `ORDER BY rr.id DESC`（:1292），跨頁順序穩定。
+ * - `steppedConfigName` 是後端組出來的顯示字串：`${sc.config_name}(${模式中文})`（:1308），
  *   模式中文取自寫死的簡體陣列 `['亏损返水', '流水返水']`（:1189）依 `rr.rebate_mode` 索引。
  *   ⚠️ 這代表：(a) 括號內是**簡體中文**、不是 enum 值；(b) JOIN 不到階梯配置時前半段會是字面的
  *   `undefined`；(c) rebate_mode 超出 0/1 時括號內也會是 `undefined`。呼叫端要判斷模式請看
  *   自己帶的篩選條件或另外查 global setting，不要 parse 這個字串。
  * - `betStatus` 與 `profitStatuis`（rajah 欄位名就是這樣拼，多一個 i）**不是 enum、是格式化過的
  *   金額字串**：`betStatus = "有效投注 / 中獎金額"`、`profitStatuis = "-profit / -(profit - 返水金額)"`
- *   （:1352-1355），用該筆幣別的 amountFormatter 轉出來，含千分位等格式。要做數值運算請改用
+ *   （:1354-1355），用該筆幣別的 amountFormatter 轉出來，含千分位等格式。要做數值運算請改用
  *   同筆的 `validBet`／`profit`（rajah 上標 @Hide，但 API 照樣回傳的原始 i64）。
  * - ⚠️ `account`／`betStatus`／`profitStatuis` 三個欄位都只在 `if (userIds.length > 0)` 區塊內
- *   才被填入（:1345-1356）——也就是說**只有查到資料時才有**，空結果自然沒有；但這也意味著這三個
+ *   才被填入（:1344-1357）——也就是說**只有查到資料時才有**，空結果自然沒有；但這也意味著這三個
  *   欄位不是 SQL 直接查出來的，而是事後補的。account 查不到時填 `-`。
- * - 本 method **沒有 parentAgent**（上級代理）——model RebateSteppedRecord（rajah:514-556）
+ * - 本 method **沒有 parentAgent**（上級代理）——model RebateSteppedRecord（rajah:514-555）
  *   本身就沒這個欄位，與一般返水版不同，不要以為是後端漏填。
+ * - ⚠️ **`status=verified` 且 `claim_limit_at IS NULL` 的雙重異常在這支同樣成立**（與一般返水版
+ *   共用同一份邏輯）：`claim_limit_at` 是 nullable（migrations/rebate/
+ *   202605110908_alter_rebate_records.sql:14 改成 `TIMESTAMP NULL DEFAULT NULL`，同檔 :3 還主動
+ *   把舊資料設成 NULL），NULL → claimLimitAtTimestamp = 0（:1307）→ `0 < Date.now()` 成立 →
+ *   status 被改寫成 expired（:1310-1311）；同時查詢端 `rr.claim_limit_at > NOW()`（:1235）與
+ *   `<= NOW()`（:1237）對 NULL 皆不成立，所以這種紀錄用 statuses=["verified"] 或 ["expired"]
+ *   **都查不到**，只有完全不帶 statuses 時才看得見（而且顯示成 expired）。
  * - statuses 的 verified／expired 改寫規則、回傳 status 就地改寫、nullable 時間欄位回 0、
  *   account 打錯回 idNotExists、account 與 userId 會 AND——全部與一般返水版**完全相同**
- *   （:1197-1208、:1230-1243、:1300-1308），因為兩支是同一份邏輯複製出來的。
- * - 判斷過期用的「現在」同樣是 `Date.now()`（server UTC）；帶時區的那行同樣被註解掉（:1281-1282）。
+ *   （:1197-1209、:1231-1243、:1305-1311），因為兩支是同一份邏輯複製出來的。
+ * - 判斷過期用的「現在」同樣是 `Date.now()`（server UTC）；帶時區的那行同樣被註解掉（:1282-1283）。
  * - totalPage/totalRow 一樣只有 page=1 才計算（database_helper.ts:204-230）。
  *
  * 第 8 節（敏感資料/PII）：回傳含 `account`（會員登入帳號），屬帳號識別碼；逐欄檢查 model
@@ -125,6 +133,10 @@ export function registerGetRebateSteppedRecordListTool(server: McpServer): void 
                 '「已審核 且 已過領取期限」（DB 沒有 status=5），回傳的 status 也會照同規則就地改寫；' +
                 '判斷用的「現在」是 server UTC 時鐘，不是平台時區。' +
                 '⚠️ 未領取/未審核/無領取期限的時間欄位是 **0**，不是 null。' +
+                '回傳的 status 是數字：0=未審核 1=已審核 2=已領取 3=已拒絕 4=已扣除 5=已過期 6=已撤銷。' +
+                '⚠️ 「已審核 且 領取期限為 NULL（無期限）」的紀錄有雙重異常：回傳時會被誤標成 ' +
+                'expired(5)，而且用 statuses=["verified"] 或 ["expired"] **都查不到**，' +
+                '只有完全不帶 statuses 時才看得見。' +
                 '回傳欄位注意：steppedConfigName 是後端組出來的顯示字串「配置名稱(模式簡體中文)」，' +
                 'JOIN 不到時前半會是字面的 undefined，**不要 parse 它**；' +
                 'betStatus 與 profitStatuis（欄位名就是多一個 i）是**格式化過的金額字串**' +
@@ -134,6 +146,8 @@ export function registerGetRebateSteppedRecordListTool(server: McpServer): void 
                 '排序固定 rr.id 由大到小，跨頁順序穩定；' +
                 'totalPage/totalRow 只有 page=1 時後端才會真的計算，第 2 頁起一律回 0。' +
                 '金額欄位是 i64 stored value，已轉成一般數字。' +
+                '⚠️ 回傳含 account（會員登入帳號），一次最多 200 筆——這是可識別到個別會員的資料，' +
+                '不要大量外流或寫進持久化紀錄。' +
                 '純讀取查詢，不修改任何資料，可安全重複呼叫。',
             inputSchema: {
                 orderId: z.string().optional().describe('返水單號（訂單編號），精確比對'),
@@ -174,7 +188,9 @@ export function registerGetRebateSteppedRecordListTool(server: McpServer): void 
             if (r.failed) {
                 return asErrorResult(r, {
                     hint: 'errorCode=11（idNotExists）+ message "account not exists" 代表帶的 account 在本平台查無此會員，'
-                        + '不代表這個人沒有階梯式返水紀錄；其餘錯誤碼請照原樣回報，不要自行改條件重試。',
+                        + '不代表這個人沒有階梯式返水紀錄。（errorName 會顯示「(未知錯誤碼)」是正常的：11 是 genie 框架層代碼，'
+                        + '而反查用的 AgrabahErrorCodeEnum 從 101 起、不涵蓋框架層代碼。）'
+                        + '其餘錯誤碼請照原樣回報，不要自行改條件重試。',
                 });
             }
 

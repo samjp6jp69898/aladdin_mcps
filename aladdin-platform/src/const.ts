@@ -144,7 +144,7 @@ export const REBATE_STEPPED_MODE_MAP: Record<(typeof REBATE_STEPPED_MODE_KEYS)[n
 // get_rebate_record_list / get_rebate_stepped_record_list 共用。
 // ⚠️ expired(5) 不是資料庫真的存在的狀態值：後端把它翻譯成「status = verified 且 claim_limit_at
 // 已過」的查詢條件，回傳時也會把符合這條件的紀錄 status 就地改寫成 expired
-// （rebate_platform.ts:1066-1077 與 1139-1141）。
+// （rebate_platform.ts:1071-1083 與 1138-1141）。
 export const REBATE_RECORD_STATUS_KEYS = [ 'unverified', 'verified', 'claimed', 'rejected', 'deducted', 'expired', 'clawBack' ] as const;
 export const REBATE_RECORD_STATUS_MAP: Record<(typeof REBATE_RECORD_STATUS_KEYS)[number], number> = {
     unverified: 0, verified: 1, claimed: 2, rejected: 3, deducted: 4, expired: 5, clawBack: 6,
