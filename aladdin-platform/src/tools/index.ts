@@ -199,6 +199,16 @@ import { registerUpdateFixedRankingSettingTool } from './update_fixed_ranking_se
 import { registerListFixedRankingEntriesTool } from './list_fixed_ranking_entries.ts';
 import { registerGetRouletteConfigNameListTool } from './get_roulette_config_name_list.ts';
 import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_name_list.ts';
+import { registerGetLiveTabsTool } from './get_live_tabs.ts';
+import { registerCreateOrUpdateLiveTabTool } from './create_or_update_live_tab.ts';
+import { registerUpdateLiveTabStatusTool } from './update_live_tab_status.ts';
+import { registerGetLiveCategoriesTool } from './get_live_categories.ts';
+import { registerCreateOrUpdateLiveCategoryTool } from './create_or_update_live_category.ts';
+import { registerUpdateLiveCategoryStatusTool } from './update_live_category_status.ts';
+import { registerGetMerchantListTool } from './get_merchant_list.ts';
+import { registerToggleMerchantStatusTool } from './toggle_merchant_status.ts';
+import { registerGetMerchantSettingTool } from './get_merchant_setting.ts';
+import { registerEditMerchantSettingTool } from './edit_merchant_setting.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -403,4 +413,14 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerListFixedRankingEntriesTool(server);
     registerGetRouletteConfigNameListTool(server);
     registerGetRouletteRewardNameListTool(server);
+    registerGetLiveTabsTool(server);
+    registerCreateOrUpdateLiveTabTool(server);
+    registerUpdateLiveTabStatusTool(server);
+    registerGetLiveCategoriesTool(server);
+    registerCreateOrUpdateLiveCategoryTool(server);
+    registerUpdateLiveCategoryStatusTool(server);
+    registerGetMerchantListTool(server);
+    registerToggleMerchantStatusTool(server);
+    registerGetMerchantSettingTool(server);
+    registerEditMerchantSettingTool(server);
 }
