@@ -504,3 +504,13 @@ export const TRADE_VERIFY_TYPE_MAP = {
 
 // FreezeDurationUnitEnum（service_common.rajah:2340-2344）
 export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as const;
+
+// UserLevelTypeEnum（user_level_back_office.rajah:1-4）——會員層級的種類。auto=0 自動層級
+// （由層級策略自動升降、level 由後端連號重排）、static=1 固定層級（不參與自動升降）。
+// UserLevel.GetList 的 type 參數、UserLevel.Add 的 UserLevelConfig.type、以及 GetNameList
+// 回傳的 type 欄位共用同一組值，故放這裡不各自宣告。
+export const USER_LEVEL_TYPE_KEYS = [ 'auto', 'static' ] as const;
+export const USER_LEVEL_TYPE_MAP: Record<(typeof USER_LEVEL_TYPE_KEYS)[number], number> = {
+    auto: 0,
+    static: 1,
+};
