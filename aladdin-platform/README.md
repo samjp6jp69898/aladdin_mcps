@@ -203,6 +203,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_platform_fixed_ranking_platform_list_fixed_ranking_entries` | `FixedRankingPlatform.ListFixedRankingEntries` | 查詢固定榜單指定週期的排行資料（跨服務取 statistic 真實數據）；kind/period 語意不合時不報錯、靜默回空清單；userId/identifier 精確篩選；page/pageSize 為裸整數，本工具 zod schema 已擋 <1（後端本身對 <=0 回 invalidData，但透過 MCP 呼叫看不到這條路徑）；i64 欄位（protobufjs Long 物件）已用 `toPlainNumber` 轉成一般數字；2026-08-26 dev 實測含不存在 identifier、contribution+allTime 真實回傳 10 筆資料 |
 | `aladdin_platform_roulette_platform_get_config_name_list` | `RoulettePlatform.GetConfigNameList` | 取得本平台轉盤配置 id+多語名稱清單，無權限節點限制（跨一級菜單共用下拉來源），無參數不分頁；2026-08-26 dev 實測回傳真實資料 |
 | `aladdin_platform_roulette_platform_get_reward_name_list` | `RoulettePlatform.GetRewardNameList` | 取得本平台轉盤獎勵設定 id+名稱清單（單一語系字串，非多語陣列），無參數不分頁；2026-08-26 dev 實測回傳真實資料 |
+| `aladdin_platform_strategy_get_list` | `Strategy.GetList` | 列出本平台全部會員層級策略與其規則（auto/未登入/未存款/連續充值失敗四型），無參數不分頁；後端讀取失敗會降級成空陣列而不報錯、notLoggedIn/noDeposit 無規則時回一條 id=0 空 rule，兩者皆已寫進 description |
 ## 一個重要的架構限制：platform 沒有「建立全新遊戲」的能力
 
 `UpdateGameVendorGame` 背後依賴 agrabah 的 `ensurePlatformGameVendorGame()`：會先查全平台共用的「廠商遊戲母表」（`game_vendor_games`）有沒有這個 `gameVendorId + gameId`，**沒有就直接回錯**（`errorCode=303 gameVendorGameNotExists`），不會憑空建立。母表資料正常是由廠商同步 job 自動帶入。真正能建立全新遊戲、寫進母表的是 **admin** 後台的 `GameVendorAdmin.CreateOrUpdateGameVendorGame`（見 `aladdin-admin` MCP 的 `aladdin_admin_game_vendor_admin_create_or_update_game_vendor_game`）。
