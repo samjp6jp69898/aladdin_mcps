@@ -20,7 +20,10 @@
  * rebate_platform.ts:926-953 的三分支——userId > 0 走 id→account 反查；否則 account 非空走
  * account→id 反查；**兩者都沒有就直接回 `ErrorCode.invalidData`（9）+ message "account is empty"**。
  * 最後無條件 `conditions.push('user_id = ?')`（:954），所以查詢一定被限縮在單一會員。
- * 本 tool 因此在 zod 之外用 superRefine 先擋掉「兩個都沒帶」，不讓呼叫端浪費一次往返。
+ * 本 tool 因此在 handler 開頭用一個普通的前置 `if` 先擋掉「兩個都沒帶」，不讓呼叫端浪費一次往返
+ * （不是 zod refine/superRefine——`inputSchema` 收的是 ZodRawShape 欄位字典、不是 ZodObject，
+ * 掛不上 refine；這種「在打後端之前用普通 if 擋下並回 `asTextResult({ success: false, message })`」
+ * 的寫法在本 server 有先例，見 get_audit_logs.ts:99-104、create_or_update_room_mute.ts:180-185）。
  *
  * agrabah 實作細節（讀源碼查證）：
  * - **userId 優先於 account**：帶了 userId>0 就走 userId，account 參數會被忽略並被反查結果覆寫
@@ -45,7 +48,7 @@
  * - `claimAmount`（已領取金額）與 `id` 標 @Hide，API 照樣回傳。
  *
  * 第 8 節（敏感資料/PII）：回傳含 `account`（會員登入帳號）；逐欄檢查 model RebateSettlement
- * （rajah:411-441）確認沒有 realName／銀行卡號／開戶姓名／token／密碼。不套用遮罩，但這支本來就是
+ * （rajah:411-440）確認沒有 realName／銀行卡號／開戶姓名／token／密碼。不套用遮罩，但這支本來就是
  * 「指定單一會員」的查詢，呼叫端已經知道對象是誰。
  *
  * 這是純讀取查詢，不修改任何資料，可安全重複呼叫。
@@ -103,7 +106,8 @@ export function registerGetRebateSettlementListTool(server: McpServer): void {
                 '是最快鎖定單筆的方式）、statuses 狀態多選（**直接比對，沒有返水紀錄那支的 ' +
                 'verified/expired 即時改寫**）、beginTimestamp/endTimestamp 依「結算建立時間」' +
                 '篩選（毫秒 timestamp，>= 起始、< 結束）。' +
-                '回傳每筆：account（每筆都是同一個人）、rebateName（返水層級名稱，查不到時回退成' +
+                '回傳每筆：id（結算明細 id，rajah 標 @Hide 但 API 照樣回傳）、' +
+                'account（每筆都是同一個人）、rebateName（返水層級名稱，查不到時回退成' +
                 '字面字串「{id: 數字}」）、startAtTimestamp/endAtTimestamp（結算區間）、' +
                 'validBetAmount 有效投注、profitAndLoss 損益、settlementCount 統計筆數、' +
                 'rebateAmount 返水金額、claimAmount 已領取金額、currencyCode 幣別、' +

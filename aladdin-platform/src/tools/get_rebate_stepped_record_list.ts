@@ -5,8 +5,8 @@
  * rajah: RebatePlatform.GetRebateSteppedRecordList(options RebateRecordOptions 1, page i32 2,
  * pageSize PageSizeEnum 3) (rows [RebateSteppedRecord] 1, totalPage i32 2, totalRow i32 3)
  * （rebate_back_office.rajah:321；**method 本身沒有掛 @Permission**——權限由同 service 的
- * Placeholder 節點 PlaceholderBonusCenterTieredRebateRecord（rajah:335，
- * "BonusCenter.TieredRebate.Record"）與 PlaceholderBonusCenterTieredRebateReview（rajah:341，
+ * Placeholder 節點 PlaceholderBonusCenterTieredRebateRecord（rajah:346，@Permission 在 345，
+ * "BonusCenter.TieredRebate.Record"）與 PlaceholderBonusCenterTieredRebateReview（rajah:352，@Permission 在 351，
  * "BonusCenter.TieredRebate.Review"）在前端 gate；service RebatePlatform 定義於同檔 268 行、
  * @Module "Rebate"（267）；非 @NoPublic、非 Placeholder）——後台「優惠中心 > 階梯式返水 >
  * 返水紀錄／返水審核」。
@@ -23,7 +23,7 @@
  * ⚠️ **同一個 options model、同名欄位，在這支的語意不同**（第 0 節「同名 method 陷阱」的同構情況，
  * 讀源碼才看得出來，簽名完全看不出來）：
  * - 一般返水版：`rebateConfigIds` → SQL `rebate_config_id IN (?)`，值是**返水配置 id**
- *   （rebate_platform.ts:1085-1087）。
+ *   （rebate_platform.ts:1085-1088，SQL 在 :1086）。
  * - 本 method：`rebateConfigIds` → SQL `rr.stepped_settlement_id IN (?)`（:1245-1247），
  *   值其實是**階梯配置 id**，也就是
  *   aladdin_platform_rebate_platform_get_rebate_global_setting 回傳的 steppedConfigList[].id。
@@ -37,17 +37,23 @@
  *   rr.stepped_settlement_id`（:1284-1285），排序 `ORDER BY rr.id DESC`（:1292），跨頁順序穩定。
  * - `steppedConfigName` 是後端組出來的顯示字串：`${sc.config_name}(${模式中文})`（:1308），
  *   模式中文取自寫死的簡體陣列 `['亏损返水', '流水返水']`（:1189）依 `rr.rebate_mode` 索引。
- *   ⚠️ 這代表：(a) 括號內是**簡體中文**、不是 enum 值；(b) JOIN 不到階梯配置時前半段會是字面的
- *   `undefined`；(c) rebate_mode 超出 0/1 時括號內也會是 `undefined`。呼叫端要判斷模式請看
+ *   ⚠️ 這代表：(a) 括號內是**簡體中文**、不是 enum 值；(b) LEFT JOIN 落空時 `sc.config_name` 是 SQL NULL，
+ *   `queryObject.query()` 直接回 mysql2 原始 row、不做任何轉換
+ *   （engines/relational_database/mysql/mysql_relational_database_engine.ts:56-64），
+ *   所以樣板字串會產生字面的 **`null`**（不是 `undefined`）；(c) 只有 rebate_mode 落在 0/1
+ *   之外、陣列索引未命中時，括號內才會是 `undefined`。呼叫端要判斷模式請看
  *   自己帶的篩選條件或另外查 global setting，不要 parse 這個字串。
  * - `betStatus` 與 `profitStatuis`（rajah 欄位名就是這樣拼，多一個 i）**不是 enum、是格式化過的
  *   金額字串**：`betStatus = "有效投注 / 中獎金額"`、`profitStatuis = "-profit / -(profit - 返水金額)"`
  *   （:1354-1355），用該筆幣別的 amountFormatter 轉出來，含千分位等格式。要做數值運算請改用
- *   同筆的 `validBet`／`profit`（rajah 上標 @Hide，但 API 照樣回傳的原始 i64）。
+ *   同筆的 `validBet`／`profit`（rajah:551-555 上標 @Hide，但 API 照樣回傳的原始 i64）。
+ *   ⚠️ **`profit` 的語意是「負營利」**（rajah:553 的註解就是這樣寫），後端顯示用的盈虧是
+ *   `amountFormatter(-profit)`（:1355）——也就是說 profit 的**符號與直覺相反**，
+ *   dev 實測 profit=55800 對應到的 profitStatuis 首段是 "-5.58"。拿它做運算前先確認符號方向。
  * - ⚠️ `account`／`betStatus`／`profitStatuis` 三個欄位都只在 `if (userIds.length > 0)` 區塊內
  *   才被填入（:1344-1357）——也就是說**只有查到資料時才有**，空結果自然沒有；但這也意味著這三個
  *   欄位不是 SQL 直接查出來的，而是事後補的。account 查不到時填 `-`。
- * - 本 method **沒有 parentAgent**（上級代理）——model RebateSteppedRecord（rajah:514-555）
+ * - 本 method **沒有 parentAgent**（上級代理）——model RebateSteppedRecord（rajah:514-556）
  *   本身就沒這個欄位，與一般返水版不同，不要以為是後端漏填。
  * - ⚠️ **`status=verified` 且 `claim_limit_at IS NULL` 的雙重異常在這支同樣成立**（與一般返水版
  *   共用同一份邏輯）：`claim_limit_at` 是 nullable（migrations/rebate/
@@ -58,7 +64,7 @@
  *   **都查不到**，只有完全不帶 statuses 時才看得見（而且顯示成 expired）。
  * - statuses 的 verified／expired 改寫規則、回傳 status 就地改寫、nullable 時間欄位回 0、
  *   account 打錯回 idNotExists、account 與 userId 會 AND——全部與一般返水版**完全相同**
- *   （:1197-1209、:1231-1243、:1305-1311），因為兩支是同一份邏輯複製出來的。
+ *   （:1197-1209、:1231-1243、:1305-1312），因為兩支是同一份邏輯複製出來的。
  * - 判斷過期用的「現在」同樣是 `Date.now()`（server UTC）；帶時區的那行同樣被註解掉（:1282-1283）。
  * - totalPage/totalRow 一樣只有 page=1 才計算（database_helper.ts:204-230）。
  *
@@ -138,10 +144,13 @@ export function registerGetRebateSteppedRecordListTool(server: McpServer): void 
                 'expired(5)，而且用 statuses=["verified"] 或 ["expired"] **都查不到**，' +
                 '只有完全不帶 statuses 時才看得見。' +
                 '回傳欄位注意：steppedConfigName 是後端組出來的顯示字串「配置名稱(模式簡體中文)」，' +
-                'JOIN 不到時前半會是字面的 undefined，**不要 parse 它**；' +
+                'JOIN 不到階梯配置時前半會是字面的 null（SQL NULL 轉出來的），rebate_mode 超出 0/1 時' +
+                '括號內才是 undefined——總之**不要 parse 它**；' +
                 'betStatus 與 profitStatuis（欄位名就是多一個 i）是**格式化過的金額字串**' +
                 '（「有效投注 / 中獎金額」「盈虧 / 實際盈虧」），要做數值運算請改用同筆的 ' +
-                'validBet 與 profit（原始數值）。本 model **沒有 parentAgent**（上級代理），' +
+                'validBet 與 profit（原始數值）——⚠️ 但 profit 的語意是「**負營利**」，' +
+                '後端顯示的盈虧等於 -profit，符號與直覺相反，用之前先確認方向。' +
+                '本 model **沒有 parentAgent**（上級代理），' +
                 '那是一般返水版才有的欄位。' +
                 '排序固定 rr.id 由大到小，跨頁順序穩定；' +
                 'totalPage/totalRow 只有 page=1 時後端才會真的計算，第 2 頁起一律回 0。' +
