@@ -549,3 +549,31 @@ export const ROULETTE_REWARD_LIMIT_TYPE_MAP = { unlimited: 0, count: 1, amount: 
 export const ROULETTE_UPLOAD_IMAGE_MAP = {
     backgroundChannel: 1, frameChannel: 2, bottomChannel: 3, pointerChannel: 4, slotIconChannel: 5,
 } as const;
+
+// ---------------------------------------------------------------------------
+// sensitive_word_back_office domain（SensitiveWordPlatform 系列 tool）共用常數。
+// ---------------------------------------------------------------------------
+
+// SensitiveWordSourceTypeEnum（rajah/services/sensitive_word.rajah:37-45）——敏感詞的來源。
+// 這是 SensitiveWordEdit 的 @Readonly 欄位：後端新增時一律寫死 Manual，呼叫端無法指定
+// （agrabah/src/managers/sensitive_word_manager.ts:261）。
+export const SENSITIVE_WORD_SOURCE_TYPE_MAP = { Manual: 1, Import: 2, Report: 3 } as const;
+
+// 敏感詞後端的硬性數量/長度限制，全部來自 agrabah/src/managers/sensitive_word_manager.ts
+// 的 module-level 常數（:28/:30/:32/:34/:38）與 service 層的分頁上限
+// （agrabah/src/servers/sensitive_word_back_office/services/sensitive_word_platform.ts:17）。
+// 集中在此供 get/upsert/batch-remove 三支 tool 共用，避免各自抄一份而漂移。
+export const SENSITIVE_WORD_LIMITS = {
+    /** 新增時整個 sensitiveWord 字串（逗號分隔多筆）的長度上限 */
+    maxAddLength: 5000,
+    /** 新增時逗號拆分後的筆數上限 */
+    maxAddItem: 1000,
+    /** 單一敏感詞的長度上限 */
+    maxItemLength: 50,
+    /** BatchRemoveSensitiveWord 單次可刪除的 id 數量上限 */
+    batchDeleteLimit: 200,
+    /** GetSensitiveWords 的 pageSize 上限（超過回 exceedRequestLimit） */
+    maxPageSize: 200,
+    /** sensitiveWordGroupId 傳 0/未帶時後端套用的預設分組 id */
+    defaultGroupId: 1,
+} as const;
