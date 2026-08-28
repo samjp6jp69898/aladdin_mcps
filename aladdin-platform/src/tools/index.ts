@@ -202,6 +202,7 @@ import { registerGetRouletteRewardNameListTool } from './get_roulette_reward_nam
 import { registerGetWorldCupInfoListTool } from './get_world_cup_info_list.ts';
 import { registerGetWorldCupFixturesInfoTool } from './get_world_cup_fixtures_info.ts';
 import { registerGetMilestoneRecordTool } from './get_milestone_record.ts';
+import { registerGetMilestoneTotalAwardAndMilesTool } from './get_milestone_total_award_and_miles.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -409,4 +410,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerGetWorldCupInfoListTool(server);
     registerGetWorldCupFixturesInfoTool(server);
     registerGetMilestoneRecordTool(server);
+    registerGetMilestoneTotalAwardAndMilesTool(server);
 }
