@@ -210,6 +210,7 @@ import { registerUpdateRebateGlobalSettingTool } from './update_rebate_global_se
 import { registerCreateOrUpdateRebateConfigTool } from './create_or_update_rebate_config.ts';
 import { registerDeleteRebateConfigTool } from './delete_rebate_config.ts';
 import { registerListUserFundTool } from './list_user_fund.ts';
+import { registerGetUserAdjustmentInfoTool } from './get_user_adjustment_info.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -425,4 +426,5 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerCreateOrUpdateRebateConfigTool(server);
     registerDeleteRebateConfigTool(server);
     registerListUserFundTool(server);
+    registerGetUserAdjustmentInfoTool(server);
 }

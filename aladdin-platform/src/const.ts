@@ -172,7 +172,9 @@ export const PAGE_SIZE_MAP: Record<(typeof PAGE_SIZE_KEYS)[number], number> = {
 // 直接從已生成的 remote.gen.ts 匯入真正的 TS enum，用 Object.keys 動態推導出
 // 字串 key 清單給 zod z.enum() 用（agent 傳字串 key，如 "paymentDeposit"，不傳數字碼），
 // forward/reverse mapping 都用該 enum 物件本身的內建能力（TS 數字 enum 自動有雙向映射）。
-import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum, SystemIdEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
+import { TransactionCategoryEnum, TransactionStatusEnum, AgentModeForSearchAgentMemberEnum, AgentModeEnum, SystemIdEnum,
+    FundAdjustmentStatusEnum, FundAdjustmentDirectionEnum, FundAdjustmentAutoReviewResultEnum,
+    ManualCategoryEnum, ManualAddCategoryEnum, FundAdjustmentGiveModeEnum } from '/Users/user/aladdin/abu/platform/src/generated/remote.gen.ts';
 
 export { TransactionCategoryEnum };
 
@@ -539,3 +541,91 @@ export const FREEZE_DURATION_UNIT_MAP = { minutes: 1, hours: 2, days: 3 } as con
  * list_user_fund_adjustment 等，多支都吃 i32 的 userId 或調整單 id）統一改用這個常數。
  */
 export const I32_MAX = 2147483647;
+
+// ---------------------------------------------------------------------------
+// FundAdjustmentPlatform（fund_adjustment_back_office.rajah）系列 tool 共用的 enum 對照。
+// 一律走「從 remote.gen.ts 匯入真正的 TS enum + Object.keys 動態推導 key 清單」的既有模式
+// （同本檔上方 TransactionCategoryEnum/SystemIdEnum 的作法），不手抄一份數字對照表——
+// ManualCategoryEnum 有 19 個值、跨上分/下分兩組，手抄極易漂移。
+// agent 一律傳字串 key（如 "pending"、"manualAddRebate"），不傳裸數字碼。
+// ---------------------------------------------------------------------------
+
+/** FundAdjustmentStatusEnum（rajah:66-73）：pending=1 待審核 / pass=2 通過 / reject=3 拒絕。 */
+export const FUND_ADJUSTMENT_STATUS_KEYS = Object.keys(FundAdjustmentStatusEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function fundAdjustmentStatusKeyToNumber(key: string): number {
+    return (FundAdjustmentStatusEnum as unknown as Record<string, number>)[ key ];
+}
+export function fundAdjustmentStatusNumberToKey(value: number): string | number {
+    return (FundAdjustmentStatusEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/** FundAdjustmentDirectionEnum（rajah:76-81）：add=1 上分 / deduct=2 下分。 */
+export const FUND_ADJUSTMENT_DIRECTION_KEYS = Object.keys(FundAdjustmentDirectionEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function fundAdjustmentDirectionKeyToNumber(key: string): number {
+    return (FundAdjustmentDirectionEnum as unknown as Record<string, number>)[ key ];
+}
+export function fundAdjustmentDirectionNumberToKey(value: number): string | number {
+    return (FundAdjustmentDirectionEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/**
+ * FundAdjustmentAutoReviewResultEnum（rajah:52-63）：none=0 未執行自動審核 / pass=1 /
+ * rejectedExceedAmount=2 超過設置金額 / rejectedNoClaimBonus=3 會員禁領優惠彩金 /
+ * systemExecutionFailed=99。⚠️ none 的數值是 **0**，用它當單一數值搜尋條件時會被後端的
+ * searchNotEmpty（database_helper.ts:356-358，number 且 === 0 視為未填）當成「沒填」；
+ * 但這個欄位在 rajah 是陣列（`autoReviewResult [FundAdjustmentAutoReviewResultEnum] 12`），
+ * searchNotEmpty 對陣列只看長度（:359-361），所以 [none] 這個單元素陣列不會被誤判掉。
+ */
+export const FUND_ADJUSTMENT_AUTO_REVIEW_RESULT_KEYS = Object.keys(FundAdjustmentAutoReviewResultEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function fundAdjustmentAutoReviewResultKeyToNumber(key: string): number {
+    return (FundAdjustmentAutoReviewResultEnum as unknown as Record<string, number>)[ key ];
+}
+export function fundAdjustmentAutoReviewResultNumberToKey(value: number): string | number {
+    return (FundAdjustmentAutoReviewResultEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/**
+ * ManualCategoryEnum（rajah:84-123，19 個值）：手動調整的交易類型，上分 1-10、下分 11-19，
+ * 是「上分與下分合在同一個 enum」的完整清單，用於查詢條件與回傳值。
+ * 對照 ManualAddCategoryEnum（common.rajah:2606-2627）只有上分那 10 個、數值相同。
+ */
+export const MANUAL_CATEGORY_KEYS = Object.keys(ManualCategoryEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function manualCategoryKeyToNumber(key: string): number {
+    return (ManualCategoryEnum as unknown as Record<string, number>)[ key ];
+}
+export function manualCategoryNumberToKey(value: number): string | number {
+    return (ManualCategoryEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
+
+/**
+ * ManualAddCategoryEnum（common.rajah:2606-2627，10 個值）：**只有手動上分**的交易類型，
+ * 數值與 ManualCategoryEnum 的 1-10 相同。資金預設快捷（FundAdjustmentPreset）只服務上分，
+ * 所以它的 category 用的是這個較窄的 enum，不是 ManualCategoryEnum——兩者不可互換。
+ */
+export const MANUAL_ADD_CATEGORY_KEYS = Object.keys(ManualAddCategoryEnum).filter(
+    (k) => Number.isNaN(Number(k)),
+) as [ string, ...string[] ];
+export function manualAddCategoryKeyToNumber(key: string): number {
+    return (ManualAddCategoryEnum as unknown as Record<string, number>)[ key ];
+}
+// 註：這裡刻意**不**提供 manualAddCategoryNumberToKey。preset 相關 tool 解讀回傳的 category
+// 一律用上面較寬的 manualCategoryNumberToKey——因為後端建立 preset 時驗的是完整的
+// ManualCategoryEnum（fund_adjustment_platform.ts:1132-1134），DB 裡理論上可能存在下分類型，
+// 用只認得 10 個上分值的窄 enum 反查會把它顯示成裸數字。
+
+/**
+ * FundAdjustmentGiveModeEnum（**service_common.rajah:2080-2085**，不是 common.rajah——
+ * 這兩個檔名很容易混淆，同區塊上方的 ManualAddCategoryEnum 才是在 common.rajah）：
+ * wallet=1 中心錢包 / bonus=2 彩金。回傳值解讀用。
+ */
+export function fundAdjustmentGiveModeNumberToKey(value: number): string | number {
+    return (FundAdjustmentGiveModeEnum as unknown as Record<number, string>)[ value ] ?? value;
+}
