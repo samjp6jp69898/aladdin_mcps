@@ -58,6 +58,13 @@
  * 這條路徑會讓 `writeR.failed` 為真、本工具照實回報失敗，**不會造成資料被錯誤覆蓋或誤報成功**，
  * 風險有界。
  *
+ * 圖示欄位（method-category-checklist.md 第 8 節「上傳/建立用 token 類」）：`icon` 在 rajah 上是
+ * `[LocalizationString]` + `@Type "File:Image"`（:8-9），也就是「每個語系一張圖」，值是後端檔案
+ * 路徑。本工具每一筆接受 path／filePath／fileId 三選一，需要上傳時走
+ * `tools/live_image_upload.ts` 的共用 helper（取 `LiveUploadImageEnum.tabIcon=1` 的一次性 token
+ * 再上傳）。該 helper 與 `create_or_update_live_category.ts` 共用，`GetUploadImageToken` 因此
+ * 沒有被包成獨立對外 tool，理由見那個 helper 的檔頭。
+ *
  * ⚠️ **新增時後端不回傳新 id**（RPC 無回傳值），本工具比照
  * `create_or_update_activity_tab.ts` 的既有作法，用「寫入前後 GetLiveTabs 的 id 集合差異」
  * 反推新 id；差異不只一筆（同時間有別人也在新增）時列出全部候選、不猜。
@@ -71,10 +78,21 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LiveTabEdit, SectionLayout } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
+import { LIVE_UPLOAD_IMAGE_TYPE, liveImageInputSchema, resolveLiveImagePath, type LiveImageInput } from './live_image_upload.ts';
 
 const localizedTextSchema = z.array(z.object({
     code: z.string().describe('語系代碼，例如 zh-CN、zh-TW、en-US'),
-    value: z.string().describe('該語系下的文字值（icon 欄位放的是圖片路徑字串）'),
+    value: z.string().describe('該語系下的文字值'),
+}));
+
+/**
+ * 頁籤圖示是「每個語系一張圖」（rajah 上 `icon [LocalizationString]` 且帶 `@Type "File:Image"`，
+ * 值是後端檔案路徑），所以每一筆除了語系代碼之外，圖片來源同樣走 path/filePath/fileId 三選一，
+ * 由 tools/live_image_upload.ts 的共用 helper 負責解析（換圖時會取 LiveUploadImageEnum.tabIcon=1
+ * 的一次性上傳 token 再上傳）。
+ */
+const localizedImageSchema = z.array(liveImageInputSchema.extend({
+    code: z.string().describe('語系代碼，例如 zh-CN、zh-TW、en-US'),
 }));
 
 /** SectionLayoutRowEnum（rajah/services/common.rajah:1139-1143）：two=0、banner=1、oneBigTwoSmall=2。 */
@@ -137,9 +155,10 @@ export function registerCreateOrUpdateLiveTabTool(server: McpServer): void {
                 name: localizedTextSchema.optional().describe(
                     '頁籤名稱多語系陣列；新增時必填（至少一組 {code, value}），修改時省略沿用現值、有帶則逐語系合併',
                 ),
-                icon: localizedTextSchema.optional().describe(
-                    '頁籤圖示多語系陣列，value 是圖片路徑（例如 /static/live/xxxx，需先用後台上傳流程取得）；' +
-                    '省略沿用現值、有帶則逐語系合併',
+                icon: localizedImageSchema.optional().describe(
+                    '頁籤圖示多語系陣列，每筆是 {code, 以及 path／filePath／fileId 三選一}：' +
+                    'path 直接沿用既有後端路徑、filePath 是 stdio 模式的本機圖片絕對路徑（本工具代為上傳）、' +
+                    'fileId 是 hosted 模式先 POST /files 取得的。省略整個欄位沿用現值，有帶則逐語系合併',
                 ),
                 layout: z.object({
                     normalRows: sectionLayoutRowSchema.describe('一般版位列型態陣列（0=兩欄、1=橫幅、2=一大兩小）'),
@@ -183,7 +202,24 @@ export function registerCreateOrUpdateLiveTabTool(server: McpServer): void {
             const nextPosition = position !== undefined ? position : currentPosition;
 
             const nextName = mergeLocalizedStrings(name, current?.name);
-            const nextIcon = mergeLocalizedStrings(icon, current?.icon);
+
+            // 圖示：每個語系各自把 path/filePath/fileId 解析成後端路徑（需要時上傳），
+            // 任何一筆有問題就整批中止、不做部分成功。
+            const iconErrors: string[] = [];
+            const resolvedIcon: { code: string; value: string }[] = [];
+            for (const entry of icon ?? []) {
+                const { code, ...upload } = entry as { code: string } & LiveImageInput;
+                const path = await resolveLiveImagePath(`icon/${ code }`, LIVE_UPLOAD_IMAGE_TYPE.tabIcon, upload, iconErrors);
+                if (path !== null) resolvedIcon.push({ code, value: path });
+            }
+            if (iconErrors.length > 0) {
+                return asTextResult({
+                    success: false,
+                    message: '圖示參數處理失敗，未送出寫入請求（已上傳的檔案不會被引用，可忽略）',
+                    errors: iconErrors,
+                });
+            }
+            const nextIcon = mergeLocalizedStrings(icon === undefined ? undefined : resolvedIcon, current?.icon);
             const nextLayout = SectionLayout.create({
                 normalRows: layout ? layout.normalRows : (current?.layout?.normalRows ?? []),
                 repeatedRows: layout ? layout.repeatedRows : (current?.layout?.repeatedRows ?? []),
