@@ -57,7 +57,8 @@
  *   回讀後 changedFields=["expireDays"]、unchangedFieldsOk=true，name / guide / currencyAmount /
  *   rewardId / status / resetType / resetTime 全部維持原值；再帶 `expireDays: 100` 還原。
  * - **參數守門**：expireDays=0 被 zod 擋在 tool 層；create 分支缺 name/rewardId/currencyAmount 時
- *   回 problems 清單且未執行任何寫入。
+ *   回 problems 清單且未執行任何寫入。（2026-08-28 review 後補上 create 分支的 costType/resetType/status
+ *   必填檢查並重測——初版這三個欄位省略時會靜默套預設值，在「建了刪不掉」的路徑上風險過高。）
  * - **道具存在性守門（實測發現並修正的真實缺陷）**：初版用 `rows.length === 0` 判斷道具是否存在，
  *   實測送 costItemId=99999 竟然**通過檢查並成功寫入 DB**（config 1030 一度被改成 costType=item /
  *   costItemId=99999）。追查後端發現 GetItemNamesById 對任何 id 都固定回一列，改用「`rows[0].name`
@@ -143,7 +144,9 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
                 '請確認真的要新增再呼叫。' +
                 '⚠️ **後端是整包覆蓋、不做欄位合併**：更新時本工具會強制先讀回現值再把你指定的欄位疊上去，' +
                 '所以更新只需要帶「要改的欄位」；但**不要**繞過本工具直接組 payload 呼叫該 RPC，會把沒帶到的欄位歸零。' +
-                '新增時 rewardId / name / expireDays / costType / resetType 為必填（後端 @Rules "Required"）；' +
+                '新增時 rewardId / name / expireDays / costType / resetType / status 全部必填——' +
+                '**本工具刻意不替新增路徑套用任何預設值**，因為建出來的設定無法刪除，靜默套預設等於讓你在不知情下' +
+                '產生無法回收的錯誤資料（更新路徑則相反：省略即沿用現值）。' +
                 'costType=currency 要帶 currencyAmount、costType=item 要帶 costItemId + costItemAmount。' +
                 'rewardId 請先用 aladdin_platform_roulette_platform_get_reward_name_list 取得合法值，' +
                 'costItemId 請先用 aladdin_platform_inventory_platform_list_items / list_enabled_items_all 取得——' +
@@ -161,7 +164,7 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
                 name: localizedTextSchema.optional().describe('轉盤名稱（多語）。新增時必填；更新時省略則沿用現值'),
                 guide: localizedTextSchema.optional().describe('抽獎說明（多語 RichText，值是 HTML 片段如 <p>…</p>）。更新時省略則沿用現值'),
                 rewardId: z.number().int().min(1).optional().describe('關聯的獎勵配置 id，來自 get_reward_name_list。新增時必填'),
-                status: z.enum(ACTIVE_STATUS_KEYS).optional().describe('啟用狀態：enabled/disabled。更新時省略則沿用現值；只想改狀態請改用 switch_roulette_config_status'),
+                status: z.enum(ACTIVE_STATUS_KEYS).optional().describe('啟用狀態：enabled/disabled。**新增時必填**（本工具不套預設值）；更新時省略則沿用現值。只想改狀態請改用 switch_roulette_config_status'),
                 costType: z.enum(COST_TYPE_KEYS).optional().describe('每抽的消費方式：currency(貨幣) 或 item(道具)。新增時必填'),
                 currencyAmount: currencyLinkSchema.optional().describe('每抽消費金額（多幣別，stored 值）。costType=currency 時必填'),
                 costItemId: z.number().int().min(0).optional().describe('每抽消費的道具 id（來自 inventory 相關 tool）。costType=item 時必填且需 >= 1；填 0 代表清空（僅在 costType=currency 時有意義）'),
@@ -207,6 +210,15 @@ export function registerCreateOrUpdateRouletteConfigTool(server: McpServer): voi
 
             // ---- 3. 送出前的必填/一致性檢查（後端 @Rules "Required" 與已知的未處理例外） ----
             const problems: string[] = [];
+            // 新增分支：description 與各欄位的 describe 都寫明 costType / resetType 新增時必填，
+            // 這裡就必須真的擋——否則省略時會靜默套用 currency / none 的預設值，而這條路徑建出來的
+            // 設定**無法刪除**（本 domain 沒有任何 Delete API），等於讓呼叫端在不知情下產生無法回收的
+            // 錯誤資料。2026-08-28 review 指出初版漏了這兩條檢查，已補上。
+            if (!isUpdate) {
+                if (input.costType === undefined) problems.push('新增時 costType 是必填（currency 或 item）；本工具不替你套用預設值，因為建出來的轉盤設定無法刪除');
+                if (input.resetType === undefined) problems.push('新增時 resetType 是必填（none / weekly / monthly）；本工具不替你套用預設值，因為建出來的轉盤設定無法刪除');
+                if (input.status === undefined) problems.push('新增時 status 是必填（enabled 或 disabled）；本工具不替你套用預設值，避免在不知情下把新設定直接上線或下線');
+            }
             if (merged.name.length === 0) problems.push('name 是必填（多語名稱至少一個語系）');
             if (!merged.rewardId) problems.push('rewardId 是必填，請先用 aladdin_platform_roulette_platform_get_reward_name_list 取得合法值');
             if (merged.expireDays < 1) problems.push('expireDays 必須 >= 1（後端對 <1 直接回 invalidData）');
