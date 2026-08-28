@@ -63,6 +63,7 @@ import { registerListPlatformDepositAdaptersTool } from './list_platform_deposit
 import { registerUpdatePlatformDepositAdapterStatusTool } from './update_platform_deposit_adapter_status.ts';
 import { registerGetDepositSettingTool } from './get_deposit_setting.ts';
 import { registerGetPlatformDepositSettingTool } from './get_platform_deposit_setting.ts';
+import { registerListAppGroupsTool } from './list_app_groups.ts';
 
 export type ServerMode = 'stdio' | 'hosted';
 
@@ -133,4 +134,5 @@ export function registerAdminTools(server: McpServer, mode: ServerMode = 'stdio'
     registerUpdatePlatformDepositAdapterStatusTool(server);
     registerGetDepositSettingTool(server);
     registerGetPlatformDepositSettingTool(server);
+    registerListAppGroupsTool(server);
 }

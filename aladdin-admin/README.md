@@ -66,6 +66,7 @@ Tool 命名規則：`<server>_<service>_<method>`（server/service/method 各自
 | `aladdin_admin_deposit_admin_update_platform_deposit_adapter_status` | `DepositAdmin.UpdatePlatformDepositAdapterStatus` | 更新某 adapter 在某平台底下的啟停狀態；adapterId 不存在回 errorCode=9；**已知陷阱**：platformId 完全沒有存在性驗證/外鍵，帶不存在但落在 0–65535 範圍內的 platformId 會靜默成功、插入孤兒綁定列 |
 | `aladdin_admin_deposit_admin_get_deposit_setting_for_edit` | `DepositAdmin.GetDepositSettingForEdit` | 無參數，取得全域充值設定（callbackBaseUrl/paymentAssetUrl 兩個 URL），不分平台 |
 | `aladdin_admin_deposit_admin_get_platform_deposit_setting_for_edit` | `DepositAdmin.GetPlatformDepositSettingForEdit` | 取得指定平台的充值設定；**已知陷阱（假唯讀）**：查無資料時後端會直接 INSERT 一筆帶預設值的新記錄再回傳，不是純讀取；因此本工具比照寫入類 tool 補上 H36 `assertProdConfirmed` 閘門，即使名義上是 Get |
+| `aladdin_admin_app_admin_list_app_groups` | `AppAdmin.ListAppGroups` | 列出 App 群組母表全集（id/key/多語系名稱 + 底下的 themes 陣列，theme 的 id 就是 platform 端 App 設定要填的 appThemeId）。無參數、不分頁、一次全撈（`AppGroupManager.getAppGroups` 對 `app_groups` 下的是無 condition 無 limit 的 loadObjects，是全域小型列舉表，非隨業務成長的表），2026-08-28 dev 實測 6 筆。**這是 admin 視角的母表全集，不代表任何單一平台可用的群組**——要看某平台實際啟用了哪些，改用 `aladdin_admin_app_admin_list_platform_app_groups` |
 
 ## src/ 結構
 
