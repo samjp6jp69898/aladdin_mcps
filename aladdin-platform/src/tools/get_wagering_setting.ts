@@ -87,7 +87,8 @@ export function registerGetWageringSettingTool(server: McpServer): void {
                 '**副作用揭露**：本 method 內部走 getOrCreateDbWageringSetting' +
                 '（agrabah/src/managers/wagering_manager.ts:541-561），本平台若還沒有 wagering_setting 列，' +
                 '會建一列後端預設值。建的是本平台自己的設定列、不涉及任何會員資料，' +
-                '正常情況下（後台設定頁開過一次）早已存在，但仍不宜宣稱本工具完全唯讀。',
+                '正常情況下（後台設定頁開過一次）早已存在，但仍不宜宣稱本工具完全唯讀。' +
+                '要修改請用 aladdin_platform_wagering_platform_update_wagering_setting。',
             inputSchema: {},
         },
         async () => {
