@@ -40,8 +40,8 @@ const TOOLSMITH_DIR = dirname(new URL(import.meta.url).pathname);
 const REGISTRY_PATH = join(TOOLSMITH_DIR, 'tokens.json');
 // 對外 URL：telegram-dispatcher mcp-proxy.ts PROXY_ROUTES 的 '/toolsmith' → 8788。
 const TOOLSMITH_URL = 'https://mcp.aladdin-assistant.cc/toolsmith/mcp';
-const TG_NOTIFY_SCRIPT = '/Users/user/aladdin/obsidian/scripts/tg-notify.sh';
-const ROOT_ENV_FILE = '/Users/user/aladdin/.env';
+const TG_NOTIFY_SCRIPT = '/Users/user/aladdin/aladdin_ai/scripts/tg-notify.sh';
+const ROOT_ENV_FILE = '/Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/.env';
 
 const ID_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;
 

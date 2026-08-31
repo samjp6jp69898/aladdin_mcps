@@ -74,16 +74,17 @@
 # 1. bun（啟動腳本寫死這個路徑，沒有就先裝）
 ls -l /Users/<USER>/.bun/bin/bun
 
-# 2. 一個 repo（obsidian）——telegram-dispatcher 已併入 obsidian repo，
-#    打包機只需要 clone/pull 這一個 repo，不再需要獨立的 telegram-dispatcher repo
-ls -d /Users/<USER>/aladdin/obsidian/mcps
+# 2. repo：mcps 這組 hosted server 2026-08-31 起是獨立的 aladdin_mcps repo
+#    （原本併在 obsidian 裡）；telegram-dispatcher 那行沿用舊版本文件的說法，
+#    目前是否仍在 obsidian repo 底下未在本次任務範圍內覆核，請先自行確認現況。
+ls -d /Users/<USER>/aladdin/aladdin_mcps
 ls -d /Users/<USER>/aladdin/obsidian/telegram-dispatcher
 
 # 3. cloudflared（對外 tunnel 用；2026-08-22 起取代 ngrok）
 cloudflared --version
 
 # 4. node_modules（每個 server 目錄各自需要）
-cd /Users/<USER>/aladdin/obsidian/mcps/aladdin-admin && bun install
+cd /Users/<USER>/aladdin/aladdin_mcps/aladdin-admin && bun install
 cd ../aladdin-platform && bun install
 cd /Users/<USER>/aladdin/obsidian/telegram-dispatcher && bun install
 mkdir -p /Users/<USER>/aladdin/obsidian/telegram-dispatcher/logs   # 不進 git，換機器要手動補
@@ -118,7 +119,7 @@ mkdir -p /Users/<USER>/aladdin/obsidian/telegram-dispatcher/logs   # 不進 git�
 | `aladdin-platform/launchd/com.aladdin.mcp-platform-server.plist` | `ALADDIN_PLATFORM_API_URL` | `https://pk-platform.alddev.com`（dev × PK） |
 
 ```bash
-M=/Users/<USER>/aladdin/obsidian/mcps
+M=/Users/<USER>/aladdin/aladdin_mcps
 plutil -extract EnvironmentVariables json -o - "$M/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist"
 ```
 
@@ -203,7 +204,7 @@ python3 -c "import secrets,base64;print(base64.urlsafe_b64encode(secrets.token_b
 **launchd 只認 `~/Library/LaunchAgents/`，不會讀 repo 裡的 plist。**
 
 ```bash
-M=/Users/<USER>/aladdin/obsidian/mcps
+M=/Users/<USER>/aladdin/aladdin_mcps
 cp "$M/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist"    ~/Library/LaunchAgents/
 cp "$M/aladdin-platform/launchd/com.aladdin.mcp-platform-server.plist" ~/Library/LaunchAgents/
 

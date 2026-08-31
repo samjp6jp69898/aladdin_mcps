@@ -74,7 +74,7 @@ import {
 const PORT = Number(process.env.ALADDIN_ADMIN_HTTP_PORT ?? 8789);
 
 // H3 拍板：token 名冊是獨立 JSON 檔（不放 .env），預設落在本 package 根目錄、
-// 已被 obsidian repo .gitignore 排除。可用環境變數覆蓋（測試/未來多環境用）。
+// 已被 aladdin_mcps repo .gitignore 排除。可用環境變數覆蓋（測試/未來多環境用）。
 // 格式與熱重載語意見 ./auth.ts 檔頭註解。
 const TOKENS_PATH = process.env.ALADDIN_ADMIN_TOKENS_PATH
     ?? new URL('../tokens.json', import.meta.url).pathname;

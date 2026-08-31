@@ -286,7 +286,7 @@ export type ServerMode = 'stdio' | 'hosted';
 
 /**
  * H7：hosted 模式停用 login tool（plan.md D4），設計理由與 admin 端逐字相同，
- * 完整說明見 obsidian/mcps/aladdin-admin/src/tools/index.ts 同一段註解。
+ * 完整說明見 aladdin-admin/src/tools/index.ts 同一段註解。
  */
 export function registerPlatformTools(server: McpServer, mode: ServerMode = 'stdio'): void {
     if (mode === 'stdio') {

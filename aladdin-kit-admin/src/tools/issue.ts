@@ -60,7 +60,7 @@ export function registerIssueKitTool(server: McpServer): void {
             return asTextResult({
                 success: result.success,
                 distDir: result.success
-                    ? `/Users/user/aladdin/obsidian/mcps/aladdin-ai-assistant-kit/dist/${ id }`
+                    ? `/Users/user/aladdin/aladdin_mcps/aladdin-ai-assistant-kit/dist/${ id }`
                     : undefined,
                 output: result.stdout || undefined,
                 error: result.success ? undefined : (result.stderr || '（腳本無輸出，僅回傳非 0 exit code）'),

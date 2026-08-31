@@ -6,14 +6,14 @@
  * abu/.claude/skills/test-method 的實測腳本（同一套 Client + Remote）。
  *
  * 為什麼用絕對路徑 import 而不是 npm 依賴、且 genie/client 也走絕對路徑：
- * 見 obsidian/mcps/aladdin-admin/src/session.ts 同一段註解——已用 spike script
+ * 見 aladdin-admin/src/session.ts 同一段註解——已用 spike script
  * 實測驗證過 abu/platform/node_modules/genie 是 symlink 回
  * /Users/user/aladdin/genie，兩種 import 方式最終是同一個 Client class 實例，
  * `Client.encoded = true` 這個 static flag 才會真的對 remote.gen.ts 內部生效
  * （H5 重構後用併發交錯呼叫的 spike 重新驗證過仍成立，細節見 H5 changelog）。
  *
  * H5：登入態從 module-level 單例改為 per-identity 容器。設計理由與 admin 端
- * 逐字相同，完整說明見 obsidian/mcps/aladdin-admin/src/session.ts 同一段
+ * 逐字相同，完整說明見 aladdin-admin/src/session.ts 同一段
  * 註解（AsyncLocalStorage + 單例 Remote，不做 per-identity 多個 Remote 實例，
  * 因為 tools/*.ts 全部直接 `remote.<group>.<service>.<Method>(...)` 呼叫
  * module-level 單例，ALS 能在不改任何 tool 檔案的前提下讓 headerHandler
@@ -35,7 +35,7 @@ if (!BASE_URL) {
 
 /**
  * H38（缺口二）：platform 端補上與 admin 端同構的 prod 寫入閘門。設計理由與判定邏輯
- * 逐字比照 obsidian/mcps/aladdin-admin/src/session.ts 同一段（`IS_PROD_RAW`/
+ * 逐字比照 aladdin-admin/src/session.ts 同一段（`IS_PROD_RAW`/
  * `IS_PROD_NORMALIZED`/交叉檢查/`assertProdConfirmed`），這裡不重複展開全部理由，只列
  * platform 端特有的差異：
  *   - 環境變數名稱是 `ALADDIN_PLATFORM_IS_PROD`（跟 `ALADDIN_PLATFORM_API_URL` 同一組前綴）。
@@ -95,7 +95,7 @@ export class ProdConfirmRequiredError extends Error {}
 
 /**
  * prod 執行前的伺服器端強制 confirm 閘門，設計理由與 admin 端逐字相同（見
- * obsidian/mcps/aladdin-admin/src/session.ts 同一段註解）：只有 IS_PROD===true 才檢查，
+ * aladdin-admin/src/session.ts 同一段註解）：只有 IS_PROD===true 才檢查，
  * 非 prod 完全略過；必須在 tool handler 呼叫任何 remote.* 或 withAutoRelogin 之前呼叫。
  */
 export function assertProdConfirmed(confirm: string | undefined): void {
@@ -237,13 +237,13 @@ export function setSessionForTests(identity: string, token: string, lastActivity
 
 /**
  * hosted 模式「需要重新登入」的專屬 Error 子類，設計理由與 admin 端逐字相同，
- * 完整說明見 obsidian/mcps/aladdin-admin/src/session.ts 同一段註解。
+ * 完整說明見 aladdin-admin/src/session.ts 同一段註解。
  */
 export class ReloginRequiredError extends Error {}
 
 /**
  * H7：雙模式（plan.md D3/D4），設計理由與 admin 端逐字相同，完整說明見
- * obsidian/mcps/aladdin-admin/src/session.ts 同一段註解。stdio 模式沒有
+ * aladdin-admin/src/session.ts 同一段註解。stdio 模式沒有
  * session 時用 env 帳密自動登入（行為不變）；hosted 模式拋 ReloginRequiredError，
  * 由 http.ts 的包裝層轉成一般的 tool result 回給 agent，符合 D11「只陳述事實」。
  */

@@ -8,11 +8,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform/launchd/run-server-dev-6t.sh</string>
+        <string>/Users/user/aladdin/aladdin_mcps/aladdin-platform/launchd/run-server-dev-6t.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-platform</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -30,9 +30,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform/logs/launchd-dev-6t-server.out.log</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-platform/logs/launchd-dev-6t-server.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-platform/logs/launchd-dev-6t-server.err.log</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-platform/logs/launchd-dev-6t-server.err.log</string>
 </dict>
 </plist>

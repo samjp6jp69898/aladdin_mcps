@@ -23,7 +23,7 @@
  *
  * toolsmith（2026-08-26 起併入輸出；2026-08-27 起沒帶 --grants 時預設一併
  * 核發）：toolsmith 已上線，且改用跟 admin/platform 一樣「一人一把」的名冊
- * 格式（/Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/tokens.json），
+ * 格式（/Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/tokens.json），
  * 原本「全員共用一把 token」的疑慮已不成立。toolsmith 名冊的**唯一寫入者**
  * 仍是 manage-tokens.ts（核發/重簽/撤銷都經由它）——這支腳本本身從不直接
  * 寫那份名冊，只做兩件事：(1) 唯讀查閱、把找到的條目併進輸出的 `.mcp.json`

@@ -1,7 +1,7 @@
 /**
  * login_throttle.ts — H6：帳號層登入失敗節流，被 http.ts 的 POST /login 使用。
  * 設計理由與 admin 端逐字相同，完整說明見
- * obsidian/mcps/aladdin-admin/src/login_throttle.ts 同一段註解（與 H31 流量層
+ * aladdin-admin/src/login_throttle.ts 同一段註解（與 H31 流量層
  * rate limit 的差異、冷卻用時間戳比較不用 sleep、狀態 key 與生命週期）。
  */
 

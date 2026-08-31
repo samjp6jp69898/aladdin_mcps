@@ -30,8 +30,8 @@
  * 輸出位置：獨立檔案 <package>/logs/audit.jsonl（預設；可用
  * ALADDIN_ADMIN_AUDIT_LOG_PATH 覆蓋，供多環境部署各自指到不同檔案、供測試指到
  * 暫存目錄——覆蓋慣例同 TOKENS_PATH/TMP_DIR）。這個目錄與 H13 的
- * launchd-server.err.log 是同一個 logs/，已被 obsidian .gitignore 的
- * `mcps/aladdin-admin/logs/` 規則整個涵蓋，不進版本控制。
+ * launchd-server.err.log 是同一個 logs/，已被 aladdin_mcps repo .gitignore 的
+ * `aladdin-admin/logs/` 規則整個涵蓋，不進版本控制。
  *
  * 刻意不透過 console.error 借用 launchd 用 StandardErrorPath 開好的既有 stderr
  * fd：那個 fd 是 launchd 在 spawn 本行程「之前」就以路徑重導向開好的，行程存活

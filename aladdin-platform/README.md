@@ -373,7 +373,7 @@ proxy(8787) 前綴分流）。
 Ctrl-C 停止）：
 
 ```bash
-zsh /Users/user/aladdin/obsidian/mcps/aladdin-platform/launchd/run-server.sh
+zsh /Users/user/aladdin/aladdin_mcps/aladdin-platform/launchd/run-server.sh
 curl http://localhost:8790/health
 ```
 
@@ -396,7 +396,7 @@ plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 laun
 （比照 `telegram-dispatcher/README.md:34-40` 的既有慣例），部署時要：
 
 ```bash
-cp /Users/user/aladdin/obsidian/mcps/aladdin-platform/launchd/com.aladdin.mcp-platform-server.plist \
+cp /Users/user/aladdin/aladdin_mcps/aladdin-platform/launchd/com.aladdin.mcp-platform-server.plist \
    ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.mcp-platform-server.plist
 # 停止：launchctl bootout gui/$(id -u)/com.aladdin.mcp-platform-server

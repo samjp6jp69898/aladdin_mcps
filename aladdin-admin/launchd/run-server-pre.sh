@@ -18,7 +18,7 @@
 # cqa，共用 CQA 測試站，本腳本不落地任何帳密。
 set -u
 ALADDIN="/Users/user/aladdin"
-SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-admin"
+SERVER_DIR="$ALADDIN/aladdin_mcps/aladdin-admin"
 BUN="/Users/user/.bun/bin/bun"
 
 # 監聽 port：pre=8791（避開 toolsmith 8788 / admin-dev 8789 / platform-dev

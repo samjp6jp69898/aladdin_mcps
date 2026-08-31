@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 /**
  * H38：session.ts 在模組載入時對 ALADDIN_PLATFORM_API_URL / ALADDIN_PLATFORM_IS_PROD
  * 做的 fail-loud 交叉檢查，設計與測試手法逐字比照 admin 端
- * obsidian/mcps/aladdin-admin/src/session-prod-gate.test.ts。platform 之前完全沒有
+ * aladdin-admin/src/session-prod-gate.test.ts。platform 之前完全沒有
  * prod 閘門（H38 缺口二），這是這個檔案第一次出現這類測試。
  */
 const DIR = dirname(fileURLToPath(import.meta.url));

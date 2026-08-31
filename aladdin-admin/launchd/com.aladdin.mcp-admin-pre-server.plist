@@ -8,11 +8,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server-pre.sh</string>
+        <string>/Users/user/aladdin/aladdin_mcps/aladdin-admin/launchd/run-server-pre.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-admin</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-admin</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -30,9 +30,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-admin/logs/launchd-pre-server.out.log</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-admin/logs/launchd-pre-server.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-admin/logs/launchd-pre-server.err.log</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-admin/logs/launchd-pre-server.err.log</string>
 </dict>
 </plist>

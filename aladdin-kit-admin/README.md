@@ -19,7 +19,7 @@
 ## 安裝與連線
 
 ```bash
-cd /Users/user/aladdin/obsidian/mcps/aladdin-kit-admin
+cd /Users/user/aladdin/aladdin_mcps/aladdin-kit-admin
 bun install
 ```
 
@@ -29,7 +29,7 @@ bun install
 "aladdin-kit-admin": {
   "type": "stdio",
   "command": "bun",
-  "args": [ "/Users/user/aladdin/obsidian/mcps/aladdin-kit-admin/src/stdio.ts" ]
+  "args": [ "/Users/user/aladdin/aladdin_mcps/aladdin-kit-admin/src/stdio.ts" ]
 }
 ```
 

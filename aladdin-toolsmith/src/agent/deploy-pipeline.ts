@@ -15,13 +15,13 @@
  *     tool、給出 PASS/FAIL 結論。
  *
  * git 操作一律用 manifest.files[] 精確列出的檔案路徑當 pathspec，絕不用
- * `git add -A`/`git add .`——obsidian 這個 repo 常態上會有其他工作階段正在
+ * `git add -A`/`git add .`——aladdin_mcps 這個 repo 常態上可能有其他工作階段正在
  * 進行中、尚未 commit 的異動，用萬用字元 add 會把不相干的東西一起掃進這次
  * 自動 commit。同理，部署前會先檢查這批目標檔案在正式目錄現況是否乾淨，不乾淨
  * 就直接中止，不猜測「應該沒關係」。
  *
  * 2026-08-22：precondition 補上「這批目標檔案在 origin/main 若有本地沒有的
- * 新異動，就把 OBSIDIAN_ROOT（REAL_DIR 所在的 obsidian repo）`fetch` +
+ * 新異動，就把 MCPS_ROOT（REAL_DIR 所在的 aladdin_mcps repo）`fetch` +
  * `merge --ff-only` 同步過去」這一步——跟 ensure-fresh-repos.ts 對
  * agrabah/abu/rajah/lago 四個「研究用」來源 repo 做的事對稱，補的是「部署
  * 目標本身」這一側原本沒做的同一件事：本地落後遠端時若不先同步，會一路跑完
@@ -42,7 +42,7 @@ import { promisify } from 'node:util';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { AGENT_TIMEOUT_SECONDS, DEPLOY_CONCURRENCY_LIMIT, DEPLOY_NOTIFY_EMAIL, LAUNCHD_LABEL, OBSIDIAN_ROOT, REAL_DIR, TG_NOTIFY_SH } from '../const.ts';
+import { AGENT_TIMEOUT_SECONDS, DEPLOY_CONCURRENCY_LIMIT, DEPLOY_NOTIFY_EMAIL, LAUNCHD_LABEL, MCPS_ROOT, REAL_DIR, TG_NOTIFY_SH } from '../const.ts';
 import { createConcurrencyLimiter } from './concurrency-limiter.ts';
 
 const execFileAsync = promisify(execFile);
@@ -50,10 +50,10 @@ const CLAUDE_BIN = '/Users/user/.local/bin/claude';
 
 // 2026-08-20：generate_tool.ts 的研究/寫代碼名額開到 N=3 後新增的獨立鎖，跟
 // generate_tool.ts 那把（CONCURRENCY_LIMIT）完全無關——這把只序列化「會動到
-// 共用正式目錄與共用 obsidian git repo」的部署段落（precondition→copy→tsc→
+// 共用正式目錄與共用 aladdin_mcps git repo」的部署段落（precondition→copy→tsc→
 // 對抗性覆核→commit→reload→push 整段，見 runDeployPipeline 內部對
 // runDeployPipelineLocked 的包裝）。admin/platform 兩個 target 共用同一把鎖：
-// 兩者雖然各自的 REAL_DIR 不同，但 git commit/push 操作的是同一個 obsidian
+// 兩者雖然各自的 REAL_DIR 不同，但 git commit/push 操作的是同一個 aladdin_mcps
 // repo 的同一個 index/HEAD，不能假設不同 target 之間互不影響。
 const deployLock = createConcurrencyLimiter(DEPLOY_CONCURRENCY_LIMIT);
 
@@ -81,14 +81,14 @@ export interface DeployResult {
 }
 
 function realPathspecs(target: 'admin' | 'platform', files: ManifestFileEntry[]): string[] {
-    // git 的 pathspec 要相對 OBSIDIAN_ROOT（-C 的基準），REAL_DIR 已經是
-    // OBSIDIAN_ROOT 底下的絕對路徑，這裡轉成相對路徑：mcps/aladdin-{target}/<path>。
-    return files.map((f) => `mcps/aladdin-${ target }/${ f.path }`);
+    // git 的 pathspec 要相對 MCPS_ROOT（-C 的基準），REAL_DIR 已經是
+    // MCPS_ROOT 底下的絕對路徑，這裡轉成相對路徑：aladdin-{target}/<path>。
+    return files.map((f) => `aladdin-${ target }/${ f.path }`);
 }
 
 function gitStatusShort(pathspecs: string[]): string {
     return execFileSync(
-        'git', [ '-C', OBSIDIAN_ROOT, 'status', '--short', '--', ...pathspecs ],
+        'git', [ '-C', MCPS_ROOT, 'status', '--short', '--', ...pathspecs ],
         { encoding: 'utf8', timeout: 15_000 },
     );
 }
@@ -119,14 +119,14 @@ function rollback(pathspecs: string[]): void {
     // 把 index 退回 HEAD（不動 working tree），對「根本沒有 add 過」的呼叫路徑
     // 也是安全的 no-op，所以直接對所有呼叫路徑統一套用，不用分情況判斷。
     try {
-        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'reset', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
+        execFileSync('git', [ '-C', MCPS_ROOT, 'reset', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
     } catch {
         // 沒有東西被 add 過（tsc/copy 失敗這兩條路徑）時，reset 對這批 path
         // 本來就是 no-op，不當錯誤處理。
     }
     // 已被 git 追蹤的檔案：checkout 還原成套用前（HEAD）的內容。
     try {
-        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'checkout', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
+        execFileSync('git', [ '-C', MCPS_ROOT, 'checkout', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
     } catch {
         // 若這批檔案全部是新檔案（不在 index/HEAD 裡），checkout 對它們是
         // no-op，不當作 rollback 失敗——下面 git clean 才是真正負責清掉新檔案
@@ -135,7 +135,7 @@ function rollback(pathspecs: string[]): void {
     // 新建的檔案 checkout 對它沒用（不在 index 裡），用 git clean -fd 只清這批
     // pathspec 底下的未追蹤檔案，不動 pathspec 之外的任何東西。
     try {
-        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'clean', '-fd', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
+        execFileSync('git', [ '-C', MCPS_ROOT, 'clean', '-fd', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
     } catch {
         // 清不掉也不讓 rollback 本身拋例外中斷整個 deploy-pipeline 的錯誤回報。
     }
@@ -171,18 +171,18 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // 若這個 repo 因為任何原因（人工操作、別的自動化）當下不在 main，commit
     // 會提交到錯的分支，push 卻仍然指定 main（會失敗或推錯內容），Telegram
     // 通知的成功/失敗判讀就會跟實際狀況對不上。
-    const currentBranch = execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'branch', '--show-current' ], { encoding: 'utf8', timeout: 15_000 }).trim();
+    const currentBranch = execFileSync('git', [ '-C', MCPS_ROOT, 'branch', '--show-current' ], { encoding: 'utf8', timeout: 15_000 }).trim();
     if (currentBranch !== 'main') {
         log(`precondition 失敗，目前不在 main 分支（現在是 ${ currentBranch || '(detached HEAD)' }）`);
         return {
             success: false,
             stage: 'precondition',
-            message: `obsidian repo 目前不在 main 分支（現在是 ${ currentBranch || '(detached HEAD)' }），為避免 commit 到錯的分支，已中止部署，未動任何檔案，需要人工確認現況。`,
+            message: `aladdin_mcps repo 目前不在 main 分支（現在是 ${ currentBranch || '(detached HEAD)' }），為避免 commit 到錯的分支，已中止部署，未動任何檔案，需要人工確認現況。`,
         };
     }
 
     // 1b. precondition：只有「這次要部署的目標檔案在 origin/main 真的有本地
-    // 沒有的新異動」時，才把整個 OBSIDIAN_ROOT 同步到 origin/main（git 沒有
+    // 沒有的新異動」時，才把整個 MCPS_ROOT 同步到 origin/main（git 沒有
     // 「只同步這幾個檔案又保留可正常 commit 的 HEAD」這種操作，fast-forward
     // 天生是整個 tree 一起前移，做不到只挑 pathspec）。理由跟 ensure-fresh-
     // repos.ts 對 agrabah/abu/rajah/lago 四個來源 repo 做的事對稱——那邊解決
@@ -195,10 +195,11 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     //
     // 加了「先判斷這批目標檔案是否真的落後」這道前置檢查，而不是無條件對整個
     // repo 做 fetch+merge，有兩個理由：
-    //   1. obsidian 是知識庫+程式碼混合的 repo，常態上會有其他工作階段留著
-    //      跟這次部署完全無關的未提交異動（見本檔案頭 commit 那步的說明）。
-    //      若這次 origin/main 剛好只多了跟這批目標檔案無關的 commit（例如
-    //      某人 push 了一則 doctrine 筆記），無條件 `merge --ff-only` 一旦
+    //   1. aladdin_mcps 是多個 hosted MCP server 共用的 repo，常態上可能會有
+    //      其他工作階段留著跟這次部署完全無關的未提交異動（見本檔案頭 commit
+    //      那步的說明）。若這次 origin/main 剛好只多了跟這批目標檔案無關的
+    //      commit（例如某人手動改了另一個 target 的 README），無條件
+    //      `merge --ff-only` 一旦
     //      撞上「本地剛好對那個不相干檔案也有未提交異動」就會被 git 拒絕，
     //      擋死這次跟它完全無關的部署——先確認目標檔案本身真的落後，能避開
     //      絕大多數這種巧合。
@@ -216,25 +217,25 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // 這一步解決的是「本地長期、無上限地落後遠端」這種情況，不是把 push
     // 失敗的機率壓到零。
     try {
-        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'fetch', 'origin', 'main' ], { encoding: 'utf8', timeout: 30_000 });
+        execFileSync('git', [ '-C', MCPS_ROOT, 'fetch', 'origin', 'main' ], { encoding: 'utf8', timeout: 30_000 });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        log(`precondition 失敗，同步 obsidian repo 時 fetch 失敗: ${ message }`);
+        log(`precondition 失敗，同步 aladdin_mcps repo 時 fetch 失敗: ${ message }`);
         return {
             success: false, stage: 'precondition',
-            message: `部署前檢查 obsidian repo 是否落後 origin/main 時 fetch 失敗，已中止部署，未動任何檔案：${ message }`,
+            message: `部署前檢查 aladdin_mcps repo 是否落後 origin/main 時 fetch 失敗，已中止部署，未動任何檔案：${ message }`,
         };
     }
 
     const behindOnTargetFiles = execFileSync(
-        'git', [ '-C', OBSIDIAN_ROOT, 'log', '--oneline', 'HEAD..origin/main', '--', ...pathspecs ],
+        'git', [ '-C', MCPS_ROOT, 'log', '--oneline', 'HEAD..origin/main', '--', ...pathspecs ],
         { encoding: 'utf8', timeout: 15_000 },
     ).trim();
 
     let syncedToOrigin = false;
     if (behindOnTargetFiles.length > 0) {
         try {
-            execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'merge', '--ff-only', 'origin/main' ], { encoding: 'utf8', timeout: 30_000 });
+            execFileSync('git', [ '-C', MCPS_ROOT, 'merge', '--ff-only', 'origin/main' ], { encoding: 'utf8', timeout: 30_000 });
             syncedToOrigin = true;
             log(`precondition：這批目標檔案在 origin/main 有本地沒有的新異動，已同步整個 repo 到 origin/main：\n${ behindOnTargetFiles }`);
         } catch (err) {
@@ -242,7 +243,7 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
             log(`precondition 失敗，這批目標檔案在 origin/main 有新異動，但同步整個 repo 時失敗: ${ message }`);
             return {
                 success: false, stage: 'precondition',
-                message: `這批要部署的檔案在 origin/main 有本地沒有的新異動，但同步整個 obsidian repo 到 origin/main 失敗（本地可能與遠端分岔、或遠端異動會覆蓋本地某個未提交檔案），已中止部署，需要人工確認現況：${ message }`,
+                message: `這批要部署的檔案在 origin/main 有本地沒有的新異動，但同步整個 aladdin_mcps repo 到 origin/main 失敗（本地可能與遠端分岔、或遠端異動會覆蓋本地某個未提交檔案），已中止部署，需要人工確認現況：${ message }`,
             };
         }
     } else {
@@ -259,7 +260,7 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
         return {
             success: false,
             stage: 'precondition',
-            message: `這次要更新的檔案在正式目錄已有未提交的異動（可能有別的工作階段正在改同一批檔案），為避免覆蓋，已中止部署${ syncedToOrigin ? '（上一步已把 obsidian repo 同步到 origin/main 最新狀態，這批目標檔案的本地未提交異動未受影響、未被覆蓋）' : '，未動任何檔案' }。受影響檔案：\n${ dirtyBefore }`,
+            message: `這次要更新的檔案在正式目錄已有未提交的異動（可能有別的工作階段正在改同一批檔案），為避免覆蓋，已中止部署${ syncedToOrigin ? '（上一步已把 aladdin_mcps repo 同步到 origin/main 最新狀態，這批目標檔案的本地未提交異動未受影響、未被覆蓋）' : '，未動任何檔案' }。受影響檔案：\n${ dirtyBefore }`,
         };
     }
 
@@ -306,7 +307,7 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // 2026-08-20（對抗性 session review 抓到的真實 bug，嚴重）：`git commit`
     // 原本沒帶 pathspec——`git add` 有帶 pathspec 沒錯，但 `git commit -m msg`
     // 不帶 pathspec 時 commit 的是**當下整個 index 的內容**，不是只有剛剛
-    // add 進去的那幾個檔案。obsidian 這個 repo 常態上會有其他工程師 session
+    // add 進去的那幾個檔案。aladdin_mcps 這個 repo 常態上可能有其他工程師 session
     // 手上正 staged 著自己還沒 commit 的東西（precondition 只檢查「這次要
     // 部署的目標檔案」乾不乾淨，完全不檢查 git index 整體乾不乾淨），這個
     // 空窗期如果剛好有人 `git add` 了不相干的東西、同時這裡的部署走到 commit
@@ -315,9 +316,9 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // 語法下 commit 只吃這批 pathspec 對應的當下內容，不管 index 裡還 staged
     // 著什麼別的東西，不會把它們一起掃進來。
     try {
-        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'add', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
+        execFileSync('git', [ '-C', MCPS_ROOT, 'add', '--', ...pathspecs ], { encoding: 'utf8', timeout: 15_000 });
         execFileSync(
-            'git', [ '-C', OBSIDIAN_ROOT, 'commit', '-m', `toolsmith: ${ summary }\n\nrequestId=${ requestId } target=${ target } requestedBy=${ requestedBy }`, '--', ...pathspecs ],
+            'git', [ '-C', MCPS_ROOT, 'commit', '-m', `toolsmith: ${ summary }\n\nrequestId=${ requestId } target=${ target } requestedBy=${ requestedBy }`, '--', ...pathspecs ],
             { encoding: 'utf8', timeout: 15_000 },
         );
     } catch (err) {
@@ -344,7 +345,7 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
 
     let pushError: string | null = null;
     try {
-        execFileSync('git', [ '-C', OBSIDIAN_ROOT, 'push', 'origin', 'main' ], { encoding: 'utf8', timeout: 60_000 });
+        execFileSync('git', [ '-C', MCPS_ROOT, 'push', 'origin', 'main' ], { encoding: 'utf8', timeout: 60_000 });
         log('push 完成');
     } catch (err) {
         pushError = err instanceof Error ? err.message : String(err);
@@ -435,12 +436,12 @@ requestId: ${ requestId }
    就是準備要上線的東西）。
 2. 對照 rajah/services/*.rajah 找到它包裝的實際 RPC method，確認簽名、參數、回傳型別
    真的對得上這支 tool 的實作，不是憑印象猜。
-3. **必讀** /Users/user/aladdin/obsidian/mcps/method-category-checklist.md，判斷這支
+3. **必讀** /Users/user/aladdin/aladdin_mcps/method-category-checklist.md，判斷這支
    method 屬於哪個分類，逐條核對這次改動有沒有滿足該分類列出的強制檢查項——尤其是
    清單類（有沒有處理「資料超過一頁」）、Upsert/CreateOrUpdate 類（有沒有先讀現值
    再合併）、業務鍵間接定位更新類（有沒有掃描到底而不是寫死小分頁）這幾個高風險
    分類，不能只看有沒有語法錯誤。
-4. **核對 tool 命名**：對照 /Users/user/aladdin/obsidian/mcps/tool-naming-convention.md，
+4. **核對 tool 命名**：對照 /Users/user/aladdin/aladdin_mcps/tool-naming-convention.md，
    確認 \`server.registerTool()\` 第一個參數真的是 \`<server>_<service>_<method>\`
    （各自 snake_case，service/method 是第 2 步查證到的真實 rajah 名稱）——常見缺陷
    是原作者自己另外想了一個動詞_名詞式的名字、或該檔「兩支不同 tool 撞名」一節適用

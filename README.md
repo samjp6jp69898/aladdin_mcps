@@ -293,10 +293,10 @@ transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部�
 
 ### 步驟
 
-1. **取得程式碼**：`obsidian` 是獨立 git repo，`git pull` 拿到 `mcps/` 底下所有 server。
+1. **取得程式碼**：`aladdin_mcps` 是獨立 git repo，`git pull` 拿到底下所有 server。
 2. **裝依賴**：進目標 server 目錄跑一次
    ```bash
-   cd /Users/user/aladdin/obsidian/mcps/<server-name>
+   cd /Users/user/aladdin/aladdin_mcps/<server-name>
    bun install
    ```
 3. **註冊進 `.mcp.json`**（專案根目錄 `/Users/user/aladdin/.mcp.json`，或使用者層級設定皆可）：
@@ -304,13 +304,13 @@ transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部�
    "<server-name>": {
      "type": "stdio",
      "command": "bun",
-     "args": ["/Users/user/aladdin/obsidian/mcps/<server-name>/src/stdio.ts"],
+     "args": ["/Users/user/aladdin/aladdin_mcps/<server-name>/src/stdio.ts"],
      "env": { "...": "...對應 server 的環境變數，見各自 README..." }
    }
    ```
    也可以用 CLI 代替手動編輯：
    ```bash
-   claude mcp add <server-name> --command bun --args /Users/user/aladdin/obsidian/mcps/<server-name>/src/stdio.ts
+   claude mcp add <server-name> --command bun --args /Users/user/aladdin/aladdin_mcps/<server-name>/src/stdio.ts
    ```
 4. **重啟 Claude Code**（或該 MCP client 重新載入 MCP 連線），host 才會重新讀 `.mcp.json` 並 spawn 新 server；新增/修改 `.mcp.json` 不會自動生效。
 
@@ -325,7 +325,7 @@ transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部�
 - MCP server 啟動失敗最常見原因：`ALADDIN_*_API_URL`/`ALADDIN_*_USER`/`ALADDIN_*_PASSWORD` 沒設（`session.ts` 會直接 throw，訊息很明確）。
 - 想在不透過 Claude Code 的情況下手動驗證 server 正常，可以用 SDK 內建的 inspector：
   ```bash
-  cd /Users/user/aladdin/obsidian/mcps/<server-name>
+  cd /Users/user/aladdin/aladdin_mcps/<server-name>
   bunx @modelcontextprotocol/inspector bun src/stdio.ts
   ```
   會開一個網頁 UI，可以手動呼叫每個 tool、看 request/response，不用真的接上 Claude Code。

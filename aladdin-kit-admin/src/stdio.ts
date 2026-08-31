@@ -12,7 +12,7 @@
  * 註冊到 Claude Code（根目錄 /Users/user/aladdin/.mcp.json）：
  *   claude mcp add aladdin-kit-admin \
  *     --command bun \
- *     --args /Users/user/aladdin/obsidian/mcps/aladdin-kit-admin/src/stdio.ts
+ *     --args /Users/user/aladdin/aladdin_mcps/aladdin-kit-admin/src/stdio.ts
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';

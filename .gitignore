@@ -3,6 +3,9 @@ node_modules/
 __pycache__/
 *.pyc
 
+# 含真實帳密/token 的本機 env 檔，絕不可進 git；*.env.example 範本檔仍需追蹤。
+aladdin-toolsmith/.env
+
 # 各 hosted MCP server 的 per-user token 名冊，含真實 token 值，絕不可進 git。
 # 沿用 obsidian repo 分割前的既有規則（原始理由見各 server README / 遷移紀錄）。
 aladdin-admin/tokens.json

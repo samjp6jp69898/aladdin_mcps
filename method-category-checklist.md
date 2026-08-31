@@ -82,7 +82,7 @@ Tool 命名規則另見 `tool-naming-convention.md`(同層目錄)——挑到候
 - 一律先確認是否已有用業務鍵直接查詢的 sibling method(`GetXxxForEdit(業務鍵)`);若有,直接用,禁止自己重新發明「List 全部 + 逐頁比對」邏輯。
 - 若確實沒有直接查詢介面,只能靠分頁掃描比對業務鍵定位:比照第 2 節 B 級要求,逐頁掃到底、設上限與逾時保護、驗收案例含「目標不在第一頁」。
 - 注意同名 method 在不同 service 可能一個用 id 定位、一個用業務鍵定位,不能假設同名行為一致。
-- **實際範例**:`obsidian/mcps/aladdin-admin/src/tools/upsert_game.ts` 的 `findGameRowByBusinessKey()`(先問 sibling method 是否存在、否則逐頁掃描到 `totalPage`、設定回報格式)可直接參考。
+- **實際範例**:`aladdin-admin/src/tools/upsert_game.ts` 的 `findGameRowByBusinessKey()`(先問 sibling method 是否存在、否則逐頁掃描到 `totalPage`、設定回報格式)可直接參考。
 
 ## 6. 寫入 — 狀態轉換(Enable / Disable / Toggle / Approve / Reject / Cancel / Reset / UpdateXxxStatus)
 

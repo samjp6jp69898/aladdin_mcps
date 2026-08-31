@@ -11,7 +11,7 @@
 # ~/Library/LaunchAgents/ 底下那份拷貝）。本腳本不讀任何設定檔。
 set -u
 ALADDIN="/Users/user/aladdin"
-SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-platform"
+SERVER_DIR="$ALADDIN/aladdin_mcps/aladdin-platform"
 BUN="/Users/user/.bun/bin/bun"
 
 # 監聽 port：evi-6t=8796（避開 toolsmith 8788 / admin-dev 8789 /

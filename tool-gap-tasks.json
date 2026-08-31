@@ -201,7 +201,7 @@
       "claimed_by": "mcp-tool-gap-batch5-20260824-2236",
       "claimed_at": "2026-08-24T14:36:10Z",
       "updated_at": "2026-08-25T00:38:49Z",
-      "notes": "使用者裁定（2026-08-25）：不可逆金流操作，不納入 tool 清單；草稿保留於 obsidian/mcps/aladdin-platform/src/tools/collect_all_vendor_balance.ts 備用，未 integrate/未 commit，index.ts/README.md/const.ts 均未變動"
+      "notes": "使用者裁定（2026-08-25）：不可逆金流操作，不納入 tool 清單；草稿保留於 aladdin_mcps/aladdin-platform/src/tools/collect_all_vendor_balance.ts 備用，未 integrate/未 commit，index.ts/README.md/const.ts 均未變動"
     },
     {
       "id": "aladdin_platform_game_vendor_platform_get_game_vendor_for_edit",

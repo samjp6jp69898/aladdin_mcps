@@ -9,7 +9,7 @@
 
 import { execFileSync } from 'node:child_process';
 
-const KIT_DIR = '/Users/user/aladdin/obsidian/mcps/aladdin-ai-assistant-kit';
+const KIT_DIR = '/Users/user/aladdin/aladdin_mcps/aladdin-ai-assistant-kit';
 const KIT_SCRIPT = `${ KIT_DIR }/make-starter-kit.ts`;
 
 export interface KitScriptResult {

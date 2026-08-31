@@ -2,7 +2,7 @@
 /**
  * http.ts — MCP server over Streamable HTTP transport（Hono），stateless。
  *
- * 依 /Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md D9 與
+ * 依 /Users/user/aladdin/aladdin_mcps/_hosted-rollout/plan.md D9 與
  * /Users/user/.claude/plans/logical-jumping-cook.md Phase 1/2，比照
  * aladdin-admin/src/http.ts（H1 定型並實測過的版本，commit eda293d2）沿用
  * 同一套契約，不另外摸索一套：
@@ -55,7 +55,7 @@ const PORT = Number(process.env.TOOLSMITH_HTTP_PORT ?? 8788);
 }
 
 // 2026-08-20：從單一共用 token 改成比照 aladdin-admin 的 per-user 名冊（見
-// auth.ts 檔頭說明），預設落在本 package 根目錄、已被 obsidian repo
+// auth.ts 檔頭說明），預設落在本 package 根目錄、已被 aladdin_mcps repo
 // .gitignore 排除，可用環境變數覆蓋。
 const TOKENS_PATH = process.env.TOOLSMITH_TOKENS_PATH
     ?? new URL('../tokens.json', import.meta.url).pathname;

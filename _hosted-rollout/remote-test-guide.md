@@ -28,10 +28,10 @@
 
 ```bash
 # admin 用
-python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/aladdin-admin/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
+python3 -c "import json;d=json.load(open('/Users/user/aladdin/aladdin_mcps/aladdin-admin/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
 
 # platform 用
-python3 -c "import json;d=json.load(open('/Users/user/aladdin/obsidian/mcps/aladdin-platform/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
+python3 -c "import json;d=json.load(open('/Users/user/aladdin/aladdin_mcps/aladdin-platform/tokens.json'));print([t['token'] for t in d['tokens'] if t['id']=='landon-remote-test'][0])"
 ```
 
 兩把都是 43 字元。稽核 log 裡會顯示成「Landon 遠端測試」。

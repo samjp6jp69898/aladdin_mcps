@@ -180,9 +180,9 @@ proxy(8787) 前綴分流）。
 Ctrl-C 停止）：
 
 ```bash
-zsh /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server.sh      # dev :8789
-zsh /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server-pre.sh  # pre :8791
-zsh /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server-evi.sh  # evi :8792
+zsh /Users/user/aladdin/aladdin_mcps/aladdin-admin/launchd/run-server.sh      # dev :8789
+zsh /Users/user/aladdin/aladdin_mcps/aladdin-admin/launchd/run-server-pre.sh  # pre :8791
+zsh /Users/user/aladdin/aladdin_mcps/aladdin-admin/launchd/run-server-evi.sh  # evi :8792
 curl http://localhost:8789/health
 ```
 
@@ -191,7 +191,7 @@ curl http://localhost:8789/health
 
 ```bash
 ALADDIN_ADMIN_API_URL=https://admin.alddev.com \
-  zsh /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/run-server.sh
+  zsh /Users/user/aladdin/aladdin_mcps/aladdin-admin/launchd/run-server.sh
 ```
 
 **三個環境的 `ALADDIN_ADMIN_API_URL` 一律由各自 plist 的 `EnvironmentVariables`
@@ -214,7 +214,7 @@ plist 正本放在 repo（`ProgramArguments` 用 repo 絕對路徑），但 laun
 pre/evi 把檔名換成對應的 `com.aladdin.mcp-admin-<env>-server.plist` 即可）：
 
 ```bash
-cp /Users/user/aladdin/obsidian/mcps/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist \
+cp /Users/user/aladdin/aladdin_mcps/aladdin-admin/launchd/com.aladdin.mcp-admin-server.plist \
    ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.mcp-admin-server.plist
 # 停止：launchctl bootout gui/$(id -u)/com.aladdin.mcp-admin-server

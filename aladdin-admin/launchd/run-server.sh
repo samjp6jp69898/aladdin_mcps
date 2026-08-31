@@ -20,7 +20,7 @@
 # 見下方註解）。
 set -u
 ALADDIN="/Users/user/aladdin"
-SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-admin"
+SERVER_DIR="$ALADDIN/aladdin_mcps/aladdin-admin"
 BUN="/Users/user/.bun/bin/bun"
 
 # 監聽 port 明講掉，不依賴 http.ts 自己的預設值（8789）——理由同

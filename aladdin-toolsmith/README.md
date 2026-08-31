@@ -3,7 +3,7 @@
 企劃自助擴充 `aladdin-admin` / `aladdin-platform` 新 tool 的中介 MCP server。企劃用自己的 Claude Code 描述需求，本服務在工程師本機觸發一個具有原始碼權限的 agent 完成研究/實作/驗證，**通過結構性檢查（tsc）與獨立第二個 agent 的對抗性覆核後，自動部署進正式目錄、commit、push 到 origin main、重載 dev 常駐服務**——企劃全程看不到底層原始碼、也拿不到程式碼內容，只會收到部署結果或（需求不夠具體時）一輪澄清問題。
 
 架構、決策脈絡見權威文件：
-- `/Users/user/aladdin/obsidian/mcps/_hosted-rollout/plan.md`（D9：交付方式最初修訂為部署到 hosted server 並重載；2026-08-20 進一步定案為「本地部署 + commit + push + reload，不回傳程式碼」，見下方「部署管線」一節）。
+- `/Users/user/aladdin/aladdin_mcps/_hosted-rollout/plan.md`（D9：交付方式最初修訂為部署到 hosted server 並重載；2026-08-20 進一步定案為「本地部署 + commit + push + reload，不回傳程式碼」，見下方「部署管線」一節）。
 - `/Users/user/.claude/plans/logical-jumping-cook.md`（toolsmith 原設計，Phase 1-5、7-8 除交付端外仍然有效）。
 
 跟 `aladdin-admin`/`aladdin-platform` 兩支 stdio+hosted 雙進入點 MCP server 的關鍵差異：本服務**只有 http.ts、沒有 stdio.ts**（天生就是給遠端企劃用的 hosted 服務，工程師本機不需要另外用 stdio 方式跑它），也**不呼叫任何 agrabah RPC**（不 import genie/abu 的絕對路徑，`src/session.ts` 這層在本服務沒有對應物）。
@@ -27,7 +27,7 @@
 
 sub-agent 產出「成功」manifest 後，不會把 `output/` 底下的檔案內容回傳給企劃，而是交給決定性的部署流程接手，依序：
 
-1. **precondition**：(a) 確認目前在 `main` 分支；(b) `fetch` 後只在「這次要部署的目標檔案在 `origin/main` 真的有本地沒有的新異動」時，才把 obsidian repo 本身 `merge --ff-only` 同步到 `origin/main`（跟 `ensure-fresh-repos.ts` 對 agrabah/abu/rajah/lago 四個研究來源 repo 做的事對稱，補的是部署目標本身這一側；刻意不是無條件同步整個 repo，避免跟這次部署無關的遠端異動連帶擋住不相干的部署）——目標檔案落後又同步失敗（本地分岔/會覆蓋本地未提交檔案）時直接中止；(c) 檢查這次要更新的檔案在正式目錄現況是否乾淨（git status 乾淨），不乾淨（可能有別的工作階段正在改同一批檔案）就直接中止。三關都過才進下一步。
+1. **precondition**：(a) 確認目前在 `main` 分支；(b) `fetch` 後只在「這次要部署的目標檔案在 `origin/main` 真的有本地沒有的新異動」時，才把 aladdin_mcps repo 本身 `merge --ff-only` 同步到 `origin/main`（跟 `ensure-fresh-repos.ts` 對 agrabah/abu/rajah/lago 四個研究來源 repo 做的事對稱，補的是部署目標本身這一側；刻意不是無條件同步整個 repo，避免跟這次部署無關的遠端異動連帶擋住不相干的部署）——目標檔案落後又同步失敗（本地分岔/會覆蓋本地未提交檔案）時直接中止；(c) 檢查這次要更新的檔案在正式目錄現況是否乾淨（git status 乾淨），不乾淨（可能有別的工作階段正在改同一批檔案）就直接中止。三關都過才進下一步。
 2. **copy**：把 `output/` 底下的檔案複製進正式目錄。
 3. **tsc gate**（決定性）：比對套用前後的 `tsc --noEmit` 錯誤集合，只有「新增」的錯誤才算失敗——這個 codebase 有既有型別債務，不能拿「有沒有錯誤」當標準。
 4. **對抗性覆核**（獨立第二個 `claude -p --permission-mode bypassPermissions` sub-agent，不信任原作者的自我陳述）：核對 `method-category-checklist.md` 的分類要求、核對 `tool-naming-convention.md` 的命名規則、實際對 dev 打一次新/改過的 tool、給出 `PASS`/`FAIL` 結論。
@@ -63,7 +63,7 @@ src/
 
 | 變數 | 說明 |
 |---|---|
-| `TOOLSMITH_API_TOKEN` | Bearer 認證用的共用 token，存於根目錄 `/Users/user/aladdin/.env`，**不進 git**。產生方式：`bun -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+| `TOOLSMITH_API_TOKEN` | Bearer 認證用的共用 token，存於 `aladdin-toolsmith/.env`（2026-08-31 前為根目錄 `/Users/user/aladdin/.env`），**不進 git**。產生方式：`bun -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
 | `TOOLSMITH_HTTP_PORT` | 選填，預設 `8788`（`launchd/run-server.sh` 明確設定為 8788，不依賴此預設值） |
 
 ## 認證（與 admin/platform 刻意不同）
@@ -73,7 +73,7 @@ src/
 ## 安裝與啟動
 
 ```bash
-cd /Users/user/aladdin/obsidian/mcps/aladdin-toolsmith
+cd /Users/user/aladdin/aladdin_mcps/aladdin-toolsmith
 bun install
 bun src/http.ts   # 或 bun run start:http
 ```
@@ -89,13 +89,13 @@ curl -s localhost:8788/health
 
 ```bash
 # 手動跑（開發/除錯用，會一直佔用這個 terminal，Ctrl-C 停止）
-zsh /Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/launchd/run-server.sh
+zsh /Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/launchd/run-server.sh
 ```
 
 正式常駐（**本階段不執行**，留給正式上線的 task）：launchd 只認 `~/Library/LaunchAgents/` 底下的檔案，不會直接讀 repo 裡的 plist，部署時要先複製一份過去（比照 `/Users/user/aladdin/telegram-dispatcher/README.md:32-68` 的既有慣例）：
 
 ```bash
-cp /Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/launchd/com.aladdin.mcp-toolsmith-server.plist \
+cp /Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/launchd/com.aladdin.mcp-toolsmith-server.plist \
    ~/Library/LaunchAgents/
 
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.aladdin.mcp-toolsmith-server.plist

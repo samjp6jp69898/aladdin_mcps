@@ -10,7 +10,7 @@
  *
  * 邏輯延續已上線的
  * /Users/user/aladdin/telegram-dispatcher/lib/pipeline-runner/concurrency-limiter.ts
- * 的計數器核心（obsidian 與 telegram-dispatcher 是兩個獨立 repo，不跨 repo
+ * 的計數器核心（aladdin_mcps 與 telegram-dispatcher 是兩個獨立 repo，不跨 repo
  * import），額度用盡時的行為改成佇列而不是回傳 false。同一份程式碼被用來建立
  * 兩把互不相干的鎖：tools/generate_tool.ts 的研究/寫代碼名額（N=3）跟
  * agent/deploy-pipeline.ts 的部署序列化鎖（N=1）——各自 module-level 各自

@@ -16,7 +16,7 @@
 # 的設定檔、也不埋在腳本中段，換站台時只要改 plist 再 kickstart。
 set -u
 ALADDIN="/Users/user/aladdin"
-SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-admin"
+SERVER_DIR="$ALADDIN/aladdin_mcps/aladdin-admin"
 BUN="/Users/user/.bun/bin/bun"
 
 # 監聽 port：evi=8792（避開 toolsmith 8788 / admin-dev 8789 / platform-dev

@@ -78,7 +78,7 @@ import {
 const PORT = Number(process.env.ALADDIN_PLATFORM_HTTP_PORT ?? 8790);
 
 // H3 拍板、H4 沿用：token 名冊是獨立 JSON 檔（不放 .env），預設落在本 package
-// 根目錄、已被 obsidian repo .gitignore 排除。可用環境變數覆蓋（測試/未來多
+// 根目錄、已被 aladdin_mcps repo .gitignore 排除。可用環境變數覆蓋（測試/未來多
 // 環境用）。格式與熱重載語意見 ./auth.ts 檔頭註解。這份名冊與
 // aladdin-admin/tokens.json 是分開的兩份檔案，互不相交（D11 權限隔離）。
 const TOKENS_PATH = process.env.ALADDIN_PLATFORM_TOKENS_PATH
@@ -151,7 +151,7 @@ app.get('/health', c => c.json({ status: 'ok', uptime_seconds: Math.floor(proces
 
 /**
  * POST /login — H6，設計理由與 admin 端逐字相同，完整說明見
- * obsidian/mcps/aladdin-admin/src/http.ts 同一段註解（為何是 REST 不是 MCP
+ * aladdin-admin/src/http.ts 同一段註解（為何是 REST 不是 MCP
  * tool、identifier/password 生命週期、帳號層節流 AC7）。
  */
 app.post('/login', async c => {
@@ -233,7 +233,7 @@ app.post('/login', async c => {
 
 /**
  * POST /files — H8，設計理由與 admin 端逐字相同，完整說明見
- * obsidian/mcps/aladdin-admin/src/http.ts 同一段註解與 ./files.ts 檔頭
+ * aladdin-admin/src/http.ts 同一段註解與 ./files.ts 檔頭
  * （multipart 收檔 → 存暫存目錄 → 回 fileId；bodyLimit 只是餘裕檢查，真正
  * 的大小裁決在 saveUploadedFile() 內用實際 bytes 長度判斷；刻意不讀取
  * file.name，落地檔名一律由 saveUploadedFile() 產生）。
@@ -308,7 +308,7 @@ export function withStderrStackLogging(server: McpServer): void {
                 }
                 // H38：confirm 閘門攔截是預期中的業務行為，不是「未預期例外」——比照 admin 端，
                 // 稽核 log 記成專屬的 error:prod_confirm_required，見
-                // obsidian/mcps/aladdin-admin/src/http.ts 同一段註解。
+                // aladdin-admin/src/http.ts 同一段註解。
                 const isProdConfirmGate = err instanceof ProdConfirmRequiredError;
                 setAuditTool(name, isProdConfirmGate ? 'error:prod_confirm_required' : 'error:exception');
                 const label = isProdConfirmGate ? '被 prod confirm 閘門擋下' : '拋出未預期例外';
@@ -363,7 +363,7 @@ app.onError((err, c) => {
 });
 
 // H38：讓「這個實例的 prod confirm 閘門是否生效」成為開機即可肉眼確認的事實，比照
-// admin 端（H36 review 收尾），見 obsidian/mcps/aladdin-admin/src/http.ts 同一段註解。
+// admin 端（H36 review 收尾），見 aladdin-admin/src/http.ts 同一段註解。
 console.error(`[aladdin-platform MCP] prod 寫入閘門：${ IS_PROD ? '啟用（ALADDIN_PLATFORM_IS_PROD=true）' : '停用（非 prod 實例）' }`);
 console.error(`[aladdin-platform MCP] http server ready on 127.0.0.1:${ PORT }`);
 

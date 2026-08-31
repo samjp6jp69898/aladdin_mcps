@@ -33,7 +33,7 @@
 ## 一次性
 
 ```bash
-cd /Users/user/aladdin/obsidian/mcps/aladdin-ai-assistant-kit
+cd /Users/user/aladdin/aladdin_mcps/aladdin-ai-assistant-kit
 bun make-starter-kit.ts --id chenmei --name "陳美"
 ```
 

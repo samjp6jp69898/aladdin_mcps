@@ -8,11 +8,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/launchd/run-server.sh</string>
+        <string>/Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/launchd/run-server.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-toolsmith</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-toolsmith</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -28,9 +28,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/logs/launchd-server.out.log</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/logs/launchd-server.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/user/aladdin/obsidian/mcps/aladdin-toolsmith/logs/launchd-server.err.log</string>
+    <string>/Users/user/aladdin/aladdin_mcps/aladdin-toolsmith/logs/launchd-server.err.log</string>
 </dict>
 </plist>

@@ -15,12 +15,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const OBSIDIAN_ROOT = '/Users/user/aladdin/obsidian';
+const MCPS_ROOT = '/Users/user/aladdin/aladdin_mcps';
 
 /**
  * 2026-08-20（對抗性 session review 抓到的真實 bug）：這裡原本不分 target、
  * 兩個正式目錄一起比對，理由是「避免同時並行的其他 task（H6/H8 等）改動
- * obsidian 其他目錄時被誤判」——這在 N=1 時代（同一時間只有一個 toolsmith
+ * 這個 repo 其他目錄時被誤判」——這在 N=1 時代（同一時間只有一個 toolsmith
  * 操作在跑）永遠安全。但 generate_tool.ts 改成非阻塞＋N=3 併發後，同一時間
  * 可能有請求 A 正處於研究階段（`snapshotRealDirs` 前後各拍一次，中間跨
  * `runAgent()` 整段、可能長達 1800 秒）、同時請求 B 合法地在跑
@@ -37,7 +37,7 @@ const OBSIDIAN_ROOT = '/Users/user/aladdin/obsidian';
  * 高併發成為常態需要重新處理，不在這次範圍內解決。
  */
 function realDirPathspec(target: 'admin' | 'platform'): string {
-    return `mcps/aladdin-${ target }`;
+    return `aladdin-${ target }`;
 }
 
 /** spawn 前/後個別呼叫一次（同一個 target）；回傳的字串直接拿去跟另一次的結果比對，字串不同即視為有變化。 */
@@ -45,11 +45,11 @@ export function snapshotRealDirs(target: 'admin' | 'platform'): string | null {
     try {
         return execFileSync(
             'git',
-            [ '-C', OBSIDIAN_ROOT, 'status', '--short', '--', realDirPathspec(target) ],
+            [ '-C', MCPS_ROOT, 'status', '--short', '--', realDirPathspec(target) ],
             { encoding: 'utf8', timeout: 15_000 },
         );
     } catch {
-        // 讀取失敗（理論上不太可能，obsidian 本身就是這個服務自己所在的
+        // 讀取失敗（理論上不太可能，aladdin_mcps 本身就是這個服務自己所在的
         // repo）不當作髒，避免誤報——見下方 realDirsTouched() 的 null 處理。
         return null;
     }

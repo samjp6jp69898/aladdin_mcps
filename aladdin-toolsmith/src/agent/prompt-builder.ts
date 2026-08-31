@@ -4,9 +4,9 @@
  *
  * 依 /Users/user/.claude/plans/logical-jumping-cook.md 第 3 節「觸發本地
  * agent」明列的要求逐條落地：
- *   - 絕對不要修改 obsidian/mcps/aladdin-admin 與 aladdin-platform 正式目錄。
+ *   - 絕對不要修改 aladdin_mcps/aladdin-admin 與 aladdin-platform 正式目錄。
  *   - 所有讀寫限制在 scratch/{requestId}/ 底下（除了唯讀研究原始碼）。
- *   - 完整遵守 obsidian/mcps/README.md「新增 tool 公版流程」六步驟。
+ *   - 完整遵守 aladdin_mcps/README.md「新增 tool 公版流程」六步驟。
  *   - 驗證要在 verify-workspace 的副本上跑，不是正式目錄。
  *   - 明文禁止存取 127.0.0.1:4040（ngrok 本機 request introspection API，屬
  *     縱深防禦——這道 prompt 層約束擋不住蓄意繞過，sub-agent 本身以
@@ -33,8 +33,8 @@ export interface BuildPromptInput {
 export function buildPrompt(input: BuildPromptInput): string {
     const { target, request, notes, transcript, scratchDir, verifyWorkspaceDir, outputDir, manifestPath } = input;
     const otherTarget = target === 'admin' ? 'platform' : 'admin';
-    const realDir = `/Users/user/aladdin/obsidian/mcps/aladdin-${ target }`;
-    const otherRealDir = `/Users/user/aladdin/obsidian/mcps/aladdin-${ otherTarget }`;
+    const realDir = `/Users/user/aladdin/aladdin_mcps/aladdin-${ target }`;
+    const otherRealDir = `/Users/user/aladdin/aladdin_mcps/aladdin-${ otherTarget }`;
     const scratchRequestDir = scratchDir;
 
     return `你是一個在工程師本機執行的 agent，任務是替一位不具備公司原始碼存取權的企劃，
@@ -129,12 +129,12 @@ Claude session）有優勢的地方——他們沒有原始碼權限，答不出
 **如果資訊已經足夠**（含續接對話已經把疑點都答完的情況），才繼續走下面正常的
 六步驟流程，正常寫代碼、正常驗證、正常回傳 success:true。
 ${ transcript.length > 0 ? `\n${ transcript }\n` : '' }
-## 請完整遵守 /Users/user/aladdin/obsidian/mcps/README.md 的「新增一個 tool 的公版流程」六步驟
+## 請完整遵守 /Users/user/aladdin/aladdin_mcps/README.md 的「新增一個 tool 的公版流程」六步驟
 
 1. **查清楚目標 RPC method（不能用猜的）**：讀 rajah/services/*.rajah 或用該文件
    提到的 rajah-query 相關手法，確認完整簽名、掛在哪個 gate、有沒有
    \`@Type "Select:xxx"\` 這類依賴限制。**同時必讀
-   /Users/user/aladdin/obsidian/mcps/method-category-checklist.md**，依這支
+   /Users/user/aladdin/aladdin_mcps/method-category-checklist.md**，依這支
    method 的實際回傳型別/參數形狀（不是方法名——這個 codebase 大量存在「叫 Get
    其實是分頁清單」「叫 List 其實一次全撈」這類命名與行為不一致的案例）判斷它屬於
    哪個分類（讀取單筆／讀取清單／新增／Upsert／業務鍵間接定位更新／狀態轉換／
@@ -147,7 +147,7 @@ ${ transcript.length > 0 ? `\n${ transcript }\n` : '' }
    底下，檔名對應能力語意（不是照搬 RPC method 英文名）。
 3. **套用 README 第二節「套用這個骨架」列出的樣板**：import session.ts /
    mcp_result.ts / const.ts 的既有慣例。**tool 註冊名稱必須照
-   /Users/user/aladdin/obsidian/mcps/tool-naming-convention.md 的
+   /Users/user/aladdin/aladdin_mcps/tool-naming-convention.md 的
    \`<server>_<service>_<method>\` 規則命名**（server/service/method 各自轉
    snake_case，service/method 取第 1 步查到的真實 rajah service/method 名稱，
    不是憑印象或業務描述另外想一個動詞_名詞式的名字）；若這支 tool 底層呼叫的

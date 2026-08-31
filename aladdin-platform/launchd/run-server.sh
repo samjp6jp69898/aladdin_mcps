@@ -19,7 +19,7 @@
 # 址，不放帳密（理由見下方註解）。
 set -u
 ALADDIN="/Users/user/aladdin"
-SERVER_DIR="$ALADDIN/obsidian/mcps/aladdin-platform"
+SERVER_DIR="$ALADDIN/aladdin_mcps/aladdin-platform"
 BUN="/Users/user/.bun/bin/bun"
 
 # 監聽 port 明講掉，不依賴 http.ts 自己的預設值（8790）——理由同
