@@ -35,10 +35,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 
 import { registerToolsmithTools } from './tools/index.ts';
-import { createBearerAuthGuard, getIdentity, type AuthVariables } from './auth.ts';
+import { createBearerAuthGuard, getIdentity, getDisplayName, type AuthVariables } from './auth.ts';
 import { runWithIdentity } from './identity.ts';
 import { cleanupOrphanedRequestsOnStartup } from './agent/conversation.ts';
 import { SCRATCH_DIR } from './const.ts';
+import { runWithAuditAccumulator, setAuditTool, logAuthenticatedRequest, summarizeToolOutcome } from './audit_log.ts';
 
 const PORT = Number(process.env.TOOLSMITH_HTTP_PORT ?? 8788);
 
@@ -85,6 +86,29 @@ app.use('*', async (c, next) => {
     return bearerAuthGuard(c, next);
 });
 
+// 稽核 log（2026-08-31，比照 aladdin-admin/src/http.ts 的同名 middleware）：
+// 掛在 Bearer 認證之後、所有 route 之前，/health 同樣例外。對每個通過認證的
+// request 在整段處理完成後（含 route handler 拋例外的路徑，見 finally）寫恰
+// 好一行；tool 名稱與業務結果由 withStderrStackLogging 的 registerTool 包裝層
+// 用 AsyncLocalStorage 回填（runWithAuditAccumulator 包住整個 downstream 呼叫
+// 鏈，比照 identity.ts 的 runWithIdentity 同一種手法，兩個 ALS context 各自
+// 獨立可以同時巢狀）。
+app.use('*', async (c, next) => {
+    if (c.req.path === '/health') {
+        return next();
+    }
+    const startedAtMs = performance.now();
+    const identity = getIdentity(c);
+    const displayName = getDisplayName(c);
+    await runWithAuditAccumulator(async () => {
+        try {
+            await next();
+        } finally {
+            logAuthenticatedRequest(c, identity, displayName, startedAtMs);
+        }
+    });
+});
+
 // 不驗證任何東西，供 launchd / 監控探測；不透露服務身分（比照
 // telegram-dispatcher/server.ts:68 與 aladdin-admin/src/http.ts），因為經
 // proxy 後公網可達，回傳服務身分等於向掃描者確認這後面有一個會 spawn
@@ -96,13 +120,20 @@ app.get('/health', c => c.json({ status: 'ok', uptime_seconds: Math.floor(proces
 // 這裡不改動任何 tools/*.ts，改在 registerTool 外面包一層：每支 tool 呼叫
 // 仍照原樣執行、原樣回傳/拋出，只是在拋出前先把完整堆疊寫進 stderr。逐字
 // 沿用 aladdin-admin/src/http.ts 的寫法。
+//
+// 2026-08-31：同一個掛勾點也是唯一拿得到「目前是哪支 tool 在跑」的地方，
+// 順便把 tool 名稱與結果回填進這個 request 的稽核累積物件（見 audit_log.ts
+// 的 setAuditTool），比照 aladdin-admin/src/http.ts 同一處寫法。
 function withStderrStackLogging(server: McpServer): void {
     const originalRegisterTool = server.registerTool.bind(server);
     server.registerTool = ((name: string, config: unknown, handler: (...args: unknown[]) => unknown) => {
         const wrapped = async (...args: unknown[]) => {
             try {
-                return await handler(...args);
+                const result = await handler(...args);
+                setAuditTool(name, summarizeToolOutcome(result));
+                return result;
             } catch (err) {
+                setAuditTool(name, 'error:exception');
                 console.error(`[aladdin-toolsmith http] tool "${ name }" 拋出未預期例外：${ err instanceof Error ? (err.stack ?? err.message) : String(err) }`);
                 throw err;
             }

@@ -6,10 +6,11 @@
  * 需要知道「這次部署是誰觸發的」才能把 commit message、Telegram 通知、
  * scratch/{requestId}/conversation.json 都歸屬到人，共用 token 完全做不到這件事
  * （見同日 const.ts/deploy-pipeline.ts 的異動）。邏輯逐字沿用
- * aladdin-admin/src/auth.ts 的 loadRegistry/failClosed/tokenMatches 設計，
- * 差異只在拿掉 aladdin-admin 特有的 audit_log.ts 依賴（toolsmith 目前沒有對應
- * 的稽核 log 模組，認證失敗只寫 stderr，不是刻意省略稽核，只是這次範圍不含
- * 新增一套稽核系統）。
+ * aladdin-admin/src/auth.ts 的 loadRegistry/failClosed/tokenMatches 設計。
+ *
+ * 2026-08-31：補上 audit_log.ts 後，認證失敗（缺 header / token 不合法）也在
+ * 這裡記一行稽核（來源 IP + 原因，不含 token 值），比照 aladdin-admin/src/
+ * auth.ts 同一處呼叫——上一段「認證失敗只寫 stderr」的說明已過時。
  *
  * 名冊語意（跟 admin 一致）：每次認證都重讀名冊檔、完整驗證，讀不到/解析不了/
  * 驗證不過一律回空名冊（fail-closed → 全體 401），不保留、不沿用前一次結果，
@@ -30,6 +31,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Context, MiddlewareHandler } from 'hono';
+import { logAuthFailure } from './audit_log.ts';
 
 export interface TokenRegistryEntry {
     id: string;
@@ -135,6 +137,7 @@ export function createBearerAuthGuard(registryPath: string): MiddlewareHandler<{
     return async (c, next) => {
         const header = c.req.header('authorization');
         if (header === undefined || !header.startsWith('Bearer ')) {
+            logAuthFailure(c, 'missing_or_malformed_authorization_header');
             return c.text('Unauthorized', 401);
         }
         const presented = Buffer.from(header.slice('Bearer '.length));
@@ -149,6 +152,7 @@ export function createBearerAuthGuard(registryPath: string): MiddlewareHandler<{
         }
 
         if (matched === undefined) {
+            logAuthFailure(c, 'invalid_token');
             return c.text('Unauthorized', 401);
         }
 
