@@ -1,0 +1,39 @@
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc
+
+# 各 hosted MCP server 的 per-user token 名冊，含真實 token 值，絕不可進 git。
+# 沿用 obsidian repo 分割前的既有規則（原始理由見各 server README / 遷移紀錄）。
+aladdin-admin/tokens.json
+aladdin-admin/tokens.pre.json
+aladdin-admin/tokens.evi.json
+aladdin-platform/tokens.json
+aladdin-platform/tokens.dev-6t.json
+aladdin-platform/tokens.pre-pk.json
+aladdin-platform/tokens.pre-6t.json
+aladdin-platform/tokens.evi-6t.json
+aladdin-toolsmith/tokens.json
+
+# make-starter-kit.ts 寫入名冊用「暫存檔＋rename」保證 atomic，中斷時暫存檔
+# 會留在磁碟上、內容是完整合法且真實可用的新名冊（含明碼 token）。
+aladdin-admin/tokens*.json.tmp-*
+aladdin-platform/tokens*.json.tmp-*
+aladdin-toolsmith/tokens*.json.tmp-*
+
+# launchd 常駐產生的 log 檔，不進版本控制。
+aladdin-admin/logs/
+aladdin-platform/logs/
+agrabah-admin/logs/
+agrabah-platform/logs/
+aladdin-toolsmith/logs/
+
+# aladdin-toolsmith 的 sub-agent 工作區（scratch/{requestId}/，含原始碼與中間產物）
+aladdin-toolsmith/scratch/
+
+# POST /files 的暫存上傳目錄，落地的是企劃上傳的真實圖片內容
+aladdin-admin/tmp-uploads/
+aladdin-platform/tmp-uploads/
+
+# 個人 starter kit（含 .env 個人 Bearer token、GUI 啟動腳本），整份不進版本控制
+landon/
