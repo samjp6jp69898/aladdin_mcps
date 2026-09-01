@@ -188,6 +188,8 @@ import { registerGetBackofficeSupportedLanguagesTool } from './get_backoffice_su
 import { registerToggleBackofficeLanguageStatusTool } from './toggle_backoffice_language_status.ts';
 import { registerSetBackofficeDefaultLanguageTool } from './set_backoffice_default_language.ts';
 import { registerGetPlatformIdRolesTool } from './get_platform_id_roles.ts';
+import { registerListAssignableRolePermissionsTool } from './list_assignable_role_permissions.ts';
+import { registerCreateOrUpdateRoleTool } from './create_or_update_role.ts';
 import { registerNewUserTool } from './new_user.ts';
 import { registerListActivityRankingSettingsTool } from './list_activity_ranking_settings.ts';
 import { registerGetPlatformRankingActivityListTool } from './get_platform_ranking_activity_list.ts';
@@ -474,6 +476,8 @@ export function registerPlatformTools(server: McpServer, mode: ServerMode = 'std
     registerToggleBackofficeLanguageStatusTool(server);
     registerSetBackofficeDefaultLanguageTool(server);
     registerGetPlatformIdRolesTool(server);
+    registerListAssignableRolePermissionsTool(server);
+    registerCreateOrUpdateRoleTool(server);
     registerNewUserTool(server);
     registerListActivityRankingSettingsTool(server);
     registerGetPlatformRankingActivityListTool(server);
