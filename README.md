@@ -1,13 +1,13 @@
 # agrabah MCP servers — 架構、新增 tool 公版、安裝與連線
 
-這份文件是所有 `mcps/aladdin-*` server 共用的規範。個別 server 的 README 只放專屬資訊（env 變數、tool 清單、已知限制），設計原則跟怎麼加新 tool 一律看這裡，避免每個 server 各寫一份會漂移。
+這份文件是所有 `aladdin-*` server 共用的規範。個別 server 的 README 只放專屬資訊（env 變數、tool 清單、已知限制），設計原則跟怎麼加新 tool 一律看這裡，避免每個 server 各寫一份會漂移。
 
 目前有：
 
 | Server | 對應後台 | 目錄 |
 |---|---|---|
-| `aladdin-admin` | admin（系統管理後台） | `mcps/aladdin-admin` |
-| `aladdin-platform` | platform（平台管理後台） | `mcps/aladdin-platform` |
+| `aladdin-admin` | admin（系統管理後台） | `aladdin-admin` |
+| `aladdin-platform` | platform（平台管理後台） | `aladdin-platform` |
 
 以上兩個 server 現在**同時支援兩種 transport**：
 
@@ -17,13 +17,13 @@
   常駐工程師機器，經 `telegram-dispatcher` 既有 Cloudflare Tunnel domain 分流（2026-08-22 起，先前為 ngrok），給沒有公司
   原始碼的企劃用。詳見本節最後的「Hosted 模式」小節與差異對照表。
 
-給企劃用的零原始碼 starter kit 在 `mcps/aladdin-ai-assistant-kit/`（H16-H18；`README.md`／
+給企劃用的零原始碼 starter kit 在 `aladdin-ai-assistant-kit/`（H16-H18；`README.md`／
 `CLAUDE.md`／`.mcp.json`／`.env.example`／`.claude/settings.json`／`.gitignore`／
 `.claude/skills/{login,upload-image}/`，登入 skill 由 H17 實作、上傳圖片 skill 由
 H18 實作，兩支皆已完整實作完成，非佔位）。工程師逐人核發這份 kit 的方式見該目錄
-`GENERATE-KIT.md`；`mcps/aladdin-kit-admin/`（stdio-only，只給工程師自己用，不可
+`GENERATE-KIT.md`；`aladdin-kit-admin/`（stdio-only，只給工程師自己用，不可
 hosted）把核發腳本包成 MCP tool，效果等價、只是不用手動打指令。hosted 化的完整背景、
-決策與 task 拆解見 `mcps/_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
+決策與 task 拆解見 `_hosted-rollout/plan.md` 與同目錄 `tasks.json`。
 
 ---
 
@@ -131,18 +131,18 @@ proxy 前綴與本機 port 對照（`telegram-dispatcher/server.ts` 的 `PROXY_R
 | `/mcp-admin-pre` | 8791 | aladdin-admin，pre（企劃口中的 cqa）環境（H35） |
 | `/mcp-admin-evi` | 8792 | aladdin-admin，evi 環境（H35） |
 | `/mcp-platform` | 8790 | aladdin-platform（本輪僅 dev，D13 明訂不擴充） |
-| `/toolsmith` | 8788 | aladdin-toolsmith，見 `mcps/aladdin-toolsmith/README.md` |
+| `/toolsmith` | 8788 | aladdin-toolsmith，見 `aladdin-toolsmith/README.md` |
 
 `aladdin-admin` 支援多環境（每個 Bearer token 綁定單一環境，token 名冊互不相交）；
 `aladdin-platform` 本輪只有 dev 一組實例。詳細環境清單與網址見
-`mcps/aladdin-admin/README.md` 的「支援環境清單」一節。
+`aladdin-admin/README.md` 的「支援環境清單」一節。
 
 **已知限制**：proxy 這一跳（`telegram-dispatcher/server.ts` 的 `MAX_PROXY_BODY_SIZE`）
 的 body 上限是 **1MB**，比 `POST /files` 自己（`files.ts`）允許的單檔 3MB（外層
 `bodyLimit` 4MB）更嚴格——1MB~3MB 的合法圖片會在 proxy 這層就被攔下，且因為
 proxy 對所有攔截情況一律回均一的 401 空 body（避免洩漏路徑是否存在），企劃端
 收到的是誤導性的「登入態失效」訊號，而不是明確的「檔案太大」錯誤。這是已知的
-功能性落差，尚未修正，細節與建議修法見 `mcps/_hosted-rollout/tasks.json` H28 的
+功能性落差，尚未修正，細節與建議修法見 `_hosted-rollout/tasks.json` H28 的
 `risk_notes`。
 
 ### stdio 與 hosted 差異對照
@@ -267,7 +267,7 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
   `filePath` 就視為完成。
 - **寫入類 tool 若未來要在 `aladdin-admin` 的 prod 實例啟用**：要接上
   `assertProdConfirmed`/`confirm` 參數（H36 的伺服器端強制閘門，見
-  `mcps/aladdin-admin/src/session.ts` 的 `assertProdConfirmed`），不要漏接；
+  `aladdin-admin/src/session.ts` 的 `assertProdConfirmed`），不要漏接；
   `aladdin-platform` 本輪沒有這個機制（D13 非目標）。
 - **重載生效**：改完 tool 程式碼後，stdio 模式下 Claude Code 下次重新 spawn
   子行程即生效；hosted 模式要重啟對應環境的常駐 http server 行程——**dev（admin
@@ -285,7 +285,7 @@ export function register<Admin|Platform>Tools(server: McpServer): void {
 transport，「安裝」＝「讓 host 能 spawn 這個子行程」，不是部署一個網路服務。
 
 **hosted 模式**（企劃端，零原始碼）不需要做以下任何步驟：直接使用
-`mcps/aladdin-ai-assistant-kit/`（見該目錄 `README.md`），由工程師手動複製整份 kit、依授權
+`aladdin-ai-assistant-kit/`（見該目錄 `README.md`），由工程師手動複製整份 kit、依授權
 範圍填入該企劃的個人 Bearer token 與對應環境的 URL 後交付（自動化的
 `make-starter-kit` 產生器是 `_hosted-rollout/plan.md` §4.5 提到的後續 task，本文
 撰寫時尚未實作）。企劃端只需要 Claude Code 桌面版，不需要 `bun install`、不需要
