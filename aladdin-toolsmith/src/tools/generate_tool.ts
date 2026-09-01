@@ -38,12 +38,13 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { asTextResult } from '../mcp_result.ts';
-import { CONCURRENCY_LIMIT, SCRATCH_DIR } from '../const.ts';
+import { CONCURRENCY_LIMIT, DEPLOY_NOTIFY_EMAIL, SCRATCH_DIR, TG_NOTIFY_SH } from '../const.ts';
 import { createConcurrencyLimiter } from '../agent/concurrency-limiter.ts';
 import { runAgent } from '../agent/run-agent.ts';
 import { loadConversation, saveConversation, type ConversationState } from '../agent/conversation.ts';
@@ -80,13 +81,60 @@ function readManifest(manifestPath: string): SubAgentManifest {
 }
 
 /**
+ * 部署成功時 deploy-pipeline.ts 的 notifyDeployed() 已經會發 Telegram 通知——
+ * 但失敗情境（研究/寫代碼失敗、source repo 不新鮮、正式目錄被意外異動、部署
+ * gate 沒過被回滾等）原本完全不通知，Landon 只能靠自己去翻 scratch/ 或
+ * tg-monitor 的 Toolsmith 分頁才會發現。2026-09-01 使用者要求成功/失敗都要
+ * 推播，這裡補上失敗這一半，跟 deploy-pipeline.ts 用同一支 tg-notify.sh、
+ * 同一個固定收件人（見 const.ts DEPLOY_NOTIFY_EMAIL 的說明：tokens.json 沒有
+ * email/chat_id，做不到動態發給 requestedBy 本人，先固定發給 Landon）。
+ * fire-and-forget、try/catch 吞掉例外——通知失敗不該讓已經確定的失敗結果卡住。
+ */
+function notifyFailed(input: { requestId: string; target: string; requestedBy: string; errorKind?: string; message: string }): void {
+    const { requestId, target, requestedBy, errorKind, message } = input;
+    const text = `[toolsmith] ${ requestedBy } 透過 aladdin_toolsmith_generate_tool 的請求失敗（target=${ target }）。\n` +
+        `errorKind：${ errorKind ?? 'unknown' }\n` +
+        `原因：${ message }\n` +
+        `requestId=${ requestId }`;
+    try {
+        execFileSync('bash', [ TG_NOTIFY_SH, '--email', DEPLOY_NOTIFY_EMAIL, '--text', text ], { encoding: 'utf8', timeout: 30_000 });
+    } catch {
+        // 同 deploy-pipeline.ts notifyDeployed() 的理由：tg-notify.sh 設計上一律
+        // exit 0，理論上不會走到這裡；萬一環境異常也不讓通知失敗蓋掉真正的失敗結果。
+    }
+}
+
+/**
  * 背景處理：不被任何呼叫端 await，靠 conversation.json 的 status/finalResult
  * 欄位對外揭露進度與結果。任何一步拋出的例外都要在這裡被接住並寫回
  * status:'failed'——這是唯一的交接訊號，跟 sub-agent 的 manifest.json 同一個
  * 設計哲學：沒寫清楚就等於卡死在某個中繼狀態，query_log 會一直顯示「還在跑」
  * 但其實早就死透了，這比明確回報失敗更難排查。
+ *
+ * 對外只有這一個入口：真正的邏輯在 processInBackgroundInner()，這裡只加一層
+ * finally，統一在 state.status 落定成 'failed' 時發一次通知——不論是哪個分支
+ * 設的 failed（source_repos_not_fresh／real_dir_touched_unexpectedly／
+ * agent_failed／no_files／deploy 失敗／unexpected_exception），都會經過這裡
+ * 同一個出口，不用在每個 early return 前都插一次通知呼叫。'done' 不在這裡
+ * 通知——那一定是 deploy-pipeline 成功，已經被 notifyDeployed() 通知過了。
  */
 async function processInBackground(requestId: string, scratchDir: string, state: ConversationState): Promise<void> {
+    try {
+        await processInBackgroundInner(requestId, scratchDir, state);
+    } finally {
+        if (state.status === 'failed') {
+            notifyFailed({
+                requestId,
+                target: state.target,
+                requestedBy: state.requestedBy,
+                errorKind: state.finalResult?.errorKind,
+                message: state.finalResult?.message ?? '未知失敗原因（finalResult 未寫入，這本身就是異常狀況）。',
+            });
+        }
+    }
+}
+
+async function processInBackgroundInner(requestId: string, scratchDir: string, state: ConversationState): Promise<void> {
     try {
         await limiter.acquire();
         try {

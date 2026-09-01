@@ -164,6 +164,18 @@ ${ transcript.length > 0 ? `\n${ transcript }\n` : '' }
    並在 manifest.json 的 \`verification.notes\` 裡具體寫出套用了
    method-category-checklist.md 哪個分類、哪幾條檢查項、各自的驗證結果——不要只
    寫「已測試通過」這種無法覆核的空泛陳述。
+   **新增/更新（write）型 method 的測試資料，先查真實資料再決定測試值，不要憑空
+   捏造**：驗證前用 \`bash /Users/user/aladdin/aladdin_ai/conn/db-dev-query.sh
+   <database> "SELECT ... FROM <table> LIMIT 20"\`（唯讀）或 db-schema-lookup
+   skill 先看一下目標 table 現有資料的實際長度/格式，測試值要跟現有資料很接近
+   （例如角色名稱就抓現有 roles.name 幾筆真實值參考長度，不要自己另外接 timestamp
+   湊一個獨一無二但可能超長的字串）。**真實踩過的教訓**：2026-09-01 一次
+   CreateOrUpdateRole 的驗證用 \`MCP_TEST_ROLE_\${Date.now()}\` 當測試角色名稱
+   （28 字元），實際 \`roles.name\` 欄位只有 VARCHAR(20)，MySQL 回傳
+   ER_DATA_TOO_LONG 但因為不在 ORM 明確處理的錯誤碼清單內、被吞成通用的
+   unknownDatabaseError，當下誤判成「後端 insertObject 路徑本身壞了」，實際上
+   是測試資料自己不合法——白白多跑了一輪。測試值不合法產生的錯誤，不要當成後端
+   缺陷回報。
 6. **把你新增/修改過的 README 段落也複製一份到 output/**（例如
    ${ outputDir }/README.md），manifest 的 files[] 要如實列出這個檔案。
 

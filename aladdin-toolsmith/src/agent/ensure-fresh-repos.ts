@@ -23,7 +23,17 @@
  * 再加一層跨請求的讀寫鎖——跟現有「同 target 兩個並發部署互相干擾」是同一類
  * 已知且刻意不解的殘留風險。
  *
- * fail-closed：任何一步（有未提交變更／fetch／checkout／pull）失敗，整個
+ * 2026-09-01 使用者拍板改為主動 reset（非遺漏，是明確裁示）：這台機器**不是
+ * 工程師的日常開發機**，agrabah/abu/rajah/lago 這四份共用 checkout 純粹是給
+ * Source-First 研究用的唯讀副本，不會有人在這裡手動改代碼、留下值得保護的
+ * work-in-progress——2026-09-01 實測踩過一次：另一個自動化在 lago 跑了一次
+ * bun install 產生的 lockfile 格式升級副作用，把 generate_tool 擋在
+ * fail-closed 的 dirty 檢查上，一次無害的異動就讓整個請求（連研究都還沒開始）
+ * 白白失敗。因此發現 dirty 時直接 `git reset --hard` + `git clean -fd`
+ * 丟棄，不再中止——只有 reset/clean 這兩個動作本身失敗（例如磁碟權限異常）才
+ * 算真正的基礎設施問題，繼續 fail-closed。
+ *
+ * fail-closed（reset/clean 之後）：fetch／checkout／pull 任一步失敗，整個
  * generate_tool 這次執行直接中止，不讓 sub-agent 帶著「不確定新不新鮮」的
  * 來源繼續研究/寫代碼。
  */
@@ -51,9 +61,9 @@ function git(repo: string, args: string[]): string {
 }
 
 function freshenOne(repo: string): FreshenResult {
-    // 有未提交變更代表可能有人正在這個共用路徑手動工作——絕不能自動切分支/
-    // pull 蓋過去，直接中止讓工程師自己處理，這是唯一會讓這個函式回傳失敗但
-    // 「不是基礎設施問題」的分支，訊息措辭要能讓人一眼看出原因。
+    // 這台機器不是工程師日常開發機（見檔頭 2026-09-01 說明），這四個共用路徑
+    // 出現未提交變更一律視為無人在意的殘留（例如某個自動化跑 bun install 產生
+    // 的 lockfile 副作用），直接 reset + clean 丟棄再繼續，不中止整個請求。
     let dirty: string;
     try {
         dirty = git(repo, [ 'status', '--short' ]);
@@ -61,10 +71,17 @@ function freshenOne(repo: string): FreshenResult {
         return { ok: false, repo, step: 'dirty', message: err instanceof Error ? err.message : String(err) };
     }
     if (dirty.length > 0) {
-        return {
-            ok: false, repo, step: 'dirty',
-            message: `working tree 有未提交變更，可能有人正在這個共用路徑手動工作，拒絕自動切換分支/pull：\n${ dirty }`,
-        };
+        try {
+            git(repo, [ 'reset', '--hard' ]);
+            git(repo, [ 'clean', '-fd' ]);
+        } catch (err) {
+            // reset/clean 本身失敗才是真正的基礎設施問題（例如磁碟權限異常），
+            // 這種情況才 fail-closed 中止，不猜測、不硬闖。
+            return {
+                ok: false, repo, step: 'dirty',
+                message: `working tree 有未提交變更（\n${ dirty }\n），嘗試 reset --hard + clean -fd 丟棄時失敗，需要人工檢查：${ err instanceof Error ? err.message : String(err) }`,
+            };
+        }
     }
 
     try {
