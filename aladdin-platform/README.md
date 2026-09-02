@@ -358,7 +358,9 @@ src/
 
   修正後 2026-09-02 對 CQA/pre 站（`pk-platform.ald777.com`）另 spawn 新 stdio process 實打驗證：`list_games(gameVendorId=29)` 回 23 筆、全部 enabled、編號自 2432 起，與後台畫面一致；Gate B 覆核則在 dev 撈到一筆 `displayTag=0` 的遊戲，正是舊 bug 會誤篩掉的分類值。
 
-  新增或改動任何吃 search 的 tool 時：對**每一個沒帶的欄位**去 agrabah 讀出後端實際怎麼判斷（欄位可能經 manager/helper 轉手後才碰到哨兵，要追到真正做判斷的那一行），zod 對這類欄位用 `.default(<哨兵值>)` 而不是 `.optional()`，驗收要包含「完全不帶任何選填篩選條件」的呼叫。共用哨兵常數放在 `src/const.ts`（`DISPLAY_TAG_ALL` / `REBATE_TAG_ALL`）。可重跑的稽核：`bun ../scripts/check-sentinel-fields.ts`（有命中 exit 1，加 `--inventory` 只印清冊）；詳細規則見 `../method-category-checklist.md` 第 2.5 節。**腳本是兜底不是充分條件**，它追不動跨 manager 的間接傳遞。
+  新增或改動任何吃 search 的 tool 時：對**每一個沒帶的欄位**去 agrabah 讀出後端實際怎麼判斷（欄位可能經 manager/helper 轉手後才碰到哨兵，要追到真正做判斷的那一行），zod 對這類欄位用 `.default(<哨兵值>)` 而不是 `.optional()`，驗收要包含「完全不帶任何選填篩選條件」的呼叫。共用哨兵常數放在 `src/const.ts`（`DISPLAY_TAG_ALL` / `REBATE_TAG_ALL`）。可重跑的稽核：`bun ../scripts/check-sentinel-fields.ts`（有命中 exit 1，加 `--inventory` 只印清冊，加 `--json` 給自動化消費）；詳細規則見 `../method-category-checklist.md` 第 2.5 節。**腳本是兜底不是充分條件**，它追不動跨 manager 的間接傳遞。
+
+  這支腳本自 2026-09-02 起也是 toolsmith 部署管線的 **Gate A2 決定性關卡**（`aladdin-toolsmith/src/agent/deploy-pipeline.ts`）：套用檔案前後各跑一次，只有「baseline 沒有、套用後才出現」的命中才擋（比照 Gate A1 的 tsc，既有命中不算，免得某支不相干 tool 的舊問題擋死無關的部署）；腳本本身跑不起來或吐不出合法 JSON 時一律視為未通過並回滾，不會把「檢查壞掉」當成「檢查通過」。也就是說，透過 `aladdin_toolsmith_generate_tool` 產出的新 tool，**機械上無法帶著新的哨兵值缺陷上線**——這不再只是 checklist 與覆核 prompt 上的要求。
 - `aladdin_platform_game_vendor_platform_update_game_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，先呼叫 `POST /files` 上傳取得，見 `../README.md`「Hosted 模式」）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **H9：`onboard_vendor_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**，設計與實測方式與 `aladdin-admin` 的 `upsert_game.ts` 逐字相同，完整說明見 `../aladdin-admin/README.md` 同一段（D5/§4.3；`fileId → 本機路徑` 的三層防護：regex 格式白名單 + registry `Map` 精確比對 + realpath 二次確認）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
