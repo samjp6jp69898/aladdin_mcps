@@ -134,7 +134,12 @@ function resolveEnumValue(enumName: string, member: string): number | null {
  *      這一型跟 `!==` 型一樣危險、寫法卻完全不同，是 2026-09-02 掃描時由
  *      獨立覆核發現本腳本原本抓不到而補上的。注意 `> 0` 不算——那代表 0
  *      本身就會跳過篩選，剛好等於 protobuf 預設值，漏帶無害。
- *   3. 寫成 `skip:` 欄位的篩選開關
+ *   3. `EnumName[search.x] !== undefined` 這種「查得到就當成合法篩選值」的守衛
+ *      （`information_back_office/services/common.ts:98`）。陷阱在於 protobuf
+ *      的 `StatusEnum[0]` 是 `'unknown'`、**不是** undefined，所以漏帶的 0 會
+ *      被當成真實條件 `status = 0` 送進 SQL；要跳過篩選得送一個不在 enum 裡的
+ *      值（abu 用 `IGNORE_STATUS = -1`）。
+ *   4. 寫成 `skip:` 欄位的篩選開關
  *      （`{ tag: search.displayTag, skip: search.displayTag === -1 }`），
  *      它的套用動作在更後面，用位置判斷不到，改認 `skip:` 這個關鍵字。
  *
@@ -179,6 +184,26 @@ function buildInventory(wantedModels: Set<string>): SentinelEntry[] {
             if (varTypes.size === 0) continue;
 
             const body = lines.slice(method.startLine - 1, method.endLine).join('\n');
+            // `EnumName[search.x] !== undefined`：查得到 enum 成員就當合法篩選值。
+            // protobuf 預設 0 在多數 enum 裡是有定義的（`StatusEnum[0] = 'unknown'`），
+            // 所以漏帶會變成真實條件，要跳過得送不在 enum 裡的值（慣例 -1）。
+            const enumIndexRe = /([A-Z]\w+)\[\s*(\w+)\.(\w+)\s*\]\s*!==\s*undefined/g;
+            let ei: RegExpExecArray | null;
+            while ((ei = enumIndexRe.exec(body)) !== null) {
+                const [ , enumName, varName2, field2 ] = ei;
+                const model2 = varTypes.get(varName2);
+                if (!model2 || !wantedModels.has(model2)) continue;
+                if (resolveEnumValue(enumName, 'unknown') !== 0 && resolveEnumValue(enumName, 'none') !== 0) continue;
+                const key2 = `${ model2 }.${ field2 }`;
+                if (seen.has(key2)) continue;
+                seen.add(key2);
+                const lineNo2 = method.startLine - 1 + body.slice(0, ei.index).split('\n').length;
+                entries.push({
+                    model: model2, field: field2, sentinelText: `不在 ${ enumName } 裡的值（慣例 -1）`, sentinelValue: -1,
+                    evidence: `${ file.replace('/Users/user/aladdin/', '') }:${ lineNo2 }`,
+                });
+            }
+
             const cmpRe = /(\w+)\.(\w+)\s*(!==|===|>=|>)\s*([A-Za-z0-9_.\-]+)/g;
             let c: RegExpExecArray | null;
             while ((c = cmpRe.exec(body)) !== null) {
