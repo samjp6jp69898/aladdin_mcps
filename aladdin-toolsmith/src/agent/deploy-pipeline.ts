@@ -5,9 +5,18 @@
  * 不 reload。
  *
  * 設計原則（延續 collect-output.ts 已建立的「不信任自我陳述」慣例）：
- *   - Gate A（決定性）：tsc --noEmit，比對套用前後的錯誤集合，只有「新增」的
- *     錯誤才算失敗——這個 codebase 本來就有既有型別債務，不能拿「有沒有錯誤」
- *     當標準（2026-08-20 修 edit_game.ts 時就是用這個方法驗證的）。
+ *   - Gate A（決定性）：兩項機械檢查，都用「比對套用前後、只有新增的才算失敗」
+ *     這個模式——這個 codebase 本來就有既有債務，不能拿「有沒有問題」當標準
+ *     （2026-08-20 修 edit_game.ts 時就是用這個方法驗證的）：
+ *       A1. tsc --noEmit 的錯誤集合。
+ *       A2. scripts/check-sentinel-fields.ts 的命中集合（2026-09-02 加）。
+ *           加這一項的理由：哨兵值缺陷（搜尋欄位的「不篩選」語意不是 protobuf
+ *           預設值，漏帶會讓查詢被靜默篩空而 RPC 仍回 success）原本只寫在
+ *           method-category-checklist.md 第 2.5 節與 Gate B 的 prompt 裡，
+ *           擋不擋得住取決於 LLM 願不願意查——而這正是它會漏的東西：
+ *           list_agent_game_reports.ts 在 2026-08-26 踩過同一顆雷、還留了註解，
+ *           姊妹檔 list_agent_bet_records.ts 照樣漏，隔了一週才被掃出來。
+ *           寫在文件和 prompt 裡不夠，要有機械關卡。
  *   - Gate B（獨立第二個 agent）：對抗性覆核，重新對抗性檢查一次，不信任原本
  *     寫 code 那個 sub-agent 自己在 manifest.verification 裡的自我陳述；這個
  *     agent 被要求同時完成四件事：核對 method-category-checklist.md 分類要求、
@@ -105,6 +114,33 @@ function runTscErrors(dir: string): Set<string> {
         const e = err as { stdout?: string };
         const lines = (e.stdout ?? '').split('\n').filter((l) => l.includes(': error TS'));
         return new Set(lines);
+    }
+}
+
+/**
+ * 回傳 check-sentinel-fields.ts 的命中集合（穩定 key，不含行號）。
+ *
+ * 腳本本身跑不起來、或吐不出合法 JSON 時**回傳 null 而不是空集合**，呼叫端會
+ * 據此擋下部署。這點是刻意的：把「檢查壞掉」當成「檢查通過」，正是這道 Gate
+ * 要防的那種靜默失敗——一支回 success 卻沒真的檢查任何東西的把關，比沒有把關
+ * 更危險，因為它會讓人以為有守住。
+ */
+function runSentinelFindings(): Set<string> | null {
+    let stdout: string;
+    try {
+        stdout = execFileSync(
+            'bun', [ join(MCPS_ROOT, 'scripts/check-sentinel-fields.ts'), '--json' ],
+            { encoding: 'utf8', timeout: 120_000, maxBuffer: 20 * 1024 * 1024 },
+        );
+    } catch {
+        return null;
+    }
+    try {
+        const parsed = JSON.parse(stdout.trim()) as unknown;
+        if (!Array.isArray(parsed) || parsed.some(x => typeof x !== 'string')) return null;
+        return new Set(parsed as string[]);
+    } catch {
+        return null;
     }
 }
 
@@ -267,6 +303,15 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // 2. Gate A 的 baseline：套用前先量一次 tsc 錯誤集合（這個 codebase 有既有
     // 型別債務，不能拿「有沒有錯誤」當標準，要拿「錯誤集合有沒有變大」當標準）。
     const baseline = runTscErrors(realDir);
+    const sentinelBaseline = runSentinelFindings();
+    if (sentinelBaseline === null) {
+        log('Gate A2 的 baseline 量不到（check-sentinel-fields.ts 跑不起來或輸出不合法），中止部署，未動任何檔案');
+        return {
+            success: false, stage: 'tsc',
+            message: '部署前量 Gate A2（哨兵值檢查）的 baseline 時，scripts/check-sentinel-fields.ts 跑不起來或吐不出合法 JSON。'
+                + '把「檢查壞掉」當成「檢查通過」正是這道 Gate 要防的靜默失敗，因此中止部署（尚未動任何檔案），需要人工確認這支腳本的狀態。',
+        };
+    }
 
     // 3. 套用：把 output/ 底下驗證通過的檔案複製進正式目錄。
     try {
@@ -290,7 +335,33 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
         rollback(pathspecs);
         return { success: false, stage: 'tsc', message: `跑 tsc --noEmit 出現新的型別錯誤（既有型別債務不算，只擋新增的），已回滾：\n${ newErrors.join('\n') }` };
     }
-    log('Gate A（tsc）通過，沒有新增型別錯誤');
+    log('Gate A1（tsc）通過，沒有新增型別錯誤');
+
+    // Gate A2：哨兵值檢查。同樣只擋「baseline 沒有、套用後才出現」的命中。
+    const sentinelAfter = runSentinelFindings();
+    if (sentinelAfter === null) {
+        log('Gate A2 在套用後跑不起來（或輸出不合法），保守視為未通過，已回滾');
+        rollback(pathspecs);
+        return {
+            success: false, stage: 'tsc',
+            message: '套用後執行 Gate A2（scripts/check-sentinel-fields.ts）失敗或輸出不合法，無法確認這批改動有沒有引入哨兵值缺陷，'
+                + '保守判定未通過並已回滾。',
+        };
+    }
+    const newSentinel = [ ...sentinelAfter ].filter(k => !sentinelBaseline.has(k));
+    if (newSentinel.length > 0) {
+        log(`Gate A2（哨兵值檢查）出現新命中:\n${ newSentinel.join('\n') }`);
+        rollback(pathspecs);
+        return {
+            success: false, stage: 'tsc',
+            message: '跑 scripts/check-sentinel-fields.ts 出現新的哨兵值命中（既有命中不算，只擋新增的），已回滾。\n'
+                + '這代表這批改動裡有 search 欄位沒帶到「全部/不篩選」的哨兵值，查詢會被靜默篩掉資料而 RPC 仍回 success。\n'
+                + '判讀方式與修法見 method-category-checklist.md 第 2.5 節；跑 '
+                + '`bun aladdin_mcps/scripts/check-sentinel-fields.ts` 可看到完整說明與後端證據。\n'
+                + `新增的命中（格式：construct|檔案|model|欄位 或 schema|檔案|欄位）：\n${ newSentinel.join('\n') }`,
+        };
+    }
+    log('Gate A2（哨兵值檢查）通過，沒有新增命中');
 
     // 5. Gate B：獨立第二個 agent 對抗性覆核（含 method-category-checklist.md
     // 分類核對 + 實際對 dev 打一次）。

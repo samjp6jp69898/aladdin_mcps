@@ -68,7 +68,14 @@
  * 用法：
  *   bun /Users/user/aladdin/aladdin_mcps/scripts/check-sentinel-fields.ts
  *   bun .../check-sentinel-fields.ts --inventory   # 只印哨兵值清冊
- * 有命中時 exit code 1（供之後接進自動化把關），乾淨時 exit 0。
+ *   bun .../check-sentinel-fields.ts --json        # 命中清單的機器可讀版本
+ * 有命中時 exit code 1，乾淨時 exit 0。
+ *
+ * `--json` 給 aladdin-toolsmith 的 deploy-pipeline Gate A 消費（2026-09-02 加）：
+ * 它會在套用檔案前後各跑一次，只有「baseline 沒有、套用後才出現」的命中才擋下
+ * 部署——比照同一個 Gate 對 tsc 的做法，理由也一樣：不能拿「有沒有命中」當標準，
+ * 否則某支不相干 tool 的既有問題會擋死一次跟它無關的部署。輸出是穩定排序的
+ * key 陣列（不含行號等會隨無關改動漂移的欄位），好讓前後兩次的集合能精確相減。
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -372,6 +379,19 @@ if (process.argv.includes('--inventory')) {
 }
 
 const { findings, skipped } = scanTools(inventory);
+const schemaFindingsForJson = scanSchemas();
+
+if (process.argv.includes('--json')) {
+    // 穩定 key：只用「哪個檔案、哪個 model、哪個欄位」，不含行號或訊息文字——
+    // 這幾項才是「同一個缺陷」的身分，行號會因為上面加了幾行註解就變動，
+    // 那樣 baseline 與套用後的集合會對不起來、把無關改動誤判成新缺陷。
+    const keys = [
+        ...findings.flatMap(f => f.missing.map(e => `construct|${ f.toolFile }|${ f.model }|${ e.field }`)),
+        ...schemaFindingsForJson.map(f => `schema|${ f.toolFile }|${ f.field }`),
+    ].sort();
+    console.log(JSON.stringify(keys));
+    process.exit(0);
+}
 
 console.log(`tool 建構的 rajah model：${ wantedModels.size } 種`);
 console.log(`其中含哨兵值欄位：${ inventory.length } 個（掃 agrabah 後端現算）`);
@@ -392,7 +412,7 @@ if (findings.length === 0) {
     }
 }
 
-const schemaFindings = scanSchemas();
+const schemaFindings = schemaFindingsForJson;
 if (schemaFindings.length > 0) {
     console.log(`\n❌ 偵測器二命中 ${ schemaFindings.length } 處（zod 用 .optional()，但 describe 自己寫了哨兵值）：\n`);
     for (const f of schemaFindings) {
