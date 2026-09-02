@@ -42,7 +42,7 @@ import { promisify } from 'node:util';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { AGENT_TIMEOUT_SECONDS, DEPLOY_CONCURRENCY_LIMIT, DEPLOY_NOTIFY_EMAIL, LAUNCHD_LABEL, MCPS_ROOT, REAL_DIR, TG_NOTIFY_SH } from '../const.ts';
+import { AGENT_TIMEOUT_SECONDS, DEPLOY_CONCURRENCY_LIMIT, DEPLOY_NOTIFY_EMAIL, launchdLabels, MCPS_ROOT, REAL_DIR, TG_NOTIFY_SH } from '../const.ts';
 import { createConcurrencyLimiter } from './concurrency-limiter.ts';
 
 const execFileAsync = promisify(execFile);
@@ -333,11 +333,39 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // 是 reload 失敗直接 return、根本不會嘗試 push，違背這裡本來要的「兩者
     // 解耦」——改成各自獨立 try/catch，一個失敗不擋另一個，最後把兩邊結果合併
     // 成一則訊息回報。
+    //
+    // 2026-09-02：reload 從「只重載 dev 一個 label」改成「重載這個 target 的全部
+    // launchd 實例」。同一份 REAL_DIR 的 source 被多個實例共用（dev / pre-pk /
+    // pre-6t / dev-6t / evi-6t 只差 env 值），只 reload dev 會讓其餘實例無限期停在
+    // 舊代碼——當天就真的踩到：哨兵值修正上線後，回報 bug 的同事用的 pre-pk 實例
+    // 仍跑舊代碼，而且沒有任何訊號顯示這件事。
+    //
+    // 只 kickstart「目前真的已載入」的 label：plist 存在但沒載入（有人刻意不跑那
+    // 個實例）時 kickstart 會失敗，若把它算成 reload 失敗，之後每次部署都會固定
+    // 報一次無關的錯，久了就沒人看了。未載入的另外列出來當資訊，不當失敗。
     let reloadError: string | null = null;
+    const reloadedLabels: string[] = [];
+    const notLoadedLabels: string[] = [];
+    const failedLabels: string[] = [];
     try {
         const uid = execFileSync('id', [ '-u' ], { encoding: 'utf8' }).trim();
-        execFileSync('launchctl', [ 'kickstart', '-k', `gui/${ uid }/${ LAUNCHD_LABEL[ target ] }` ], { encoding: 'utf8', timeout: 15_000 });
-        log('reload 完成');
+        const loaded = new Set(
+            execFileSync('launchctl', [ 'list' ], { encoding: 'utf8', timeout: 15_000 })
+                .split('\n').map(line => line.split('\t')[ 2 ]?.trim()).filter((x): x is string => !!x),
+        );
+        for (const label of launchdLabels(target)) {
+            if (!loaded.has(label)) { notLoadedLabels.push(label); continue; }
+            try {
+                execFileSync('launchctl', [ 'kickstart', '-k', `gui/${ uid }/${ label }` ], { encoding: 'utf8', timeout: 15_000 });
+                reloadedLabels.push(label);
+            } catch (err) {
+                failedLabels.push(`${ label }（${ err instanceof Error ? err.message : String(err) }）`);
+            }
+        }
+        if (failedLabels.length > 0) reloadError = `以下實例重載失敗：${ failedLabels.join('、') }`;
+        log(`reload 完成 ${ reloadedLabels.length } 個實例：${ reloadedLabels.join('、') || '(無)' }`
+            + (notLoadedLabels.length > 0 ? `；未載入而略過：${ notLoadedLabels.join('、') }` : '')
+            + (failedLabels.length > 0 ? `；失敗：${ failedLabels.join('、') }` : ''));
     } catch (err) {
         reloadError = err instanceof Error ? err.message : String(err);
         log(`reload 失敗（不影響是否嘗試 push）: ${ reloadError }`);
@@ -359,11 +387,14 @@ async function runDeployPipelineLocked(input: DeployInput): Promise<DeployResult
     // （2026-08-20 使用者決定的範圍；要不要連失敗也通知是後續可以再談的獨立決定）。
     if (reloadError === null && pushError === null) {
         notifyDeployed({ target, requestId, requestedBy, summary, reloadOk: true, pushOk: true });
-        return { success: true, stage: 'done', message: `已部署上線、重載 dev 常駐服務、push 到 origin/main。${ summary }` };
+        return {
+            success: true, stage: 'done',
+            message: `已部署上線、重載 ${ reloadedLabels.length } 個常駐實例（${ reloadedLabels.join('、') }）、push 到 origin/main。${ summary }`,
+        };
     }
     const parts: string[] = [ `已 commit（代碼已通過驗證），但：` ];
-    if (reloadError !== null) parts.push(`- reload 失敗，需要人工重啟 ${ LAUNCHD_LABEL[ target ] }：${ reloadError }`);
-    else parts.push(`- reload 成功，本地 dev 常駐服務已生效`);
+    if (reloadError !== null) parts.push(`- reload 失敗，需要人工重啟：${ reloadError }`);
+    else parts.push(`- reload 成功，${ reloadedLabels.length } 個常駐實例已生效（${ reloadedLabels.join('、') }）`);
     if (pushError !== null) parts.push(`- push 到 origin/main 失敗，commit 留在本地需要人工推送：${ pushError }`);
     else parts.push(`- push 成功，已同步到 origin/main`);
     notifyDeployed({ target, requestId, requestedBy, summary, reloadOk: reloadError === null, pushOk: pushError === null });
@@ -461,8 +492,8 @@ requestId: ${ requestId }
    **查詢型 tool 必須包含一次「完全不帶任何選填篩選條件」的呼叫**，並確認回傳筆數
    合理（對得上後台畫面或 DB 實際筆數）——回空陣列而 RPC success 是哨兵值缺陷的
    典型症狀，只驗「帶滿條件」的情境會剛好蓋掉它。
-   **重要**：這個時間點對應的 launchd 常駐服務（\`${ LAUNCHD_LABEL[ target ] }\`）
-   還沒被重載，跑的仍是套用前的舊代碼——絕對不要用「打常駐服務目前對外的連線」
+   **重要**：這個時間點該 target 的 launchd 常駐服務（\`${ launchdLabels(target).join('`、`') }\`）
+   都還沒被重載，跑的仍是套用前的舊代碼——絕對不要用「打常駐服務目前對外的連線」
    這種方式驗證（例如透過 telegram-dispatcher 的 proxy route 或直接打常駐服務
    監聽的 port），那樣測到的其實是舊代碼，你會產生假通過。一定要自己另外重新
    spawn 一個新的 process（像上面的 \`bun src/stdio.ts\`）直接讀 ${ realDir }

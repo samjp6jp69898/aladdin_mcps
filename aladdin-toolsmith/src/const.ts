@@ -8,6 +8,8 @@
  * 節「觸發本地 agent」的建議值定義。
  */
 import { fileURLToPath } from 'node:url';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 // 內層 bash `timeout ${AGENT_TIMEOUT_SECONDS}` wrap `claude -p`，逾時送 SIGTERM。
 // logical-jumping-cook.md 原始建議「600 秒起」是骨架階段（H22，回固定假資料、
@@ -59,12 +61,31 @@ export const REAL_DIR: Record<'admin' | 'platform', string> = {
 };
 
 // 部署成功後 deploy-pipeline.ts 用 `launchctl kickstart -k gui/$(id -u)/<label>`
-// 重載對應的 dev 常駐服務（見各自 README「launchd 常駐骨架」一節）。只涵蓋
-// dev——pre/evi 目前不是 launchd 常駐管理，不在自動重載範圍內。
-export const LAUNCHD_LABEL: Record<'admin' | 'platform', string> = {
-    admin: 'com.aladdin.mcp-admin-server',
-    platform: 'com.aladdin.mcp-platform-server',
-};
+// 重載常駐服務（見各自 README「launchd 常駐骨架」一節）。
+//
+// 2026-09-02 改成「現算全部實例」，取代原本寫死的單一 dev label。原本這裡是
+// `{ admin: 'com.aladdin.mcp-admin-server', platform: 'com.aladdin.mcp-platform-server' }`，
+// 註解寫著「只涵蓋 dev——pre/evi 目前不是 launchd 常駐管理」——那句話後來過期了：
+// 現在 platform 有 dev / pre-pk / pre-6t / dev-6t / evi-6t 五個實例、admin 有
+// dev / pre / evi 三個，全部都是 launchd 常駐、而且**跑的是同一份 REAL_DIR 的
+// source**（見各自 launchd/run-server-*.sh，只換 env 值不換 code）。
+//
+// 後果是實際踩到的：2026-09-02 修好 list_games 的哨兵值缺陷部署上線後，只有 dev
+// 被重載，回報這個 bug 的同事用的 pre-pk 實例仍在跑舊代碼——修了但當事人拿不到，
+// 而且沒有任何訊號會顯示這件事。這正是這次事件的同一種失敗形狀：狀態不一致，
+// 但沒有人會收到錯誤。
+//
+// 改成從各 server 的 `launchd/*.plist` 現算，而不是在這裡再列一份清單：plist
+// 本來就是這些實例的定義來源，日後新增實例只要放 plist 就會自動納入重載範圍，
+// 不會因為有人忘了同步更新這個常數而再次漂移。
+export function launchdLabels(target: 'admin' | 'platform'): string[] {
+    const dir = join(REAL_DIR[ target ], 'launchd');
+    if (!existsSync(dir)) return [];
+    return readdirSync(dir)
+        .filter(f => f.endsWith('.plist'))
+        .map(f => f.replace(/\.plist$/, ''))
+        .sort();
+}
 
 // 2026-08-20：deploy-pipeline.ts 部署成功（commit 落地）後發 Telegram 通知用，
 // 沿用既有的 scripts/tg-notify.sh（fire-and-forget，內部一律 exit 0，不會讓
