@@ -353,6 +353,12 @@ src/
 ## 已知限制
 
 - `aladdin_platform_game_vendor_platform_list_games` 只開放 `gameVendorId`/`name`/`status` 三個篩選欄位；`displayTag`/`frontendGroupTag`/`rebateTag`/`badgeId` 這些下拉篩選需要另外查對應清單，其中 `ListAllGameDisplayTags` 已實作為 `aladdin_platform_game_vendor_platform_list_all_game_display_tags`；`ListAllGameRebateTags`/`GetBadgeList` 等仍尚未實作。
+
+- **搜尋欄位的「不篩選」語意不一定是 protobuf 預設值（哨兵值陷阱，2026-09-02 真實出包）**：建 search 訊息時沒帶到的欄位會取 protobuf 預設值（數字 `0`、字串 `''`、bool `false`）。若後端對該欄位的「全部／不篩選」語意不是那個預設值，**漏帶的欄位就變成一個真實的篩選條件送出去——RPC 回 success，rows 卻被靜默篩空**。當時 `list_games` 漏帶 `displayTag`/`rebateTag`（後端 `-1` 才是全部，`0` 是合法分類值「未知」），VR 廠商在 pre-pk 平台明明有 23 款啟用中的遊戲，tool 一律回 `rows: []`、`totalPage: 0`，換 `status`/`page`/`pageSize` 重試都一樣，因為根因跟這三個參數無關。同批掃描另外修了 `update_game_vendor_game_status`（唯讀防呆掃描因此對所有遊戲都掃不到，一律誤判「尚未上架」而把人推去帶 `forceOnboard=true`）與 `list_agent_bet_records`（`displayTag` 是 `.optional()` 沒設 `.default(-1)`，查任何代理都回空、四個合計也一起變 0）。
+
+  修正後 2026-09-02 對 CQA/pre 站（`pk-platform.ald777.com`）另 spawn 新 stdio process 實打驗證：`list_games(gameVendorId=29)` 回 23 筆、全部 enabled、編號自 2432 起，與後台畫面一致；Gate B 覆核則在 dev 撈到一筆 `displayTag=0` 的遊戲，正是舊 bug 會誤篩掉的分類值。
+
+  新增或改動任何吃 search 的 tool 時：對**每一個沒帶的欄位**去 agrabah 讀出後端實際怎麼判斷（欄位可能經 manager/helper 轉手後才碰到哨兵，要追到真正做判斷的那一行），zod 對這類欄位用 `.default(<哨兵值>)` 而不是 `.optional()`，驗收要包含「完全不帶任何選填篩選條件」的呼叫。共用哨兵常數放在 `src/const.ts`（`DISPLAY_TAG_ALL` / `REBATE_TAG_ALL`）。可重跑的稽核：`bun ../scripts/check-sentinel-fields.ts`（有命中 exit 1，加 `--inventory` 只印清冊）；詳細規則見 `../method-category-checklist.md` 第 2.5 節。**腳本是兜底不是充分條件**，它追不動跨 manager 的間接傳遞。
 - `aladdin_platform_game_vendor_platform_update_game_vendor_game` 的圖片欄位是「每個語言各自一張圖」，沒有「一張圖套用全部語言」的機制；呼叫端要明確帶每個語言各自的本機檔案路徑（stdio 模式）或 fileId（hosted 模式，先呼叫 `POST /files` 上傳取得，見 `../README.md`「Hosted 模式」）。每次上傳都要重新拿 token（單次使用、1 小時過期）。
 - **H9：`onboard_vendor_game.ts` 的圖片參數 `{code, filePath}` / `{code, fileId}` 二選一**，設計與實測方式與 `aladdin-admin` 的 `upsert_game.ts` 逐字相同，完整說明見 `../aladdin-admin/README.md` 同一段（D5/§4.3；`fileId → 本機路徑` 的三層防護：regex 格式白名單 + registry `Map` 精確比對 + realpath 二次確認）。
 - **`localizedName`（多語系名稱）只能覆蓋、不能清空**：proto3 對「空陣列」與「欄位沒帶」無法區分，後端的部分更新邏輯會把明確傳入的空陣列當成「沒帶這個欄位」直接忽略，不會拿它去清掉既有值（在 admin 端用真實遊戲資料實測驗證過，platform 端邏輯相同，推論同樣適用）。language code 一旦設定過，之後只能用 `localizedNames` 覆蓋成別的值，沒辦法清空回未設定狀態。
