@@ -11,6 +11,23 @@
 // ActiveStatusEnum（common.rajah:1073-1076）
 export const ACTIVE_STATUS_MAP = { enabled: 1, disabled: 2 } as const;
 
+// 「全部（不篩選）」的哨兵值。2026-09-02 真實出包後新增（見 tools/list_vendor_games.ts
+// 檔頭）：這幾個搜尋欄位的「不篩選」語意是 **-1**，不是 protobuf 預設的 0——0 是合法的
+// 分類值（GameDisplayTagEnum.unknown = 0「沒分類」）。建 search 訊息時**漏帶就等於多送
+// 了一個 `tag = 0` 的篩選條件**，查詢會被靜默篩成空陣列而 RPC 仍回 success。
+//
+// agrabah 後端自己也是這樣處理的，可交叉對照：
+//   agrabah/src/common/game_back_office_search_helper.ts:13-19 的兩支 factory
+//   （`createPlatformGameVendorGameEssentialSearch` / `createPlatformGameRecordEssentialSearch`）
+//   都是先鋪 `{ displayTag: -1, rebateTag: -1, ... }` 再展開 overrides；
+// abu 前端則是 abu/platform/src/helpers/game_search.ts:88-102 的 `createGameSearch()`。
+//
+// 新增 tool 時要怎麼確認某個欄位屬不屬於這一類：跑
+// `bun aladdin_mcps/scripts/check-sentinel-fields.ts --inventory` 看清冊，
+// 或直接跑 `check-sentinel-fields.ts` 稽核所有建構點。
+export const DISPLAY_TAG_ALL = -1;
+export const REBATE_TAG_ALL = -1;
+
 // StatusEnum（common.rajah:1072-1080）；unknown=0 保留給呼叫端明確表達「設為未知狀態」這個
 // 合法列舉值；last=255 是內部 sentinel（非列舉語意上界），不收錄進可選值。
 // 2026-08-25 dev 實測（update_game_vendor_status.ts round-trip 測試）確認 enabled/disabled

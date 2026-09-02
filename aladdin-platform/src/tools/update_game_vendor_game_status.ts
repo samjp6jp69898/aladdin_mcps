@@ -93,7 +93,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { PlatformGameVendorGameEssentialSearch } from '/Users/user/aladdin/abu/platform/src/generated/types.gen.js';
 import { remote, withAutoRelogin, assertProdConfirmed, PROD_CONFIRM_TOKEN } from '../session.ts';
 import { asTextResult, asErrorResult } from '../mcp_result.ts';
-import { STATUS_MAP, STATUS_KEYS } from '../const.ts';
+import { STATUS_MAP, STATUS_KEYS, DISPLAY_TAG_ALL, REBATE_TAG_ALL } from '../const.ts';
 
 const SCAN_PAGE_SIZE = 200;
 const SCAN_MAX_PAGES = 20;
@@ -120,7 +120,18 @@ async function findGameStatusByBusinessKey(gameVendorId: number, gameId: string)
         if (Date.now() - startedAt > SCAN_TIMEOUT_MS) {
             return { failedResult: undefined, matchedRow: undefined, scannedPages, scannedRows, hitScanCap: true } as const;
         }
-        const search = PlatformGameVendorGameEssentialSearch.create({ gameVendorId });
+        // displayTag / rebateTag 這兩個哨兵值不可省略：後端「全部（不篩選）」是 -1，
+        // protobuf 預設的 0 是合法分類值。2026-09-02 出包前這裡漏帶，等於每次掃描都
+        // 額外送了「分類 = 0 且返水標籤 = 0」兩個條件，這道唯讀防呆掃描**對所有遊戲
+        // 都掃不到**、一律誤判成「這個 gameId 尚未上架在本平台」而拒絕呼叫底層 RPC，
+        // 反過來把使用者推去帶 forceOnboard=true——那正是繞過本防呆、可能觸發靜默
+        // 上架副作用的旗標。詳見 tools/list_vendor_games.ts 檔頭與
+        // agrabah/src/servers/game_back_office/services/game_vendor_platform.ts:612-617。
+        const search = PlatformGameVendorGameEssentialSearch.create({
+            gameVendorId,
+            displayTag: DISPLAY_TAG_ALL,
+            rebateTag: REBATE_TAG_ALL,
+        });
         const listR = await withPageTimeout(withAutoRelogin(() => remote.gameBackOffice.gameVendorPlatform.ListGames(search, page, SCAN_PAGE_SIZE)));
         if (listR === PAGE_TIMEOUT_MARKER) {
             return { failedResult: undefined, matchedRow: undefined, scannedPages, scannedRows, hitScanCap: true } as const;
