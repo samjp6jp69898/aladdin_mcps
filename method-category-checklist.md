@@ -49,6 +49,38 @@ Tool 命名規則另見 `tool-naming-convention.md`(同層目錄)——挑到候
 - Batch 開頭的查詢類(`BatchGetXxx(ids)`):不能假設回傳陣列與輸入 id 陣列同長度、同順序;查不到的 id 是否出現在結果裡,必須用回傳資料裡的 id 欄位重新比對,不能用 index 對應。
 - 游標式掃描(`lastId`/`batchSize` 而非 page/pageSize):本質同 B 級的翻頁到底要求,終止條件換成「回傳空 / 回傳筆數 < batchSize」。
 
+## 2.5 搜尋欄位的「不篩選」語意 ≠ protobuf 預設值(哨兵值陷阱,2026-09-02 真實出包)
+
+**這一節是第 2 節的強制子項,清單類 method 一律要過。** 第 2 節已經要求「zod schema 必須對照 rajah model 全部欄位」,但那條的用意是「別漏掉可用的篩選條件」——讀的人不會意識到,**漏帶一個欄位不是「少一個條件」,而是「多送一個錯誤的條件」**。
+
+**機制**:`XxxSearch.create({ ... })` 沒帶到的欄位會取 protobuf 預設值(數字 `0`、字串 `''`、bool `false`、陣列 `[]`)。若後端對該欄位的「不篩選 / 全部」語意**不是**那個預設值,漏帶的欄位就變成一個真實的篩選條件送出去。**RPC 回 success,rows 卻被靜默縮小甚至變成空集合,沒有任何錯誤訊息**——這是最難察覺的一類缺陷,呼叫端看到的是「查無資料」,不是「查詢寫錯了」。
+
+**真實出包**:`aladdin_platform_game_vendor_platform_list_games` 建 search 時漏帶 `displayTag` / `rebateTag`(後端 `displayTag === -1` 才是全部,`0` 是合法分類值「未知」),VR 廠商在 pk-pre 平台明明有 23 款啟用中的遊戲,tool 一律回 `rows: []`、`totalPage: 0`。企劃反覆換 `status`/`page`/`pageSize` 重試都一樣,因為根因跟這三個參數無關。同一批掃描另外抓到兩支同類:`update_game_vendor_game_status` 的唯讀防呆掃描因此**對所有遊戲都掃不到**、一律誤判「尚未上架」而把人推去帶 `forceOnboard=true`(繞過防呆);`list_agent_bet_records` 的 `displayTag` 則是 `.optional()` 沒設 `.default(-1)`,查任何代理都回空。
+
+**已知的三種哨兵形狀**(後端寫法差很多,不要只記得 `-1`):
+
+| 後端寫法 | 意思 | 漏帶的後果 |
+|---|---|---|
+| `if (search.x !== -1) { conditions.push(...) }` | -1 = 全部 | 變成篩 `x = 0` |
+| `if (search.x >= 0) { conditions.push(...) }` | 負數 = 全部,**0 是合法值** | 變成篩 `x = 0` |
+| `if (search.x !== SomeEnum.all)`,且 `all` 不等於 0<br>(實際見過 `all = 99` / `8` / `4` / `3` / `999`) | 該 enum 值 = 全部 | 變成篩 `x = 0`(通常是 `unknown`/`none`) |
+
+**安全、不需要補的形狀**(別過度修正):`if (search.x)` truthy 判斷、`if (search.x > 0)`、`searchNotEmpty()`、以及「全部」剛好等於 0 的 enum(如 `ActivityFlagUsedInEnum.all = 0`)。
+
+**強制檢查步驟**:
+
+1. 對 search 模型的**每一個沒帶的欄位**,到 agrabah 找該 RPC 實作,讀出後端怎麼判斷這個欄位——**不能只看 rajah 註解,也不能推測**。註解常常沒寫,寫了的也可能過期。
+2. 欄位可能不是在該 method 內直接判斷,而是經 manager / helper 轉手後才碰到哨兵(`list_agent_bet_records` 就是跨 3 個檔案:tool → `agent_report_manager.ts:2163` 當 overrides 蓋掉 factory 的 -1 → `game_record_platform.ts:170` 才 `!== -1`)。追到真正做判斷的那一行為止。
+3. zod schema 對這類欄位要用 `.default(<哨兵值>)`,**不是 `.optional()`**——`.optional()` 省略時仍會落回 protobuf 的 0。
+4. 不對外開放的篩選欄位,建構時仍要明確帶哨兵值(如 `displayTag: -1`),不能因為「反正不開放」就省略。
+5. **驗收案例必須包含「完全不帶任何選填篩選條件」的呼叫**,且結果要跟後台畫面對得上。只驗「帶了完整條件」的情境會剛好蓋掉這個 bug。
+
+**現成的參考實作**(不要自己重新發明):agrabah 後端自己有 `src/common/game_back_office_search_helper.ts:13-19` 兩支 factory 先鋪 `{ displayTag: -1, rebateTag: -1, ... }` 再展開 overrides;abu 前端有 `platform/src/helpers/game_search.ts:88-102` 的 `createGameSearch()`。MCP server 端的共用常數放在各 server 的 `src/const.ts`。
+
+**可重跑的稽核**:`bun /Users/user/aladdin/aladdin_mcps/scripts/check-sentinel-fields.ts` 會從 agrabah source 現算哨兵值清冊、比對兩個 server 全部 tool 的建構點與 zod schema,有命中回 exit 1。加 `--inventory` 只印清冊。**這支腳本是兜底不是充分條件**:它追不動跨 manager 的間接傳遞(上面第 2 點那種),所以不能拿「腳本跑過了」取代逐欄讀後端。
+
+---
+
 ## 3. 寫入 — 新增(Create / Add)
 
 - 完成後用回傳 id 呼叫對應 Get 做 round-trip 驗證,不能以 RPC 不報錯視為業務正確。

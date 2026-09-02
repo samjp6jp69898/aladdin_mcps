@@ -438,9 +438,16 @@ requestId: ${ requestId }
    真的對得上這支 tool 的實作，不是憑印象猜。
 3. **必讀** /Users/user/aladdin/aladdin_mcps/method-category-checklist.md，判斷這支
    method 屬於哪個分類，逐條核對這次改動有沒有滿足該分類列出的強制檢查項——尤其是
-   清單類（有沒有處理「資料超過一頁」）、Upsert/CreateOrUpdate 類（有沒有先讀現值
-   再合併）、業務鍵間接定位更新類（有沒有掃描到底而不是寫死小分頁）這幾個高風險
-   分類，不能只看有沒有語法錯誤。
+   清單類（有沒有處理「資料超過一頁」）、**搜尋欄位哨兵值類（第 2.5 節）**、
+   Upsert/CreateOrUpdate 類（有沒有先讀現值再合併）、業務鍵間接定位更新類（有沒有
+   掃描到底而不是寫死小分頁）這幾個高風險分類，不能只看有沒有語法錯誤。
+   **哨兵值這一項要自己動手查，不能只看原作者怎麼說**：對這支 tool 建 search 時
+   **沒有帶到的每一個欄位**，去 agrabah 讀出後端實際怎麼判斷它，確認「不篩選」的
+   語意真的等於 protobuf 預設值。2026-09-02 的真實 bug（\`list_games\` 漏帶
+   \`displayTag\`/\`rebateTag\`，後端 -1 才是「全部」、0 是合法分類值，導致對任何
+   廠商都回空陣列而 RPC 仍回 success）就是這一類。順手跑一次
+   \`bun /Users/user/aladdin/aladdin_mcps/scripts/check-sentinel-fields.ts\`（有命中
+   會 exit 1）當兜底，但**不要拿它取代自己讀後端**——它追不動跨 manager 的間接傳遞。
 4. **核對 tool 命名**：對照 /Users/user/aladdin/aladdin_mcps/tool-naming-convention.md，
    確認 \`server.registerTool()\` 第一個參數真的是 \`<server>_<service>_<method>\`
    （各自 snake_case，service/method 是第 2 步查證到的真實 rajah 名稱）——常見缺陷
@@ -451,6 +458,9 @@ requestId: ${ requestId }
    或比照該 server README「除錯」一節寫一支 spike script）——確認真的能登入、真的
    呼叫到後端拿到真實資料，不是只看程式碼推論、也不是只信任原作者 manifest 裡的
    自我陳述。如果這是寫入型呼叫，記得驗證完清理/還原 dev 上的測試資料。
+   **查詢型 tool 必須包含一次「完全不帶任何選填篩選條件」的呼叫**，並確認回傳筆數
+   合理（對得上後台畫面或 DB 實際筆數）——回空陣列而 RPC success 是哨兵值缺陷的
+   典型症狀，只驗「帶滿條件」的情境會剛好蓋掉它。
    **重要**：這個時間點對應的 launchd 常駐服務（\`${ LAUNCHD_LABEL[ target ] }\`）
    還沒被重載，跑的仍是套用前的舊代碼——絕對不要用「打常駐服務目前對外的連線」
    這種方式驗證（例如透過 telegram-dispatcher 的 proxy route 或直接打常駐服務
